@@ -43,6 +43,16 @@ export default function AdvancedAnalysis() {
     branch: "",
     division: ""
   });
+  const [reportConfig, setReportConfig] = useState({
+    includeCharts: true,
+    includeTopPerformers: true,
+    includeAtRisk: true,
+    includeStats: true,
+    theme: 'gradient',
+    notes: ''
+  });
+  const [showReportSettings, setShowReportSettings] = useState(false);
+  const [analysisData, setAnalysisData] = useState(null);
 
   React.useEffect(() => {
     const loadColleges = async () => {
@@ -367,8 +377,72 @@ export default function AdvancedAnalysis() {
     return { attendanceByDate, studentAttendance, totalSessions: dateColumns.length };
   };
 
-  const generateHTMLReport = (analysis, batchInfo) => {
+  const exportToCSV = (analysis, batchInfo) => {
+    const { attendanceByDate, studentAttendance } = analysis;
+    
+    const csvRows = [];
+    csvRows.push([`Attendance Report - ${batchInfo.college_name}`]);
+    csvRows.push([`Branch: ${batchInfo.branch}`, `Year: ${batchInfo.year}`, `Division: ${batchInfo.division || 'All'}`]);
+    csvRows.push([]);
+    
+    // Student attendance data
+    csvRows.push(['Roll No', 'PRN', 'Student Name', 'Present', 'Total', 'Percentage']);
+    studentAttendance.forEach(s => {
+      csvRows.push([s.rollNo, s.prn, s.name, s.present, s.total, `${s.percentage}%`]);
+    });
+    
+    csvRows.push([]);
+    csvRows.push(['Session-wise Attendance']);
+    csvRows.push(['Date', 'Present', 'Total', 'Percentage']);
+    attendanceByDate.forEach(d => {
+      csvRows.push([d.date, d.present, d.total, `${d.percentage}%`]);
+    });
+    
+    const csvContent = csvRows.map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Attendance_Report_${batchInfo.college_name.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const getThemeColors = (theme) => {
+    const themes = {
+      gradient: {
+        bg: 'linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe)',
+        card: 'rgba(255,255,255,0.95)',
+        primary: '#667eea',
+        secondary: '#764ba2'
+      },
+      ocean: {
+        bg: 'linear-gradient(-45deg, #2193b0, #6dd5ed, #00c6ff, #0072ff)',
+        card: 'rgba(255,255,255,0.95)',
+        primary: '#2193b0',
+        secondary: '#0072ff'
+      },
+      sunset: {
+        bg: 'linear-gradient(-45deg, #f12711, #f5af19, #ff6b6b, #ee5a6f)',
+        card: 'rgba(255,255,255,0.95)',
+        primary: '#f12711',
+        secondary: '#f5af19'
+      },
+      forest: {
+        bg: 'linear-gradient(-45deg, #134e5e, #71b280, #56ab2f, #a8e063)',
+        card: 'rgba(255,255,255,0.95)',
+        primary: '#134e5e',
+        secondary: '#56ab2f'
+      }
+    };
+    return themes[theme] || themes.gradient;
+  };
+
+  const generateHTMLReport = (analysis, batchInfo, config) => {
     const { attendanceByDate, studentAttendance, totalSessions } = analysis;
+    const theme = getThemeColors(config.theme);
     
     const overallAttendance = attendanceByDate.length > 0 
       ? (attendanceByDate.reduce((sum, d) => sum + parseFloat(d.percentage), 0) / attendanceByDate.length).toFixed(1)
@@ -398,7 +472,7 @@ export default function AdvancedAnalysis() {
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
+            background: ${theme.bg};
             background-size: 400% 400%;
             animation: gradientShift 15s ease infinite;
             padding: 20px;
@@ -431,7 +505,7 @@ export default function AdvancedAnalysis() {
         .header h1 {
             font-size: 3em;
             margin-bottom: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background: linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 50%, ${theme.primary} 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -652,9 +726,17 @@ export default function AdvancedAnalysis() {
                     <div class="info-value">${batchInfo.division || 'All'}</div>
                 </div>
             </div>
-        </div>
+            </div>
 
-        <div class="stats-grid">
+            ${config.notes ? `
+            <div class="chart-container">
+            <h2 class="chart-title">📝 Notes & Summary</h2>
+            <div style="white-space: pre-wrap; line-height: 1.6; color: #333;">${config.notes}</div>
+            </div>
+            ` : ''}
+
+            ${config.includeStats ? `
+            <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon">👥</div>
                 <div class="stat-label">Total Students</div>
@@ -675,19 +757,23 @@ export default function AdvancedAnalysis() {
                 <div class="stat-label">Below 75%</div>
                 <div class="stat-value">${needsAttention.length}</div>
             </div>
-        </div>
+            </div>
+            ` : ''}
 
-        <div class="chart-container">
+            ${config.includeCharts ? `
+            <div class="chart-container">
             <h2 class="chart-title">📊 Attendance Trend Over Time</h2>
             <div id="line_chart" style="width: 100%; height: 400px;"></div>
-        </div>
+            </div>
 
-        <div class="chart-container">
+            <div class="chart-container">
             <h2 class="chart-title">📊 Student-wise Attendance (Top 20)</h2>
             <div id="bar_chart" style="width: 100%; height: 500px;"></div>
-        </div>
+            </div>
+            ` : ''}
 
-        <h2 class="section-title">🏆 Top Performers (>90% Attendance)</h2>
+            ${config.includeTopPerformers ? `
+            <h2 class="section-title">🏆 Top Performers (>90% Attendance)</h2>
         <div class="students-grid">
             ${topPerformers.map((student, index) => `
                 <div class="student-card" style="animation-delay: ${index * 0.05}s;">
@@ -702,9 +788,10 @@ export default function AdvancedAnalysis() {
                     </div>
                 </div>
             `).join('')}
-        </div>
+            </div>
+            ` : ''}
 
-        ${needsAttention.length > 0 ? `
+            ${config.includeAtRisk && needsAttention.length > 0 ? `
         <h2 class="section-title">⚠️ Students Needing Attention (<75% Attendance)</h2>
         <div class="students-grid">
             ${needsAttention.map((student, index) => `
@@ -1032,22 +1119,12 @@ export default function AdvancedAnalysis() {
         return;
       }
 
-      const htmlReport = generateHTMLReport(analysis, formData);
-
-      // Download HTML report
-      const blob = new Blob([htmlReport], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Attendance_Analysis_${formData.college_name.replace(/[^a-zA-Z0-9]/g, '_')}_${formData.branch.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
+      // Store analysis data for export options
+      setAnalysisData(analysis);
+      setShowReportSettings(true);
       setMessage({ 
         type: "success", 
-        text: `✅ Analysis complete! HTML report downloaded successfully. Found ${data.length} students across ${analysis.totalSessions} sessions.` 
+        text: `✅ Analysis complete! Configure your report settings and choose export format.` 
       });
       setIsProcessing(false);
     } catch (error) {
@@ -1055,9 +1132,39 @@ export default function AdvancedAnalysis() {
       setMessage({ type: "error", text: `Error analyzing file: ${error.message}` });
       setIsProcessing(false);
     }
-  };
+    };
 
-  return (
+    const handleExportHTML = () => {
+    if (!analysisData) return;
+
+    const htmlReport = generateHTMLReport(analysisData, formData, reportConfig);
+    const blob = new Blob([htmlReport], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Attendance_Analysis_${formData.college_name.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setMessage({ type: "success", text: "HTML report downloaded!" });
+    };
+
+    const handleExportCSV = () => {
+    if (!analysisData) return;
+    exportToCSV(analysisData, formData);
+    setMessage({ type: "success", text: "CSV report downloaded!" });
+    };
+
+    const handleNewAnalysis = () => {
+    setAnalysisData(null);
+    setShowReportSettings(false);
+    setSelectedFile(null);
+    setMessage(null);
+    };
+
+    return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
@@ -1221,9 +1328,114 @@ export default function AdvancedAnalysis() {
                 <p className="text-xs text-yellow-900 font-semibold">📄 Supports PDF (with OCR), CSV, and Excel files!</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
+            </CardContent>
+            </Card>
+
+            {showReportSettings && analysisData && (
+            <Card className="shadow-xl border-2 border-green-100 mt-6">
+            <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-6 h-6" />
+                Customize & Export Report
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Report Content</h3>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={reportConfig.includeStats}
+                        onChange={(e) => setReportConfig({...reportConfig, includeStats: e.target.checked})}
+                        className="w-4 h-4"
+                      />
+                      <span>Include Statistics Cards</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={reportConfig.includeCharts}
+                        onChange={(e) => setReportConfig({...reportConfig, includeCharts: e.target.checked})}
+                        className="w-4 h-4"
+                      />
+                      <span>Include Charts & Graphs</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={reportConfig.includeTopPerformers}
+                        onChange={(e) => setReportConfig({...reportConfig, includeTopPerformers: e.target.checked})}
+                        className="w-4 h-4"
+                      />
+                      <span>Include Top Performers</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={reportConfig.includeAtRisk}
+                        onChange={(e) => setReportConfig({...reportConfig, includeAtRisk: e.target.checked})}
+                        className="w-4 h-4"
+                      />
+                      <span>Include At-Risk Students</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Theme</h3>
+                  <Select value={reportConfig.theme} onValueChange={(value) => setReportConfig({...reportConfig, theme: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gradient">Gradient (Purple-Blue)</SelectItem>
+                      <SelectItem value="ocean">Ocean (Blue)</SelectItem>
+                      <SelectItem value="sunset">Sunset (Red-Orange)</SelectItem>
+                      <SelectItem value="forest">Forest (Green)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold">Custom Notes / Summary (Optional)</Label>
+                <textarea
+                  placeholder="Add any custom notes, observations, or summary for this report..."
+                  value={reportConfig.notes}
+                  onChange={(e) => setReportConfig({...reportConfig, notes: e.target.value})}
+                  className="w-full h-32 p-3 border rounded-lg resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={handleExportHTML}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export as HTML
+                </Button>
+                <Button
+                  onClick={handleExportCSV}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export as CSV
+                </Button>
+                <Button
+                  onClick={handleNewAnalysis}
+                  variant="outline"
+                >
+                  New Analysis
+                </Button>
+              </div>
+            </CardContent>
+            </Card>
+            )}
+            </div>
+            </div>
+            );
+            }

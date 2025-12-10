@@ -665,31 +665,50 @@ export default function AdvancedAnalysis() {
         const ocrSchema = {
           type: "object",
           properties: {
-            date_columns: {
-              type: "array",
-              description: "First, extract ALL date-time column headers from the table. Look for columns like '08.12.2025 Morning', '08.12.2025 Afternoon', '08.12.2025 Evening', '9.12.2025 Morning', '10.12.2026 Afternoon', '11.12.202 Morning', '12.12.2025 Morning', '13.12.2025 Evening', etc. Extract EVERY date-time combination column you see.",
-              items: { type: "string" }
-            },
             students: {
               type: "array",
-              description: "Extract ALL 73 student records from the attendance table. For each student, extract: SL NO (roll number 1-73), PRN (like 24UET001), STUDENT NAME (full name), and attendance for EVERY date-time column (marked as 'P' for Present or 'A' for Absent). Ensure you capture attendance for ALL date columns found.",
+              description: `This is an attendance sheet with multiple pages. Extract EVERY student record you see.
+              
+              The table structure is:
+              - Column 1: SL NO (serial numbers 1-73)
+              - Column 2: PRN (student IDs like 24UET001, 24UET002, etc.)
+              - Column 3: STUDENT NAME (full names in CAPITAL LETTERS)
+              - Remaining columns: Date-time slots with attendance marked as 'P' (Present) or 'A' (Absent)
+              
+              Date-time columns follow this pattern across different dates: "DD.MM.YYYY Morning", "DD.MM.YYYY Afternoon", "DD.MM.YYYY Evening"
+              For example: "08.12.2025 Morning", "08.12.2025 Afternoon", "08.12.2025 Evening", "9.12.2025 Morning", etc.
+              
+              IMPORTANT: There are 3 shifts per day (Morning, Afternoon, Evening). Extract attendance for ALL date-time combinations you find.
+              
+              Extract all ~73 students with their complete attendance records.`,
               items: {
                 type: "object",
                 properties: {
-                  roll_no: { type: "string", description: "Serial number (1-73)" },
-                  prn: { type: "string", description: "PRN number like 24UET001, 24UET002, etc." },
-                  student_name: { type: "string", description: "Full student name like 'ADITYA RAVINDRA CHOUGULE'" },
-                  attendance_records: {
+                  sl_no: { 
+                    type: "string", 
+                    description: "Serial number from first column (1, 2, 3...73)" 
+                  },
+                  prn: { 
+                    type: "string", 
+                    description: "PRN from second column (e.g., 24UET001, 24UET002, 22UET079, 23UET059)" 
+                  },
+                  name: { 
+                    type: "string", 
+                    description: "Full student name from third column (e.g., ADITYA RAVINDRA CHOUGULE, AITAWADE VIDHI RAJENDRA)" 
+                  },
+                  attendance: {
                     type: "object",
-                    description: "For each date-time column, record 'P' if present or 'A' if absent. Keys should match the date_columns array exactly.",
-                    additionalProperties: { type: "string", enum: ["P", "A"] }
+                    description: "Object where each key is a date-time combination (like '08.12.2025 Morning', '08.12.2025 Afternoon', '08.12.2025 Evening', '9.12.2025 Morning', '10.12.2026 Afternoon', '11.12.202 Morning', '12.12.2025 Morning', '12.12.2025 Afternoon', '13.12.2025 Evening', '13.12.2025 Morning') and value is either 'P' or 'A'",
+                    additionalProperties: { 
+                      type: "string"
+                    }
                   }
                 },
-                required: ["roll_no", "prn", "student_name", "attendance_records"]
+                required: ["name", "attendance"]
               }
             }
           },
-          required: ["date_columns", "students"]
+          required: ["students"]
         };
 
         const ocrResult = await ExtractDataFromUploadedFile({
@@ -703,79 +722,87 @@ export default function AdvancedAnalysis() {
 
         // Convert OCR result to CSV-like format
         const students = ocrResult.output.students;
-        const extractedDateColumns = ocrResult.output.date_columns || [];
         
         if (!students || students.length === 0) {
-          throw new Error("No student data extracted from PDF. The PDF structure may be complex. Please try converting it to CSV first.");
+          throw new Error("PDF extraction failed. The PDF structure may be too complex. Try converting to CSV/Excel first.");
         }
         
-        console.log('OCR extraction:', { 
-          studentCount: students.length, 
-          dateColumnsDetected: extractedDateColumns.length,
-          dateColumns: extractedDateColumns,
-          sampleStudent: students[0]
+        console.log('✅ OCR extracted:', { 
+          studentCount: students.length,
+          sampleStudents: students.slice(0, 3)
         });
 
-        // Use extracted date columns, or fall back to collecting from all students
-        let dateColumns = extractedDateColumns;
-        if (dateColumns.length === 0) {
-          const allDateColumns = new Set();
-          students.forEach(student => {
-            Object.keys(student.attendance_records || {}).forEach(dateKey => {
-              allDateColumns.add(dateKey);
-            });
+        // Collect all unique date-time columns from all students
+        const allDateColumns = new Set();
+        students.forEach(student => {
+          Object.keys(student.attendance || {}).forEach(dateKey => {
+            if (dateKey.trim()) allDateColumns.add(dateKey.trim());
           });
-          dateColumns = Array.from(allDateColumns);
+        });
+
+        const dateColumns = Array.from(allDateColumns);
+        console.log('📅 Detected session columns:', dateColumns);
+
+        if (dateColumns.length === 0) {
+          throw new Error("No attendance date columns found in PDF. Please check the file format.");
         }
 
-        // Sort date columns chronologically
+        // Sort date columns chronologically with proper time-of-day ordering
         const sortedDateColumns = dateColumns.sort((a, b) => {
-          const parseDate = (str) => {
+          const parseDateTime = (str) => {
             const match = str.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
-            if (match) {
-              const year = match[3].length === 2 ? '20' + match[3] : match[3];
-              return new Date(year, match[2] - 1, match[1]);
-            }
-            return new Date(0);
+            if (!match) return { date: new Date(0), shift: 0 };
+            
+            const year = match[3].length === 2 ? '20' + match[3] : match[3];
+            const date = new Date(year, match[2] - 1, match[1]);
+            
+            let shift = 0;
+            if (str.toLowerCase().includes('morning')) shift = 0;
+            else if (str.toLowerCase().includes('afternoon')) shift = 1;
+            else if (str.toLowerCase().includes('evening')) shift = 2;
+            
+            return { date, shift };
           };
-          const dateA = parseDate(a);
-          const dateB = parseDate(b);
-          if (dateA.getTime() === dateB.getTime()) {
-            // If same date, sort by time of day
-            if (a.includes('Morning') && !b.includes('Morning')) return -1;
-            if (a.includes('Afternoon') && b.includes('Evening')) return -1;
-            if (a.includes('Afternoon') && b.includes('Morning')) return 1;
+          
+          const aData = parseDateTime(a);
+          const bData = parseDateTime(b);
+          
+          if (aData.date.getTime() !== bData.date.getTime()) {
+            return aData.date - bData.date;
           }
-          return dateA - dateB;
+          return aData.shift - bData.shift;
         });
 
-        headers = ['Roll No.', 'PRN', 'STUDENT NAME', ...sortedDateColumns];
+        console.log('📊 Sorted sessions:', sortedDateColumns);
+
+        // Build CSV-like structure
+        headers = ['SL NO', 'PRN', 'STUDENT NAME', ...sortedDateColumns];
         data = students.map(student => {
           const row = {
-            'Roll No.': student.roll_no || '',
+            'SL NO': student.sl_no || student.roll_no || '',
             'PRN': student.prn || '',
-            'STUDENT NAME': student.student_name || ''
+            'STUDENT NAME': student.name || student.student_name || ''
           };
           
           sortedDateColumns.forEach(dateCol => {
-            row[dateCol] = student.attendance_records?.[dateCol] || '';
+            row[dateCol] = student.attendance?.[dateCol] || '';
           });
           
           return row;
         }).filter(row => row['STUDENT NAME'] && row['STUDENT NAME'].length > 2);
 
-        console.log('Processed PDF data:', { 
-          studentCount: data.length, 
-          sessions: sortedDateColumns.length, 
+        console.log('✅ Final structured data:', { 
+          students: data.length, 
+          sessions: sortedDateColumns.length,
           headers,
-          firstStudent: data[0]
+          sample: data[0]
         });
         
         if (data.length === 0) {
-          throw new Error("No valid student data after processing PDF");
+          throw new Error("No valid student records found after processing");
         }
         
-        setMessage({ type: "info", text: `✅ Extracted ${data.length} students with ${sortedDateColumns.length} session columns from PDF!` });
+        setMessage({ type: "info", text: `✅ Extracted ${data.length} students with ${sortedDateColumns.length} attendance sessions (3 shifts/day)!` });
       } else {
         // Handle CSV files
         const reader = new FileReader();

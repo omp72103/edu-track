@@ -265,7 +265,8 @@ export default function AdvancedAnalysis() {
       totalHeaders: headers.length, 
       headers: headers,
       dataLength: data.length,
-      sampleRow: data[0]
+      sampleRow: data[0],
+      allRowKeys: data[0] ? Object.keys(data[0]) : []
     });
     
     // Extract date columns - look for any column that's NOT metadata columns
@@ -273,7 +274,6 @@ export default function AdvancedAnalysis() {
     const dateColumns = headers.filter(h => {
       // Skip empty headers
       if (!h || h.trim() === '') {
-        console.log(`❌ Skipping empty column header`);
         return false;
       }
       
@@ -282,32 +282,34 @@ export default function AdvancedAnalysis() {
       // Check if this is a metadata column
       const isMetadata = metadataColumns.some(meta => upper === meta || upper.includes(meta));
       if (isMetadata) {
-        console.log(`❌ Skipping metadata column: ${h}`);
         return false;
       }
       
       // Check if this column has attendance data
       let pCount = 0;
       let aCount = 0;
-      let totalValues = 0;
+      let sampleValues = [];
       
-      data.forEach(row => {
+      data.forEach((row, idx) => {
         const val = row[h];
+        if (idx < 3) sampleValues.push(val); // Collect first 3 values for debugging
+        
         if (val !== undefined && val !== null && val !== '') {
-          totalValues++;
           const valStr = val.toString().trim().toUpperCase();
-          if (valStr === 'P' || valStr === 'PRESENT' || valStr === '✓') pCount++;
-          if (valStr === 'A' || valStr === 'ABSENT' || valStr === 'X') aCount++;
+          if (valStr === 'P' || valStr === 'PRESENT' || valStr === '✓' || valStr === 'Y') pCount++;
+          if (valStr === 'A' || valStr === 'ABSENT' || valStr === 'X' || valStr === 'N' || valStr === '-') aCount++;
         }
       });
       
       const hasData = pCount > 0 || aCount > 0;
-      console.log(`${hasData ? '✅' : '❌'} Column "${h}": P=${pCount}, A=${aCount}, Total=${totalValues}`);
+      if (!hasData && h.match(/\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}/)) {
+        console.log(`⚠️ Date-like column "${h}" has no P/A values. Sample values:`, sampleValues);
+      }
       
       return hasData;
     });
 
-    console.log('📅 Final detected date columns:', dateColumns);
+    console.log('📅 Detected date columns:', dateColumns.length, dateColumns.slice(0, 5));
 
     const students = data.map(row => ({
       name: row['STUDENT NAME'] || row['Student Name'] || row['Name'] || row['NAME'] || row['name'] || '',
@@ -320,9 +322,10 @@ export default function AdvancedAnalysis() {
     if (dateColumns.length === 0) {
       console.error('❌ No date columns detected!', { 
         headers,
+        firstRowKeys: data[0] ? Object.keys(data[0]) : [],
         sampleData: data.slice(0, 2)
       });
-      throw new Error('No attendance columns detected in the file');
+      throw new Error('No attendance data detected. Please ensure your file has attendance marked as P/A or Present/Absent in date columns.');
     }
 
     // Calculate attendance for each date column

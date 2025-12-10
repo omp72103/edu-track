@@ -215,24 +215,41 @@ export default function AdvancedAnalysis() {
   };
 
   const analyzeAttendanceTrends = (headers, data) => {
-    console.log('Analyzing attendance trends...', { headers, dataLength: data.length });
+    console.log('🔍 Analyzing attendance trends...', { 
+      totalHeaders: headers.length, 
+      headers: headers,
+      dataLength: data.length,
+      sampleRow: data[0]
+    });
     
     // Extract date columns - look for any column that's NOT metadata columns
-    const metadataColumns = ['SL NO', 'SL NO.', 'SERIAL NO', 'PRN', 'STUDENT NAME', 'NAME', 'ROLL NO', 'ROLL NO.', 'Roll No.', 'Roll No', 'Student Name', 'Name'];
+    const metadataColumns = ['SL NO', 'PRN', 'STUDENT NAME'];
     const dateColumns = headers.filter(h => {
       const upper = h.toUpperCase().trim();
+      
+      // Check if this is a metadata column
       const isMetadata = metadataColumns.some(meta => upper === meta || upper.includes(meta));
-      if (isMetadata) return false;
+      if (isMetadata) {
+        console.log(`❌ Skipping metadata column: ${h}`);
+        return false;
+      }
       
       // Check if this column has attendance data
-      const hasData = data.some(row => {
+      let pCount = 0;
+      let aCount = 0;
+      data.forEach(row => {
         const val = row[h]?.toString().trim().toUpperCase();
-        return val === 'P' || val === 'A' || val === 'PRESENT' || val === 'ABSENT' || val === '✓' || val === 'X';
+        if (val === 'P' || val === 'PRESENT' || val === '✓') pCount++;
+        if (val === 'A' || val === 'ABSENT' || val === 'X') aCount++;
       });
+      
+      const hasData = pCount > 0 || aCount > 0;
+      console.log(`${hasData ? '✅' : '❌'} Column "${h}": P=${pCount}, A=${aCount}`);
+      
       return hasData;
     });
 
-    console.log('Detected date columns:', dateColumns);
+    console.log('📅 Final detected date columns:', dateColumns);
 
     const students = data.map(row => ({
       name: row['STUDENT NAME'] || row['Student Name'] || row['Name'] || row['NAME'] || row['name'] || '',
@@ -240,14 +257,22 @@ export default function AdvancedAnalysis() {
       prn: row['PRN'] || row['prn'] || ''
     })).filter(s => s.name && s.name.trim().length > 0);
 
-    console.log('Detected students:', students.length);
+    console.log('👥 Detected students:', students.length);
+    
+    if (dateColumns.length === 0) {
+      console.error('❌ No date columns detected!', { 
+        headers,
+        sampleData: data.slice(0, 2)
+      });
+      throw new Error('No attendance columns detected in the file');
+    }
 
     // Calculate attendance for each date column
     const attendanceByDate = dateColumns.map(dateCol => {
       let present = 0;
       data.forEach(row => {
         const value = row[dateCol]?.toString().trim().toUpperCase();
-        if (value === 'P' || value === 'PRESENT' || value === 'A' || value === '✓') {
+        if (value === 'P' || value === 'PRESENT' || value === '✓') {
           present++;
         }
       });
@@ -259,15 +284,19 @@ export default function AdvancedAnalysis() {
         displayDate = dateMatch[1];
       }
       
-      return {
+      const result = {
         date: displayDate,
         present,
         total: students.length,
         percentage: students.length > 0 ? ((present / students.length) * 100).toFixed(1) : 0
       };
+      
+      console.log(`📊 Session "${dateCol}": ${result.present}/${result.total} (${result.percentage}%)`);
+      
+      return result;
     });
 
-    console.log('Attendance by date:', attendanceByDate);
+    console.log('✅ Attendance by date calculated:', attendanceByDate.length);
 
     // Calculate individual student attendance
     const studentAttendance = students.map(student => {
@@ -281,7 +310,7 @@ export default function AdvancedAnalysis() {
       let present = 0;
       dateColumns.forEach(dateCol => {
         const value = studentRow[dateCol]?.toString().trim().toUpperCase();
-        if (value === 'P' || value === 'PRESENT' || value === 'A' || value === '✓') {
+        if (value === 'P' || value === 'PRESENT' || value === '✓') {
           present++;
         }
       });

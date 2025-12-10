@@ -69,63 +69,103 @@ export default function AdvancedAnalysis() {
   };
 
   const parseCSV = (text) => {
-    const lines = text.trim().split(/\r?\n/);
-    const headers = lines[0].split(',').map(h => h.trim());
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) return { headers: [], data: [] };
     
+    // Parse CSV with proper quote handling
+    const parseLine = (line) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
+    
+    const headers = parseLine(lines[0]);
     const data = [];
+    
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      if (values.length === headers.length) {
+      const values = parseLine(lines[i]);
+      if (values.length > 3 && values.some(v => v)) { // At least has some data
         const row = {};
         headers.forEach((header, index) => {
-          row[header] = values[index];
+          row[header] = values[index] || '';
         });
         data.push(row);
       }
     }
+    
     return { headers, data };
   };
 
   const analyzeAttendanceTrends = (headers, data) => {
-    // Extract date columns (skip Roll No, PRN, Name)
-    const dateColumns = headers.filter(h => 
-      h.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/) || h.match(/\d{1,2}\/\d{1,2}/)
-    );
+    // Extract date columns - look for any column that's NOT metadata columns
+    const metadataColumns = ['SL NO', 'SL NO.', 'SERIAL NO', 'PRN', 'STUDENT NAME', 'NAME', 'ROLL NO', 'ROLL NO.', 'Roll No.', 'Roll No', 'Student Name', 'Name'];
+    const dateColumns = headers.filter(h => {
+      const upper = h.toUpperCase().trim();
+      const isMetadata = metadataColumns.some(meta => upper.includes(meta.toUpperCase()));
+      const hasData = data.some(row => {
+        const val = row[h]?.trim().toUpperCase();
+        return val === 'P' || val === 'A' || val === 'PRESENT' || val === 'ABSENT';
+      });
+      return !isMetadata && hasData;
+    });
 
     const students = data.map(row => ({
-      name: row['Student Name'] || row['Name'] || '',
-      rollNo: row['Roll No.'] || row['Roll No'] || '',
+      name: row['STUDENT NAME'] || row['Student Name'] || row['Name'] || row['NAME'] || '',
+      rollNo: row['SL NO'] || row['SL NO.'] || row['Roll No.'] || row['Roll No'] || row['ROLL NO'] || '',
       prn: row['PRN'] || ''
-    }));
+    })).filter(s => s.name);
 
-    // Calculate attendance for each date
-    const attendanceByDate = dateColumns.map(date => {
+    // Calculate attendance for each date column
+    const attendanceByDate = dateColumns.map(dateCol => {
       let present = 0;
       data.forEach(row => {
-        const value = row[date]?.toUpperCase();
-        if (value === 'P' || value === 'A' || value === 'PRESENT') {
+        const value = row[dateCol]?.trim().toUpperCase();
+        if (value === 'P' || value === 'PRESENT') {
           present++;
         }
       });
+      
+      // Simplify date display
+      let displayDate = dateCol;
+      const dateMatch = dateCol.match(/(\d{1,2}\.\d{1,2}\.\d{2,4})/);
+      if (dateMatch) {
+        displayDate = dateMatch[1];
+      }
+      
       return {
-        date,
+        date: displayDate,
         present,
-        total: data.length,
-        percentage: data.length > 0 ? ((present / data.length) * 100).toFixed(1) : 0
+        total: students.length,
+        percentage: students.length > 0 ? ((present / students.length) * 100).toFixed(1) : 0
       };
     });
 
     // Calculate individual student attendance
     const studentAttendance = students.map(student => {
       const studentRow = data.find(r => 
-        r['Student Name'] === student.name || r['Name'] === student.name
+        (r['STUDENT NAME'] || r['Student Name'] || r['Name'] || r['NAME'] || '').trim() === student.name.trim()
       );
+      
       if (!studentRow) return { ...student, present: 0, total: 0, percentage: 0 };
 
       let present = 0;
-      dateColumns.forEach(date => {
-        const value = studentRow[date]?.toUpperCase();
-        if (value === 'P' || value === 'A' || value === 'PRESENT') {
+      dateColumns.forEach(dateCol => {
+        const value = studentRow[dateCol]?.trim().toUpperCase();
+        if (value === 'P' || value === 'PRESENT') {
           present++;
         }
       });
@@ -154,9 +194,9 @@ export default function AdvancedAnalysis() {
     const topPerformers = studentAttendance.slice(0, 10);
     const needsAttention = studentAttendance.filter(s => parseFloat(s.percentage) < 75).slice(0, 10);
 
-    const chartData = attendanceByDate.map(d => `['${d.date}', ${d.percentage}]`).join(',');
+    const chartData = attendanceByDate.map(d => `['${d.date.replace(/'/g, "\\'")}', ${parseFloat(d.percentage)}]`).join(',');
     const studentChartData = studentAttendance.slice(0, 20).map(s => 
-      `['${s.name.substring(0, 15)}', ${s.percentage}]`
+      `['${s.name.substring(0, 20).replace(/'/g, "\\'")}', ${parseFloat(s.percentage)}]`
     ).join(',');
 
     return `<!DOCTYPE html>

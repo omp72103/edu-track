@@ -72,6 +72,8 @@ export default function AdvancedAnalysis() {
     const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
     if (lines.length < 2) return { headers: [], data: [] };
     
+    console.log('📄 Parsing CSV with', lines.length, 'lines');
+    
     // Parse CSV with proper quote handling
     const parseLine = (line) => {
       const result = [];
@@ -93,19 +95,53 @@ export default function AdvancedAnalysis() {
       return result;
     };
     
-    const headers = parseLine(lines[0]);
-    const data = [];
+    // Find the header row - look for row with SL NO, PRN, STUDENT NAME
+    let headerRowIndex = 0;
+    let headers = [];
     
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
+      const parsed = parseLine(lines[i]);
+      const lineText = lines[i].toUpperCase();
+      
+      // Check if this line contains the key column names
+      if ((lineText.includes('SL NO') || lineText.includes('ROLL NO')) && 
+          lineText.includes('PRN') && 
+          (lineText.includes('STUDENT NAME') || lineText.includes('NAME'))) {
+        headerRowIndex = i;
+        headers = parsed;
+        console.log(`✅ Found header row at line ${i}:`, headers);
+        break;
+      }
+    }
+    
+    if (headers.length === 0) {
+      console.log('⚠️ No header row found, using first line as headers');
+      headers = parseLine(lines[0]);
+    }
+    
+    // Parse data rows starting after header
+    const data = [];
+    for (let i = headerRowIndex + 1; i < lines.length; i++) {
       const values = parseLine(lines[i]);
-      if (values.length > 3 && values.some(v => v)) { // At least has some data
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
+      
+      // Skip empty rows or rows with too few columns
+      if (values.length < 3 || !values.some(v => v && v.trim())) continue;
+      
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      
+      // Only include rows that have a student name
+      const hasName = row[headers[0]] || row[headers[1]] || row[headers[2]];
+      if (hasName && hasName.trim().length > 1) {
         data.push(row);
       }
     }
+    
+    console.log('✅ Parsed CSV:', { headers: headers.length, dataRows: data.length });
+    console.log('📊 Sample header:', headers.slice(0, 5));
+    console.log('📊 Sample row:', data[0]);
     
     return { headers, data };
   };

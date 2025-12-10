@@ -271,6 +271,12 @@ export default function AdvancedAnalysis() {
     // Extract date columns - look for any column that's NOT metadata columns
     const metadataColumns = ['SL NO', 'PRN', 'STUDENT NAME'];
     const dateColumns = headers.filter(h => {
+      // Skip empty headers
+      if (!h || h.trim() === '') {
+        console.log(`❌ Skipping empty column header`);
+        return false;
+      }
+      
       const upper = h.toUpperCase().trim();
       
       // Check if this is a metadata column
@@ -283,14 +289,20 @@ export default function AdvancedAnalysis() {
       // Check if this column has attendance data
       let pCount = 0;
       let aCount = 0;
+      let totalValues = 0;
+      
       data.forEach(row => {
-        const val = row[h]?.toString().trim().toUpperCase();
-        if (val === 'P' || val === 'PRESENT' || val === '✓') pCount++;
-        if (val === 'A' || val === 'ABSENT' || val === 'X') aCount++;
+        const val = row[h];
+        if (val !== undefined && val !== null && val !== '') {
+          totalValues++;
+          const valStr = val.toString().trim().toUpperCase();
+          if (valStr === 'P' || valStr === 'PRESENT' || valStr === '✓') pCount++;
+          if (valStr === 'A' || valStr === 'ABSENT' || valStr === 'X') aCount++;
+        }
       });
       
       const hasData = pCount > 0 || aCount > 0;
-      console.log(`${hasData ? '✅' : '❌'} Column "${h}": P=${pCount}, A=${aCount}`);
+      console.log(`${hasData ? '✅' : '❌'} Column "${h}": P=${pCount}, A=${aCount}, Total=${totalValues}`);
       
       return hasData;
     });

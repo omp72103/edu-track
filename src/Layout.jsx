@@ -14,7 +14,9 @@ import {
   Book,
   LogOut,
   Menu,
-  GraduationCap
+  GraduationCap,
+  AlertCircle,
+  TrendingUp
 } from "lucide-react";
 
 const mainNavItems = [
@@ -30,6 +32,7 @@ const adminNavItems = [
   { name: "ManageFaculty", label: "Manage Faculty", icon: UserCog },
   { name: "FacultyReport", label: "Faculty Report", icon: FileText },
   { name: "ConsolidatedReport", label: "Consolidated Report", icon: Book },
+  { name: "AdvancedAnalysis", label: "Advanced Analysis", icon: TrendingUp },
 ];
 
 export default function Layout({ children, currentPageName }) {

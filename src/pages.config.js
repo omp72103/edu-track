@@ -11,6 +11,7 @@ import FacultyReport from './pages/FacultyReport';
 import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
 import ConsolidatedReport from './pages/ConsolidatedReport';
+import AdvancedAnalysis from './pages/AdvancedAnalysis';
 import __Layout from './Layout.jsx';
 
 
@@ -28,6 +29,7 @@ export const PAGES = {
     "QRAttendance": QRAttendance,
     "QRAttendanceStudent": QRAttendanceStudent,
     "ConsolidatedReport": ConsolidatedReport,
+    "AdvancedAnalysis": AdvancedAnalysis,
 }
 
 export const pagesConfig = {

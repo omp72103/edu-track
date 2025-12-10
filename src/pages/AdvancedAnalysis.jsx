@@ -111,37 +111,46 @@ export default function AdvancedAnalysis() {
   };
 
   const analyzeAttendanceTrends = (headers, data) => {
+    console.log('Analyzing attendance trends...', { headers, dataLength: data.length });
+    
     // Extract date columns - look for any column that's NOT metadata columns
     const metadataColumns = ['SL NO', 'SL NO.', 'SERIAL NO', 'PRN', 'STUDENT NAME', 'NAME', 'ROLL NO', 'ROLL NO.', 'Roll No.', 'Roll No', 'Student Name', 'Name'];
     const dateColumns = headers.filter(h => {
       const upper = h.toUpperCase().trim();
-      const isMetadata = metadataColumns.some(meta => upper.includes(meta.toUpperCase()));
+      const isMetadata = metadataColumns.some(meta => upper === meta || upper.includes(meta));
+      if (isMetadata) return false;
+      
+      // Check if this column has attendance data
       const hasData = data.some(row => {
-        const val = row[h]?.trim().toUpperCase();
-        return val === 'P' || val === 'A' || val === 'PRESENT' || val === 'ABSENT';
+        const val = row[h]?.toString().trim().toUpperCase();
+        return val === 'P' || val === 'A' || val === 'PRESENT' || val === 'ABSENT' || val === '✓' || val === 'X';
       });
-      return !isMetadata && hasData;
+      return hasData;
     });
 
+    console.log('Detected date columns:', dateColumns);
+
     const students = data.map(row => ({
-      name: row['STUDENT NAME'] || row['Student Name'] || row['Name'] || row['NAME'] || '',
-      rollNo: row['SL NO'] || row['SL NO.'] || row['Roll No.'] || row['Roll No'] || row['ROLL NO'] || '',
-      prn: row['PRN'] || ''
-    })).filter(s => s.name);
+      name: row['STUDENT NAME'] || row['Student Name'] || row['Name'] || row['NAME'] || row['name'] || '',
+      rollNo: row['SL NO'] || row['SL NO.'] || row['Roll No.'] || row['Roll No'] || row['ROLL NO'] || row['Serial No'] || '',
+      prn: row['PRN'] || row['prn'] || ''
+    })).filter(s => s.name && s.name.trim().length > 0);
+
+    console.log('Detected students:', students.length);
 
     // Calculate attendance for each date column
     const attendanceByDate = dateColumns.map(dateCol => {
       let present = 0;
       data.forEach(row => {
-        const value = row[dateCol]?.trim().toUpperCase();
-        if (value === 'P' || value === 'PRESENT') {
+        const value = row[dateCol]?.toString().trim().toUpperCase();
+        if (value === 'P' || value === 'PRESENT' || value === 'A' || value === '✓') {
           present++;
         }
       });
       
       // Simplify date display
       let displayDate = dateCol;
-      const dateMatch = dateCol.match(/(\d{1,2}\.\d{1,2}\.\d{2,4})/);
+      const dateMatch = dateCol.match(/(\d{1,2}[\.\/-]\d{1,2}[\.\/-]\d{2,4})/);
       if (dateMatch) {
         displayDate = dateMatch[1];
       }
@@ -154,18 +163,21 @@ export default function AdvancedAnalysis() {
       };
     });
 
+    console.log('Attendance by date:', attendanceByDate);
+
     // Calculate individual student attendance
     const studentAttendance = students.map(student => {
-      const studentRow = data.find(r => 
-        (r['STUDENT NAME'] || r['Student Name'] || r['Name'] || r['NAME'] || '').trim() === student.name.trim()
-      );
+      const studentRow = data.find(r => {
+        const rowName = (r['STUDENT NAME'] || r['Student Name'] || r['Name'] || r['NAME'] || r['name'] || '').trim();
+        return rowName === student.name.trim();
+      });
       
       if (!studentRow) return { ...student, present: 0, total: 0, percentage: 0 };
 
       let present = 0;
       dateColumns.forEach(dateCol => {
-        const value = studentRow[dateCol]?.trim().toUpperCase();
-        if (value === 'P' || value === 'PRESENT') {
+        const value = studentRow[dateCol]?.toString().trim().toUpperCase();
+        if (value === 'P' || value === 'PRESENT' || value === 'A' || value === '✓') {
           present++;
         }
       });
@@ -180,6 +192,8 @@ export default function AdvancedAnalysis() {
 
     // Sort students by attendance percentage
     studentAttendance.sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage));
+
+    console.log('Analysis complete:', { sessions: dateColumns.length, students: students.length });
 
     return { attendanceByDate, studentAttendance, totalSessions: dateColumns.length };
   };
@@ -735,6 +749,7 @@ export default function AdvancedAnalysis() {
             const parsed = parseCSV(text);
             headers = parsed.headers;
             data = parsed.data;
+            console.log('CSV Parsed:', { headers, dataLength: data.length, firstRow: data[0] });
             resolve();
           };
           reader.readAsText(selectedFile);
@@ -747,9 +762,27 @@ export default function AdvancedAnalysis() {
         return;
       }
 
+      console.log('Data ready for analysis:', { headers, dataCount: data.length });
+
       setMessage({ type: "info", text: "📊 Analyzing attendance trends..." });
 
       const analysis = analyzeAttendanceTrends(headers, data);
+
+      console.log('Analysis results:', { 
+        totalStudents: analysis.studentAttendance.length, 
+        totalSessions: analysis.totalSessions,
+        attendanceByDate: analysis.attendanceByDate.length
+      });
+
+      if (analysis.totalSessions === 0 || analysis.studentAttendance.length === 0) {
+        setMessage({ 
+          type: "error", 
+          text: "Could not detect attendance data in the file. Please ensure your file has student names and attendance columns marked with 'P', 'A', 'Present', or 'Absent'." 
+        });
+        setIsProcessing(false);
+        return;
+      }
+
       const htmlReport = generateHTMLReport(analysis, formData);
 
       // Download HTML report

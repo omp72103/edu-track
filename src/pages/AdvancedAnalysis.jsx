@@ -110,6 +110,110 @@ export default function AdvancedAnalysis() {
     return { headers, data };
   };
 
+  const cleanAndValidateData = (rawHeaders, rawData) => {
+    const cleaningLog = [];
+    
+    // Step 1: Standardize column names
+    const columnMapping = {
+      'SL NO': ['SL NO', 'SL NO.', 'SL.NO.', 'SLNO', 'SERIAL NO', 'SR NO', 'SR.NO.', 'Roll No.', 'Roll No', 'ROLL NO', 'ROLL NO.'],
+      'PRN': ['PRN', 'P.R.N.', 'PRN NO', 'PRN NUMBER'],
+      'STUDENT NAME': ['STUDENT NAME', 'NAME', 'STUDENT', 'FULL NAME', 'Name', 'Student Name']
+    };
+    
+    const standardizeColumnName = (col) => {
+      const upper = col.toUpperCase().trim();
+      for (const [standard, variants] of Object.entries(columnMapping)) {
+        if (variants.some(v => upper === v.toUpperCase() || upper.includes(v.toUpperCase()))) {
+          if (upper !== standard) cleaningLog.push(`Standardized column "${col}" → "${standard}"`);
+          return standard;
+        }
+      }
+      return col.trim();
+    };
+    
+    const headers = rawHeaders.map(h => standardizeColumnName(h));
+    
+    // Step 2: Normalize attendance values
+    const normalizeAttendance = (val) => {
+      if (!val) return '';
+      const normalized = val.toString().trim().toUpperCase();
+      
+      // Present variations
+      if (['P', 'PRESENT', '✓', 'YES', 'Y', '1'].includes(normalized)) return 'P';
+      
+      // Absent variations
+      if (['A', 'ABSENT', 'X', 'NO', 'N', '0', '-'].includes(normalized)) return 'A';
+      
+      return val;
+    };
+    
+    let data = rawData.map((row, idx) => {
+      const cleanedRow = {};
+      headers.forEach((header, i) => {
+        const originalHeader = rawHeaders[i];
+        const value = row[originalHeader];
+        
+        // Normalize attendance for non-metadata columns
+        const isMetadata = ['SL NO', 'PRN', 'STUDENT NAME'].includes(header);
+        cleanedRow[header] = isMetadata ? (value || '').toString().trim() : normalizeAttendance(value);
+      });
+      return cleanedRow;
+    });
+    
+    // Step 3: Remove duplicates
+    const seen = new Set();
+    const originalCount = data.length;
+    data = data.filter((row) => {
+      const key = `${row['STUDENT NAME']}_${row['PRN']}`.toLowerCase();
+      if (seen.has(key)) {
+        cleaningLog.push(`Removed duplicate: ${row['STUDENT NAME']}`);
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+    
+    if (originalCount > data.length) {
+      cleaningLog.push(`Removed ${originalCount - data.length} duplicate entries`);
+    }
+    
+    // Step 4: Standardize date formats in headers
+    const standardizeDateColumn = (col) => {
+      const dateMatch = col.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
+      if (dateMatch) {
+        const day = dateMatch[1].padStart(2, '0');
+        const month = dateMatch[2].padStart(2, '0');
+        let year = dateMatch[3];
+        if (year.length === 2) year = '20' + year;
+        
+        const timeOfDay = col.match(/(morning|afternoon|evening)/i)?.[1] || '';
+        const standardized = timeOfDay 
+          ? `${day}.${month}.${year} ${timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1).toLowerCase()}`
+          : `${day}.${month}.${year}`;
+        
+        if (standardized !== col) {
+          cleaningLog.push(`Standardized date column "${col}" → "${standardized}"`);
+        }
+        return standardized;
+      }
+      return col;
+    };
+    
+    const finalHeaders = headers.map(h => standardizeDateColumn(h));
+    const finalData = data.map(row => {
+      const newRow = {};
+      headers.forEach((oldHeader, i) => {
+        newRow[finalHeaders[i]] = row[oldHeader];
+      });
+      return newRow;
+    });
+    
+    cleaningLog.unshift(`✅ Cleaned ${finalData.length} student records`);
+    console.log('Data cleaning complete:', cleaningLog);
+    
+    return { headers: finalHeaders, data: finalData, cleaningLog };
+  };
+
   const analyzeAttendanceTrends = (headers, data) => {
     console.log('Analyzing attendance trends...', { headers, dataLength: data.length });
     
@@ -825,7 +929,24 @@ export default function AdvancedAnalysis() {
         return;
       }
 
-      console.log('Data ready for analysis:', { headers, dataCount: data.length });
+      console.log('Data ready for cleaning:', { headers, dataCount: data.length });
+
+      setMessage({ type: "info", text: "🧹 Cleaning and validating data..." });
+
+      // Clean and validate the data
+      const cleaned = cleanAndValidateData(headers, data);
+      headers = cleaned.headers;
+      data = cleaned.data;
+
+      console.log('Data after cleaning:', { headers, dataCount: data.length, cleaningLog: cleaned.cleaningLog });
+
+      if (cleaned.cleaningLog.length > 1) {
+        setMessage({ 
+          type: "info", 
+          text: `✅ ${cleaned.cleaningLog[0]} | ${cleaned.cleaningLog.slice(1, 3).join(', ')}` 
+        });
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
 
       setMessage({ type: "info", text: "📊 Analyzing attendance trends..." });
 

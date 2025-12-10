@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { College } from "@/entities/all";
-import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
+import { UploadFile, ExtractDataFromUploadedFile, InvokeLLM } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -450,11 +450,26 @@ export default function AdvancedAnalysis() {
 
     const topPerformers = studentAttendance.slice(0, 10);
     const needsAttention = studentAttendance.filter(s => parseFloat(s.percentage) < 75).slice(0, 10);
+    const excellent = studentAttendance.filter(s => parseFloat(s.percentage) >= 90).length;
+    const good = studentAttendance.filter(s => parseFloat(s.percentage) >= 75 && parseFloat(s.percentage) < 90).length;
+    const average = studentAttendance.filter(s => parseFloat(s.percentage) >= 60 && parseFloat(s.percentage) < 75).length;
+    const poor = studentAttendance.filter(s => parseFloat(s.percentage) < 60).length;
 
     const chartData = attendanceByDate.map(d => `['${d.date.replace(/'/g, "\\'")}', ${parseFloat(d.percentage)}]`).join(',');
     const studentChartData = studentAttendance.slice(0, 20).map(s => 
       `['${s.name.substring(0, 20).replace(/'/g, "\\'")}', ${parseFloat(s.percentage)}]`
     ).join(',');
+    const pieChartData = `['Excellent (≥90%)', ${excellent}], ['Good (75-89%)', ${good}], ['Average (60-74%)', ${average}], ['Poor (<60%)', ${poor}]`;
+    
+    // Distribution by attendance range
+    const attendanceRanges = [
+      { range: '90-100%', count: studentAttendance.filter(s => parseFloat(s.percentage) >= 90).length },
+      { range: '80-89%', count: studentAttendance.filter(s => parseFloat(s.percentage) >= 80 && parseFloat(s.percentage) < 90).length },
+      { range: '70-79%', count: studentAttendance.filter(s => parseFloat(s.percentage) >= 70 && parseFloat(s.percentage) < 80).length },
+      { range: '60-69%', count: studentAttendance.filter(s => parseFloat(s.percentage) >= 60 && parseFloat(s.percentage) < 70).length },
+      { range: '<60%', count: studentAttendance.filter(s => parseFloat(s.percentage) < 60).length }
+    ];
+    const distributionChartData = attendanceRanges.map(r => `['${r.range}', ${r.count}]`).join(',');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -728,10 +743,67 @@ export default function AdvancedAnalysis() {
             </div>
             </div>
 
+            ${config.aiInsights ? `
+            <div class="chart-container" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);">
+                <h2 class="chart-title">🤖 AI-Generated Insights & Recommendations</h2>
+                <div style="white-space: pre-wrap; line-height: 1.8; color: #333; font-size: 15px;">${config.aiInsights}</div>
+            </div>
+            ` : ''}
+
+            <div class="chart-container" style="background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(255,140,0,0.1) 100%);">
+                <h2 class="chart-title">📊 Batch Attendance Summary</h2>
+                <div style="line-height: 1.8; color: #333;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 14px; color: #666; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Overall Performance</div>
+                            <div style="font-size: 32px; font-weight: bold; color: ${theme.primary};">${overallAttendance}%</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">Average attendance rate</div>
+                        </div>
+                        <div style="padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 14px; color: #666; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Total Students</div>
+                            <div style="font-size: 32px; font-weight: bold; color: ${theme.secondary};">${studentAttendance.length}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">Active in batch</div>
+                        </div>
+                        <div style="padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 14px; color: #666; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Sessions Analyzed</div>
+                            <div style="font-size: 32px; font-weight: bold; color: #10b981;">${totalSessions}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">Classes tracked</div>
+                        </div>
+                        <div style="padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 14px; color: #666; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Risk Students</div>
+                            <div style="font-size: 32px; font-weight: bold; color: #ef4444;">${needsAttention.length}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">Below 75% attendance</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 15px;">📈 Performance Distribution</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 10px; color: white;">
+                                <div style="font-size: 28px; font-weight: bold;">${excellent}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Excellent (≥90%)</div>
+                            </div>
+                            <div style="padding: 15px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; color: white;">
+                                <div style="font-size: 28px; font-weight: bold;">${good}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Good (75-89%)</div>
+                            </div>
+                            <div style="padding: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px; color: white;">
+                                <div style="font-size: 28px; font-weight: bold;">${average}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Average (60-74%)</div>
+                            </div>
+                            <div style="padding: 15px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px; color: white;">
+                                <div style="font-size: 28px; font-weight: bold;">${poor}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Poor (<60%)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             ${config.notes ? `
             <div class="chart-container">
-            <h2 class="chart-title">📝 Notes & Summary</h2>
-            <div style="white-space: pre-wrap; line-height: 1.6; color: #333;">${config.notes}</div>
+                <h2 class="chart-title">📝 Custom Notes & Observations</h2>
+                <div style="white-space: pre-wrap; line-height: 1.6; color: #333;">${config.notes}</div>
             </div>
             ` : ''}
 
@@ -762,13 +834,29 @@ export default function AdvancedAnalysis() {
 
             ${config.includeCharts ? `
             <div class="chart-container">
-            <h2 class="chart-title">📊 Attendance Trend Over Time</h2>
-            <div id="line_chart" style="width: 100%; height: 400px;"></div>
+                <h2 class="chart-title">📊 Attendance Trend Over Time (Line Chart)</h2>
+                <div id="line_chart" style="width: 100%; height: 400px;"></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                <div class="chart-container">
+                    <h2 class="chart-title">📊 Performance Distribution (Pie Chart)</h2>
+                    <div id="pie_chart" style="width: 100%; height: 400px;"></div>
+                </div>
+                <div class="chart-container">
+                    <h2 class="chart-title">📊 Attendance Range Distribution</h2>
+                    <div id="distribution_chart" style="width: 100%; height: 400px;"></div>
+                </div>
             </div>
 
             <div class="chart-container">
-            <h2 class="chart-title">📊 Student-wise Attendance (Top 20)</h2>
-            <div id="bar_chart" style="width: 100%; height: 500px;"></div>
+                <h2 class="chart-title">📊 Student-wise Performance (Bar Chart - Top 20)</h2>
+                <div id="bar_chart" style="width: 100%; height: 500px;"></div>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">📊 Session-wise Attendance Comparison (Area Chart)</h2>
+                <div id="area_chart" style="width: 100%; height: 400px;"></div>
             </div>
             ` : ''}
 
@@ -832,7 +920,7 @@ export default function AdvancedAnalysis() {
                 title: 'Session-wise Attendance Trend',
                 curveType: 'function',
                 legend: { position: 'bottom' },
-                colors: ['#667eea'],
+                colors: ['${theme.primary}'],
                 animation: {
                     startup: true,
                     duration: 1000,
@@ -841,17 +929,69 @@ export default function AdvancedAnalysis() {
                 vAxis: { 
                     title: 'Attendance %',
                     minValue: 0,
-                    maxValue: 100
+                    maxValue: 100,
+                    gridlines: { color: '#f0f0f0' }
                 },
                 hAxis: { 
                     title: 'Session Date',
                     slantedText: true,
                     slantedTextAngle: 45
-                }
+                },
+                pointSize: 5,
+                lineWidth: 3
             };
 
             var lineChart = new google.visualization.LineChart(document.getElementById('line_chart'));
             lineChart.draw(lineData, lineOptions);
+
+            // Pie Chart
+            var pieData = google.visualization.arrayToDataTable([
+                ['Category', 'Students'],
+                ${pieChartData}
+            ]);
+
+            var pieOptions = {
+                title: 'Student Performance Categories',
+                colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                pieHole: 0.4,
+                animation: {
+                    startup: true,
+                    duration: 1000,
+                    easing: 'out'
+                },
+                pieSliceText: 'value',
+                legend: { position: 'bottom' }
+            };
+
+            var pieChart = new google.visualization.PieChart(document.getElementById('pie_chart'));
+            pieChart.draw(pieData, pieOptions);
+
+            // Distribution Chart
+            var distData = google.visualization.arrayToDataTable([
+                ['Range', 'Students'],
+                ${distributionChartData}
+            ]);
+
+            var distOptions = {
+                title: 'Students by Attendance Range',
+                colors: ['${theme.secondary}'],
+                animation: {
+                    startup: true,
+                    duration: 1000,
+                    easing: 'out'
+                },
+                vAxis: { 
+                    title: 'Number of Students',
+                    gridlines: { color: '#f0f0f0' }
+                },
+                hAxis: { 
+                    title: 'Attendance Range'
+                },
+                legend: { position: 'none' }
+            };
+
+            var distChart = new google.visualization.ColumnChart(document.getElementById('distribution_chart'));
+            distChart.draw(distData, distOptions);
 
             // Bar Chart
             var barData = google.visualization.arrayToDataTable([
@@ -862,7 +1002,7 @@ export default function AdvancedAnalysis() {
             var barOptions = {
                 title: 'Top 20 Students by Attendance',
                 legend: { position: 'none' },
-                colors: ['#667eea'],
+                colors: ['${theme.primary}'],
                 animation: {
                     startup: true,
                     duration: 1000,
@@ -871,7 +1011,8 @@ export default function AdvancedAnalysis() {
                 vAxis: { 
                     title: 'Attendance %',
                     minValue: 0,
-                    maxValue: 100
+                    maxValue: 100,
+                    gridlines: { color: '#f0f0f0' }
                 },
                 hAxis: { 
                     title: 'Student Name',
@@ -882,6 +1023,38 @@ export default function AdvancedAnalysis() {
 
             var barChart = new google.visualization.ColumnChart(document.getElementById('bar_chart'));
             barChart.draw(barData, barOptions);
+
+            // Area Chart
+            var areaData = google.visualization.arrayToDataTable([
+                ['Date', 'Attendance %'],
+                ${chartData}
+            ]);
+
+            var areaOptions = {
+                title: 'Attendance Trend (Area View)',
+                legend: { position: 'bottom' },
+                colors: ['${theme.secondary}'],
+                animation: {
+                    startup: true,
+                    duration: 1000,
+                    easing: 'out'
+                },
+                vAxis: { 
+                    title: 'Attendance %',
+                    minValue: 0,
+                    maxValue: 100,
+                    gridlines: { color: '#f0f0f0' }
+                },
+                hAxis: { 
+                    title: 'Session Date',
+                    slantedText: true,
+                    slantedTextAngle: 45
+                },
+                areaOpacity: 0.4
+            };
+
+            var areaChart = new google.visualization.AreaChart(document.getElementById('area_chart'));
+            areaChart.draw(areaData, areaOptions);
         }
 
         // Responsive charts
@@ -1119,12 +1292,51 @@ export default function AdvancedAnalysis() {
         return;
       }
 
+      // Generate AI insights
+      setMessage({ type: "info", text: "🤖 Generating AI insights and recommendations..." });
+
+      try {
+        const insightsPrompt = `Analyze this attendance data and provide detailed insights and recommendations:
+
+      Batch: ${formData.college_name} - ${formData.branch} (${formData.year})
+      Total Students: ${studentAttendance.length}
+      Total Sessions: ${analysis.totalSessions}
+      Overall Attendance: ${(attendanceByDate.reduce((sum, d) => sum + parseFloat(d.percentage), 0) / attendanceByDate.length).toFixed(1)}%
+
+      Performance Distribution:
+      - Excellent (≥90%): ${studentAttendance.filter(s => parseFloat(s.percentage) >= 90).length} students
+      - Good (75-89%): ${studentAttendance.filter(s => parseFloat(s.percentage) >= 75 && parseFloat(s.percentage) < 90).length} students
+      - Average (60-74%): ${studentAttendance.filter(s => parseFloat(s.percentage) >= 60 && parseFloat(s.percentage) < 75).length} students
+      - Poor (<60%): ${studentAttendance.filter(s => parseFloat(s.percentage) < 60).length} students
+
+      Top 3 Performers: ${studentAttendance.slice(0, 3).map(s => `${s.name} (${s.percentage}%)`).join(', ')}
+      Students Below 75%: ${studentAttendance.filter(s => parseFloat(s.percentage) < 75).length}
+
+      Provide:
+      1. Overall batch performance analysis
+      2. Key trends and patterns observed
+      3. Areas of concern
+      4. Specific actionable recommendations for improvement
+      5. Recognition suggestions for top performers
+
+      Format your response in a clear, professional manner suitable for an educational report.`;
+
+        const aiResponse = await InvokeLLM({
+          prompt: insightsPrompt,
+          add_context_from_internet: false
+        });
+
+        setReportConfig(prev => ({ ...prev, aiInsights: aiResponse }));
+      } catch (error) {
+        console.error("Failed to generate AI insights:", error);
+      }
+
       // Store analysis data for export options
       setAnalysisData(analysis);
       setShowReportSettings(true);
       setMessage({ 
         type: "success", 
-        text: `✅ Analysis complete! Configure your report settings and choose export format.` 
+        text: `✅ Analysis complete! AI insights generated. Configure your report settings.` 
       });
       setIsProcessing(false);
     } catch (error) {

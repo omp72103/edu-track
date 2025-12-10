@@ -653,20 +653,20 @@ export default function AdvancedAnalysis() {
           properties: {
             students: {
               type: "array",
-              description: "Extract all student attendance data from the PDF table. Look for columns: SL NO, PRN, STUDENT NAME, and date columns (like 08.12.2025 Morning/Afternoon/Evening). For each student row, extract their attendance across all date columns.",
+              description: "Extract ALL student records from the attendance table. The table has columns like: SL NO, PRN, STUDENT NAME, followed by multiple date-time columns (e.g., '08.12.2025 Morning', '9.12.2025 Afternoon', '10.12.2026 Evening'). Extract EVERY student row with their attendance marked as 'P' for Present or 'A' for Absent.",
               items: {
                 type: "object",
                 properties: {
-                  serial_no: { type: "string", description: "Serial number from SL NO column" },
-                  prn: { type: "string", description: "PRN number" },
-                  name: { type: "string", description: "Full student name" },
-                  attendance_data: {
+                  roll_no: { type: "string", description: "Roll number or serial number from first column" },
+                  prn: { type: "string", description: "PRN number (e.g., 24UET001)" },
+                  student_name: { type: "string", description: "Full name of the student" },
+                  attendance_records: {
                     type: "object",
-                    description: "For each date column found (e.g., '08.12.2025 Morning', '9.12.2025 Afternoon'), record if student is Present (P) or Absent (A)",
+                    description: "Object where keys are date-time slots (like '08.12.2025 Morning') and values are 'P' or 'A'",
                     additionalProperties: { type: "string" }
                   }
                 },
-                required: ["prn", "name", "attendance_data"]
+                required: ["student_name", "attendance_records"]
               }
             }
           },
@@ -684,30 +684,48 @@ export default function AdvancedAnalysis() {
 
         // Convert OCR result to CSV-like format
         const students = ocrResult.output.students;
+        
+        if (!students || students.length === 0) {
+          throw new Error("No student data extracted from PDF");
+        }
+        
         const allDateColumns = new Set();
         
         students.forEach(student => {
-          Object.keys(student.attendance_data || {}).forEach(dateKey => {
+          Object.keys(student.attendance_records || {}).forEach(dateKey => {
             allDateColumns.add(dateKey);
           });
         });
 
-        headers = ['Roll No.', 'PRN', 'Student Name', ...Array.from(allDateColumns)];
+        const sortedDateColumns = Array.from(allDateColumns).sort((a, b) => {
+          // Try to parse dates for proper sorting
+          const parseDate = (str) => {
+            const match = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})/);
+            if (match) {
+              return new Date(match[3], match[2] - 1, match[1]);
+            }
+            return new Date(0);
+          };
+          return parseDate(a) - parseDate(b);
+        });
+
+        headers = ['Roll No.', 'PRN', 'STUDENT NAME', ...sortedDateColumns];
         data = students.map(student => {
           const row = {
-            'Roll No.': student.serial_no || '',
+            'Roll No.': student.roll_no || student.serial_no || '',
             'PRN': student.prn || '',
-            'Student Name': student.name || ''
+            'STUDENT NAME': student.student_name || student.name || ''
           };
           
-          Array.from(allDateColumns).forEach(dateCol => {
-            row[dateCol] = student.attendance_data?.[dateCol] || '';
+          sortedDateColumns.forEach(dateCol => {
+            row[dateCol] = student.attendance_records?.[dateCol] || '';
           });
           
           return row;
-        });
+        }).filter(row => row['STUDENT NAME']);
 
-        setMessage({ type: "info", text: `✅ Extracted ${students.length} students from PDF!` });
+        console.log('Extracted from PDF:', { studentCount: data.length, sessions: sortedDateColumns.length, headers });
+        setMessage({ type: "info", text: `✅ Extracted ${data.length} students with ${sortedDateColumns.length} sessions from PDF!` });
       } else {
         // Handle CSV files
         const reader = new FileReader();

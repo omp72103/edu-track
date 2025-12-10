@@ -1,15 +1,16 @@
 import React, { useState, useRef } from "react";
 import { College } from "@/entities/all";
+import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, TrendingUp, FileSpreadsheet, Sparkles, Download } from "lucide-react";
+import { Upload, TrendingUp, FileSpreadsheet, Sparkles, Download, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 
 const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 const branches = [
@@ -58,11 +59,12 @@ export default function AdvancedAnalysis() {
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file && (file.type === 'text/csv' || file.name.endsWith('.csv') || 
-                 file.type === 'application/vnd.ms-excel' || file.name.endsWith('.xlsx'))) {
+                 file.type === 'application/vnd.ms-excel' || file.name.endsWith('.xlsx') ||
+                 file.type === 'application/pdf' || file.name.endsWith('.pdf'))) {
       setSelectedFile(file);
       setMessage(null);
     } else {
-      setMessage({ type: "error", text: "Please select a valid CSV or Excel file" });
+      setMessage({ type: "error", text: "Please select a valid CSV, Excel, or PDF file" });
     }
   };
 
@@ -166,9 +168,16 @@ export default function AdvancedAnalysis() {
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
             padding: 20px;
             min-height: 100vh;
         }
@@ -182,25 +191,29 @@ export default function AdvancedAnalysis() {
             to { opacity: 1; transform: translateY(0); }
         }
         .header {
-            background: white;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+            backdrop-filter: blur(10px);
             padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 25px;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.4);
             text-align: center;
             margin-bottom: 30px;
             animation: slideDown 0.8s ease-out;
+            border: 2px solid rgba(255,255,255,0.3);
         }
         @keyframes slideDown {
             from { transform: translateY(-50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
         .header h1 {
-            color: #667eea;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-size: 3em;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 900;
+            text-shadow: 2px 2px 20px rgba(102, 126, 234, 0.3);
         }
         .batch-info {
             display: grid;
@@ -234,17 +247,20 @@ export default function AdvancedAnalysis() {
             margin-bottom: 30px;
         }
         .stat-card {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+            backdrop-filter: blur(10px);
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.25);
             animation: scaleIn 0.5s ease-out;
             animation-fill-mode: both;
-            transition: transform 0.3s ease;
+            transition: all 0.4s ease;
+            border: 2px solid rgba(255,255,255,0.5);
         }
         .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+            border-color: rgba(102, 126, 234, 0.6);
         }
         @keyframes scaleIn {
             from { transform: scale(0.8); opacity: 0; }
@@ -274,12 +290,14 @@ export default function AdvancedAnalysis() {
             margin-top: 10px;
         }
         .chart-container {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+            backdrop-filter: blur(10px);
+            padding: 35px;
+            border-radius: 25px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
             margin-bottom: 30px;
             animation: fadeInUp 0.8s ease-out;
+            border: 2px solid rgba(255,255,255,0.4);
         }
         @keyframes fadeInUp {
             from { transform: translateY(30px); opacity: 0; }
@@ -299,18 +317,23 @@ export default function AdvancedAnalysis() {
             margin-bottom: 30px;
         }
         .student-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            border-left: 5px solid #667eea;
-            transition: all 0.3s ease;
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 18px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-left: 6px solid transparent;
+            border-image: linear-gradient(135deg, #667eea, #764ba2) 1;
+            transition: all 0.4s ease;
             animation: fadeInUp 0.5s ease-out;
             animation-fill-mode: both;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-left: 6px solid #667eea;
         }
         .student-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            transform: translateX(10px) scale(1.03);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+            border-left-color: #764ba2;
         }
         .student-name {
             font-weight: bold;
@@ -355,11 +378,20 @@ export default function AdvancedAnalysis() {
             color: #e74c3c;
         }
         .section-title {
-            font-size: 1.8em;
+            font-size: 2.2em;
             color: white;
-            margin: 30px 0 20px 0;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 40px 0 25px 0;
+            font-weight: 900;
+            text-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
         }
         .footer {
             background: white;
@@ -553,7 +585,7 @@ export default function AdvancedAnalysis() {
 
   const handleAnalyze = async () => {
     if (!selectedFile) {
-      setMessage({ type: "error", text: "Please select a CSV or Excel file" });
+      setMessage({ type: "error", text: "Please select a file to analyze" });
       return;
     }
 
@@ -563,42 +595,121 @@ export default function AdvancedAnalysis() {
     }
 
     setIsProcessing(true);
-    setMessage(null);
+    setMessage({ type: "info", text: "🔄 Processing your file..." });
 
     try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        const { headers, data } = parseCSV(text);
+      let headers, data;
 
-        if (data.length === 0) {
-          setMessage({ type: "error", text: "No data found in the uploaded file" });
-          setIsProcessing(false);
-          return;
+      // Handle PDF files with OCR
+      if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+        setMessage({ type: "info", text: "📄 Uploading PDF for OCR analysis..." });
+        
+        const { file_url } = await UploadFile({ file: selectedFile });
+
+        setMessage({ type: "info", text: "🔍 Extracting attendance data from PDF..." });
+
+        const ocrSchema = {
+          type: "object",
+          properties: {
+            students: {
+              type: "array",
+              description: "Extract all student attendance data from the PDF table. Look for columns: SL NO, PRN, STUDENT NAME, and date columns (like 08.12.2025 Morning/Afternoon/Evening). For each student row, extract their attendance across all date columns.",
+              items: {
+                type: "object",
+                properties: {
+                  serial_no: { type: "string", description: "Serial number from SL NO column" },
+                  prn: { type: "string", description: "PRN number" },
+                  name: { type: "string", description: "Full student name" },
+                  attendance_data: {
+                    type: "object",
+                    description: "For each date column found (e.g., '08.12.2025 Morning', '9.12.2025 Afternoon'), record if student is Present (P) or Absent (A)",
+                    additionalProperties: { type: "string" }
+                  }
+                },
+                required: ["prn", "name", "attendance_data"]
+              }
+            }
+          },
+          required: ["students"]
+        };
+
+        const ocrResult = await ExtractDataFromUploadedFile({
+          file_url,
+          json_schema: ocrSchema
+        });
+
+        if (ocrResult.status !== "success" || !ocrResult.output?.students) {
+          throw new Error("Failed to extract data from PDF");
         }
 
-        const analysis = analyzeAttendanceTrends(headers, data);
-        const htmlReport = generateHTMLReport(analysis, formData);
-
-        // Download HTML report
-        const blob = new Blob([htmlReport], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Attendance_Analysis_${formData.college_name}_${formData.branch}_${format(new Date(), 'dd-MM-yyyy')}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        setMessage({ 
-          type: "success", 
-          text: `✅ Analysis complete! HTML report downloaded successfully. Found ${data.length} students across ${analysis.totalSessions} sessions.` 
+        // Convert OCR result to CSV-like format
+        const students = ocrResult.output.students;
+        const allDateColumns = new Set();
+        
+        students.forEach(student => {
+          Object.keys(student.attendance_data || {}).forEach(dateKey => {
+            allDateColumns.add(dateKey);
+          });
         });
-        setIsProcessing(false);
-      };
 
-      reader.readAsText(selectedFile);
+        headers = ['Roll No.', 'PRN', 'Student Name', ...Array.from(allDateColumns)];
+        data = students.map(student => {
+          const row = {
+            'Roll No.': student.serial_no || '',
+            'PRN': student.prn || '',
+            'Student Name': student.name || ''
+          };
+          
+          Array.from(allDateColumns).forEach(dateCol => {
+            row[dateCol] = student.attendance_data?.[dateCol] || '';
+          });
+          
+          return row;
+        });
+
+        setMessage({ type: "info", text: `✅ Extracted ${students.length} students from PDF!` });
+      } else {
+        // Handle CSV files
+        const reader = new FileReader();
+        await new Promise((resolve) => {
+          reader.onload = (e) => {
+            const text = e.target.result;
+            const parsed = parseCSV(text);
+            headers = parsed.headers;
+            data = parsed.data;
+            resolve();
+          };
+          reader.readAsText(selectedFile);
+        });
+      }
+
+      if (data.length === 0) {
+        setMessage({ type: "error", text: "No data found in the uploaded file" });
+        setIsProcessing(false);
+        return;
+      }
+
+      setMessage({ type: "info", text: "📊 Analyzing attendance trends..." });
+
+      const analysis = analyzeAttendanceTrends(headers, data);
+      const htmlReport = generateHTMLReport(analysis, formData);
+
+      // Download HTML report
+      const blob = new Blob([htmlReport], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Attendance_Analysis_${formData.college_name.replace(/[^a-zA-Z0-9]/g, '_')}_${formData.branch.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setMessage({ 
+        type: "success", 
+        text: `✅ Analysis complete! HTML report downloaded successfully. Found ${data.length} students across ${analysis.totalSessions} sessions.` 
+      });
+      setIsProcessing(false);
     } catch (error) {
       console.error("Analysis error:", error);
       setMessage({ type: "error", text: `Error analyzing file: ${error.message}` });
@@ -710,21 +821,21 @@ export default function AdvancedAnalysis() {
               </h3>
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-purple-50"
+                className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50"
               >
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.xlsx,.xls"
+                  accept=".csv,.xlsx,.xls,.pdf"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
                 <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {selectedFile ? selectedFile.name : "Drop your CSV/Excel file here"}
+                  {selectedFile ? selectedFile.name : "Drop your PDF, CSV, or Excel file here"}
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Upload attendance sheet with columns: Roll No, PRN, Student Name, and date columns
+                  Upload attendance sheet (PDF with OCR support or CSV/Excel)
                 </p>
                 <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
                   <Upload className="w-4 h-4 mr-2" />
@@ -736,32 +847,39 @@ export default function AdvancedAnalysis() {
             <Button
               onClick={handleAnalyze}
               disabled={isProcessing || !selectedFile}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg py-6"
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg py-6 shadow-lg"
             >
               {isProcessing ? (
                 <div className="flex items-center gap-2">
-                  <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                  Analyzing Data...
+                  <Loader2 className="animate-spin w-5 h-5" />
+                  {message?.text || "Analyzing Data..."}
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
-                  Generate Advanced Analysis Report
+                  Generate Stunning Analysis Report
                   <Download className="w-5 h-5" />
                 </div>
               )}
             </Button>
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="font-semibold text-blue-900 mb-2">📊 What You'll Get:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>✨ Beautifully designed animated HTML report</li>
-                <li>📈 Interactive attendance trend charts</li>
-                <li>👥 Student-wise performance analysis</li>
-                <li>🏆 Top performers identification</li>
-                <li>⚠️ Students needing attention alerts</li>
-                <li>📊 Overall batch statistics and insights</li>
+            <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-purple-200 shadow-inner">
+              <h4 className="font-bold text-purple-900 mb-3 text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                📊 What You'll Get:
+              </h4>
+              <ul className="text-sm text-purple-800 space-y-2">
+                <li className="flex items-center gap-2">✨ <strong>Stunning animated gradient HTML report</strong></li>
+                <li className="flex items-center gap-2">📈 <strong>Interactive Google Charts</strong> for attendance trends</li>
+                <li className="flex items-center gap-2">👥 <strong>Student-wise performance</strong> analysis with rankings</li>
+                <li className="flex items-center gap-2">🏆 <strong>Top performers</strong> showcase with animations</li>
+                <li className="flex items-center gap-2">⚠️ <strong>At-risk students</strong> identification (below 75%)</li>
+                <li className="flex items-center gap-2">📊 <strong>Comprehensive statistics</strong> and insights</li>
+                <li className="flex items-center gap-2">🎨 <strong>Professional design</strong> ready to share</li>
               </ul>
+              <div className="mt-3 p-3 bg-yellow-100 rounded-md border border-yellow-300">
+                <p className="text-xs text-yellow-900 font-semibold">📄 Supports PDF (with OCR), CSV, and Excel files!</p>
+              </div>
             </div>
           </CardContent>
         </Card>

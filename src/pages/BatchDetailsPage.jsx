@@ -1,12 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { format, parseISO } from "date-fns";
 
-// Assuming these models and utility are available at these paths
-// Adjust paths as necessary based on your project structure
-import { Batch, Student, Session, AttendanceRecord } from '../models';
-import { createPageUrl } from '../utils/paths';
+import { Batch, Student, Session, AttendanceRecord } from "@/entities/all";
+import { createPageUrl } from "@/utils";
 
 // Note: StatCard component is not provided in the outline.
 // Assuming it's either imported from elsewhere or its content

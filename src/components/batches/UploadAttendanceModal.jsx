@@ -29,6 +29,8 @@ export default function UploadAttendanceModal({ isOpen, onClose, onSuccess, batc
     const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
     if (lines.length < 2) return { headers: [], data: [] };
     
+    console.log('📄 Parsing CSV with', lines.length, 'lines');
+    
     const parseLine = (line) => {
       const result = [];
       let current = '';
@@ -49,25 +51,89 @@ export default function UploadAttendanceModal({ isOpen, onClose, onSuccess, batc
       return result;
     };
     
-    let headerRowIndex = 0;
-    let headers = [];
+    // Detect multi-row headers (date row + shift sub-row structure)
+    let dateRowIndex = -1;
+    let shiftRowIndex = -1;
+    let dataStartIndex = 0;
     
-    for (let i = 0; i < Math.min(15, lines.length); i++) {
+    const metadataKeywords = ['SL NO', 'ROLL NO', 'ROLL', 'SERIAL', 'SR', 'PRN', 'STUDENT NAME', 'NAME', 'STUDENT'];
+    const shiftKeywords = ['MORNING', 'AFTERNOON', 'EVENING', 'AM', 'PM'];
+    
+    // Find date row and shift row
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
       const lineUpper = lines[i].toUpperCase();
-      if ((lineUpper.includes('PRN') || lineUpper.includes('ROLL')) && 
-          (lineUpper.includes('NAME') || lineUpper.includes('STUDENT'))) {
-        headerRowIndex = i;
-        headers = parseLine(lines[i]);
+      
+      const hasMetadata = metadataKeywords.some(keyword => lineUpper.includes(keyword));
+      const hasShifts = shiftKeywords.some(keyword => lineUpper.includes(keyword));
+      const hasDate = /\d{1,2}\.\d{1,2}\.\d{4}/.test(lineUpper);
+      
+      if (hasMetadata && hasDate && dateRowIndex === -1) {
+        dateRowIndex = i;
+        console.log(`✅ Found date header row at line ${i}`);
+      }
+      
+      if (hasShifts && shiftRowIndex === -1) {
+        shiftRowIndex = i;
+        console.log(`✅ Found shift sub-header row at line ${i}`);
+      }
+      
+      if (dateRowIndex !== -1 && (shiftRowIndex !== -1 || i > dateRowIndex)) {
+        dataStartIndex = Math.max(dateRowIndex, shiftRowIndex) + 1;
         break;
       }
     }
     
-    if (headers.length === 0) {
-      headers = parseLine(lines[0]);
+    if (dateRowIndex === -1) {
+      console.log('⚠️ No date row detected, using simple header parsing');
+      dateRowIndex = 0;
+      dataStartIndex = 1;
     }
     
+    // Parse date row and shift row
+    const dateRow = parseLine(lines[dateRowIndex]);
+    const shiftRow = shiftRowIndex !== -1 ? parseLine(lines[shiftRowIndex]) : [];
+    
+    console.log('Date row:', dateRow.slice(0, 15));
+    console.log('Shift row:', shiftRow.slice(0, 15));
+    
+    // Build comprehensive headers by combining date + shift
+    const headers = [];
+    let currentDate = '';
+    
+    for (let i = 0; i < dateRow.length; i++) {
+      const dateCell = (dateRow[i] || '').trim();
+      const shiftCell = shiftRow[i] ? shiftRow[i].trim() : '';
+      
+      // Check if this is a metadata column
+      const isMetadataCol = metadataKeywords.some(k => dateCell.toUpperCase().includes(k));
+      
+      if (isMetadataCol) {
+        // Keep metadata columns as-is
+        headers.push(dateCell);
+      } else {
+        // Update current date if this cell contains a date
+        if (dateCell && /\d{1,2}\.\d{1,2}\.\d{4}/.test(dateCell)) {
+          currentDate = dateCell;
+        }
+        
+        // Build session header: date + shift
+        if (currentDate && shiftCell) {
+          headers.push(`${currentDate} ${shiftCell}`);
+        } else if (currentDate && dateCell && dateCell === currentDate) {
+          // Skip duplicate date headers (they span multiple columns)
+          continue;
+        } else if (dateCell) {
+          headers.push(dateCell);
+        }
+      }
+    }
+    
+    console.log('✅ Built comprehensive headers:', headers.length, 'columns');
+    console.log('Final headers:', headers);
+    
+    // Parse data rows
     const data = [];
-    for (let i = headerRowIndex + 1; i < lines.length; i++) {
+    for (let i = dataStartIndex; i < lines.length; i++) {
       const values = parseLine(lines[i]);
       if (values.length < 3 || !values.some(v => v && v.trim())) continue;
       
@@ -76,8 +142,28 @@ export default function UploadAttendanceModal({ isOpen, onClose, onSuccess, batc
         row[header] = values[index] || '';
       });
       
-      data.push(row);
+      // Only include rows with student names
+      let hasName = false;
+      for (const key of Object.keys(row)) {
+        if (key.toUpperCase().includes('NAME') && row[key] && row[key].trim().length > 2) {
+          hasName = true;
+          break;
+        }
+      }
+      
+      if (hasName) {
+        data.push(row);
+      }
     }
+    
+    console.log('✅ CSV Parsed:', {
+      dateRowIndex,
+      shiftRowIndex,
+      dataStartIndex,
+      totalHeaders: headers.length,
+      totalDataRows: data.length,
+      sampleRow: data[0] ? Object.keys(data[0]) : []
+    });
     
     return { headers, data };
   };

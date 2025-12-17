@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Batch, Student, Session, AttendanceRecord, User, Faculty } from "@/entities/all";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Users, Calendar, Edit, Trash2, TrendingUp, Download, Clock, Camera, Plus, ScanLine } from "lucide-react";
 import { createPageUrl } from "@/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -25,6 +24,7 @@ import AddPastSessionModal from "../components/batches/AddPastSessionModal";
 import OCRAttendanceModal from "../components/batches/OCRAttendanceModal";
 import CorrectAttendanceModal from "../components/batches/CorrectAttendanceModal";
 import EditSessionModal from "../components/batches/EditSessionModal";
+import UploadAttendanceModal from "../components/batches/UploadAttendanceModal";
 
 export default function BatchDetails() {
   const location = useLocation();
@@ -41,6 +41,7 @@ export default function BatchDetails() {
   const [showOCRModal, setShowOCRModal] = useState(false);
   const [isCorrectingModalOpen, setIsCorrectingModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Get batch_id from query parameters
   const batchId = new URLSearchParams(location.search).get("batch_id");
@@ -222,6 +223,343 @@ export default function BatchDetails() {
         console.error("Failed to create past session:", error);
         alert("Error: Could not create the past session. " + error.message);
     }
+  };
+
+  const exportShiftWiseHTML = async () => {
+    setIsExporting(true);
+    try {
+      const sortedStudents = [...students].sort((a, b) => (parseInt(a.roll_no) || 0) - (parseInt(b.roll_no) || 0));
+      const sortedSessions = [...sessions].sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
+
+      // Group sessions by date and shift
+      const sessionsByDate = {};
+      sortedSessions.forEach(session => {
+        const date = session.session_date;
+        if (!sessionsByDate[date]) sessionsByDate[date] = [];
+        sessionsByDate[date].push(session);
+      });
+
+      const dates = Object.keys(sessionsByDate).sort();
+
+      // Calculate individual student attendance
+      const studentAttendance = sortedStudents.map(student => {
+        let totalPresent = 0;
+        let totalSessions = 0;
+        const sessionDetails = {};
+
+        sortedSessions.forEach(session => {
+          const record = attendanceData[student.id]?.[session.id];
+          if (record !== undefined) {
+            totalSessions++;
+            if (record.is_present) totalPresent++;
+            sessionDetails[session.id] = record.is_present;
+          }
+        });
+
+        return {
+          ...student,
+          totalPresent,
+          totalSessions,
+          percentage: totalSessions > 0 ? ((totalPresent / totalSessions) * 100).toFixed(1) : 0,
+          sessionDetails
+        };
+      });
+
+      // Identify defaulters (below 75%)
+      const defaulters = studentAttendance.filter(s => parseFloat(s.percentage) < 75);
+
+      // Calculate overall stats
+      const totalRecords = Object.values(attendanceData).flatMap(s => Object.values(s));
+      const totalPresent = totalRecords.filter(r => r.is_present).length;
+      const overallRate = totalRecords.length > 0 ? ((totalPresent / totalRecords.length) * 100).toFixed(1) : 0;
+
+      // Generate stunning HTML report
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APT-TECH Attendance Report - ${batch.batch_name}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes gradientShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            padding: 20px; 
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; animation: fadeIn 1s ease; }
+        .header { 
+            background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%);
+            backdrop-filter: blur(10px);
+            padding: 40px; 
+            border-radius: 25px; 
+            box-shadow: 0 25px 70px rgba(0,0,0,0.4); 
+            text-align: center; 
+            margin-bottom: 30px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .logo { 
+            width: 120px; 
+            height: 120px; 
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 900;
+            color: white;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+        .header h1 { 
+            font-size: 3em; 
+            margin-bottom: 15px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+        }
+        .batch-info { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-top: 20px; 
+        }
+        .info-item { 
+            padding: 15px; 
+            background: #f8f9fa; 
+            border-radius: 10px; 
+            border-left: 4px solid #667eea; 
+        }
+        .info-label { font-size: 0.85em; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .info-value { font-size: 1.2em; color: #333; font-weight: bold; margin-top: 5px; }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .stat-card { 
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+            backdrop-filter: blur(10px);
+            padding: 35px; 
+            border-radius: 20px; 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.25); 
+            transition: all 0.4s ease;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .stat-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 20px 50px rgba(0,0,0,0.35); }
+        .stat-icon { font-size: 2.5em; margin-bottom: 10px; }
+        .stat-label { color: #666; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .stat-value { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 10px; 
+        }
+        .section { 
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%);
+            backdrop-filter: blur(10px);
+            padding: 35px; 
+            border-radius: 25px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3); 
+            margin-bottom: 30px;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        .section-title { 
+            font-size: 1.8em; 
+            color: #333; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px; 
+            border-bottom: 3px solid #667eea; 
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; }
+        .present { background: #C6EFCE; color: #006100; font-weight: bold; text-align: center; }
+        .absent { background: #FFC7CE; color: #9C0006; font-weight: bold; text-align: center; }
+        .percentage-high { color: #10b981; font-weight: bold; }
+        .percentage-low { color: #ef4444; font-weight: bold; }
+        .defaulter-row { background: #fee2e2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">APT</div>
+            <h1>📊 Comprehensive Attendance Report</h1>
+            <div class="batch-info">
+                <div class="info-item">
+                    <div class="info-label">Batch Name</div>
+                    <div class="info-value">${batch.batch_name}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">College</div>
+                    <div class="info-value">${batch.college_name || 'Private Batch'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Year</div>
+                    <div class="info-value">${batch.year || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Branch</div>
+                    <div class="info-value">${batch.branch || 'N/A'}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value">${students.length}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-label">Total Sessions</div>
+                <div class="stat-value">${sortedSessions.length}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-label">Overall Attendance</div>
+                <div class="stat-value">${overallRate}%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-label">Defaulters (<75%)</div>
+                <div class="stat-value">${defaulters.length}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📊 Day-wise & Shift-wise Attendance</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>PRN</th>
+                        <th>Student Name</th>
+                        ${sortedSessions.map(s => `<th style="min-width: 100px;">${s.session_name.replace('Uploaded: ', '')}</th>`).join('')}
+                        <th>Present</th>
+                        <th>Total</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${studentAttendance.map(student => `
+                        <tr ${parseFloat(student.percentage) < 75 ? 'class="defaulter-row"' : ''}>
+                            <td>${student.roll_no}</td>
+                            <td>${student.prn || 'N/A'}</td>
+                            <td><strong>${student.name}</strong></td>
+                            ${sortedSessions.map(session => {
+                              const isPresent = student.sessionDetails[session.id];
+                              return `<td class="${isPresent ? 'present' : 'absent'}">${isPresent ? 'P' : 'A'}</td>`;
+                            }).join('')}
+                            <td><strong>${student.totalPresent}</strong></td>
+                            <td><strong>${student.totalSessions}</strong></td>
+                            <td class="${parseFloat(student.percentage) >= 75 ? 'percentage-high' : 'percentage-low'}"><strong>${student.percentage}%</strong></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        ${defaulters.length > 0 ? `
+        <div class="section">
+            <h2 class="section-title">⚠️ Defaulters List (Below 75% Attendance)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>PRN</th>
+                        <th>Student Name</th>
+                        <th>Present</th>
+                        <th>Total</th>
+                        <th>Attendance %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${defaulters.map(student => `
+                        <tr class="defaulter-row">
+                            <td>${student.roll_no}</td>
+                            <td>${student.prn || 'N/A'}</td>
+                            <td><strong>${student.name}</strong></td>
+                            <td>${student.totalPresent}</td>
+                            <td>${student.totalSessions}</td>
+                            <td class="percentage-low"><strong>${student.percentage}%</strong></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        ` : ''}
+
+        <div class="section">
+            <h2 class="section-title">📋 Session Summary</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Session Name</th>
+                        <th>Topic</th>
+                        <th>Faculty</th>
+                        <th>Present/Total</th>
+                        <th>Attendance %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedSessions.map(session => {
+                      const sessionRecords = Object.values(attendanceData).filter(s => s[session.id]).map(s => s[session.id]);
+                      const presentCount = sessionRecords.filter(r => r.is_present).length;
+                      const totalCount = sessionRecords.length;
+                      const sessionRate = totalCount > 0 ? ((presentCount / totalCount) * 100).toFixed(1) : 0;
+                      return `
+                        <tr>
+                            <td>${new Date(session.session_date).toLocaleDateString('en-GB')}</td>
+                            <td>${session.session_name}</td>
+                            <td>${session.topic_taught || 'N/A'}</td>
+                            <td>${session.faculty_name}</td>
+                            <td><strong>${presentCount}/${totalCount}</strong></td>
+                            <td class="${parseFloat(sessionRate) >= 75 ? 'percentage-high' : 'percentage-low'}"><strong>${sessionRate}%</strong></td>
+                        </tr>
+                      `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);">
+            <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">Report Generated: ${new Date().toLocaleString()}</p>
+            <p style="font-weight: bold; font-size: 1.2em; color: #333;">Powered by APT-TECH Professional Training</p>
+            <p style="font-size: 0.85em; color: #888; margin-top: 10px;">Advanced Attendance Management System</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${batch.batch_name.replace(/[^\w\s]/g, '_')}_Comprehensive_Report_${new Date().toISOString().split('T')[0]}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export report. Please try again.");
+    }
+    setIsExporting(false);
   };
 
   const exportBatchData = async () => {
@@ -501,6 +839,13 @@ export default function BatchDetails() {
         <div className="space-y-8">
           <div className="flex flex-wrap gap-3 justify-end">
             <Button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-lg"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              📤 Upload Attendance File
+            </Button>
+            <Button
               onClick={() => setShowOCRModal(true)}
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
             >
@@ -529,7 +874,7 @@ export default function BatchDetails() {
               📖 Bulk Correct via PDF
             </Button>
             <Button 
-              onClick={exportBatchData}
+              onClick={exportShiftWiseHTML}
               disabled={isExporting}
               className="bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 shadow-lg"
             >
@@ -538,7 +883,20 @@ export default function BatchDetails() {
               ) : (
                 <Download className="w-4 h-4 mr-2" />
               )}
-              📊 Export Report
+              🎨 Export HTML Report
+            </Button>
+            <Button 
+              onClick={exportBatchData}
+              disabled={isExporting}
+              variant="outline"
+              className="shadow-lg"
+            >
+              {isExporting ? (
+                <Clock className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              📊 Export Excel
             </Button>
           </div>
 
@@ -815,6 +1173,13 @@ export default function BatchDetails() {
         session={editingSession}
         onSessionUpdated={handleSessionUpdated}
         batch={batch}
+      />
+      <UploadAttendanceModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={loadBatchData}
+        batch={batch}
+        students={students}
       />
     </div>
   );

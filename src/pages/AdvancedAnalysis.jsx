@@ -82,15 +82,15 @@ export default function AdvancedAnalysis() {
   const parseCSV = (text) => {
     const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
     if (lines.length < 2) return { headers: [], data: [] };
-    
+
     console.log('📄 Parsing CSV with', lines.length, 'lines');
-    
-    // Parse CSV with proper quote handling
+
+    // Enhanced CSV parser with better quote and delimiter handling
     const parseLine = (line) => {
       const result = [];
       let current = '';
       let inQuotes = false;
-      
+
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
@@ -105,113 +105,142 @@ export default function AdvancedAnalysis() {
       result.push(current.trim());
       return result;
     };
-    
-    // Find the header row - look for row with SL NO, PRN, STUDENT NAME
+
+    // Smart header detection with multiple strategies
     let headerRowIndex = 0;
     let headers = [];
-    
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
+
+    const headerKeywords = ['SL NO', 'ROLL NO', 'ROLL', 'SERIAL', 'SR', 'PRN', 'STUDENT NAME', 'NAME', 'STUDENT'];
+
+    for (let i = 0; i < Math.min(15, lines.length); i++) {
       const parsed = parseLine(lines[i]);
-      const lineText = lines[i].toUpperCase();
-      
-      // Check if this line contains the key column names
-      if ((lineText.includes('SL NO') || lineText.includes('ROLL NO')) && 
-          lineText.includes('PRN') && 
-          (lineText.includes('STUDENT NAME') || lineText.includes('NAME'))) {
+      const lineUpper = lines[i].toUpperCase();
+
+      // Count how many header keywords this line contains
+      const keywordCount = headerKeywords.filter(keyword => lineUpper.includes(keyword)).length;
+
+      // If line has at least 2 key identifiers, it's likely the header
+      if (keywordCount >= 2) {
         headerRowIndex = i;
-        headers = parsed;
-        console.log(`✅ Found header row at line ${i}:`, headers);
+        headers = parsed.map(h => h.trim()).filter(h => h.length > 0);
+        console.log(`✅ Found header row at line ${i} (${keywordCount} keywords matched):`, headers.slice(0, 10));
         break;
       }
     }
-    
+
     if (headers.length === 0) {
-      console.log('⚠️ No header row found, using first line as headers');
-      headers = parseLine(lines[0]);
+      console.log('⚠️ No header row auto-detected, using first non-empty line');
+      headerRowIndex = 0;
+      headers = parseLine(lines[0]).map(h => h.trim()).filter(h => h.length > 0);
     }
-    
-    // Parse data rows starting after header
+
+    // Parse data rows with robust error handling
     const data = [];
     for (let i = headerRowIndex + 1; i < lines.length; i++) {
       const values = parseLine(lines[i]);
-      
-      // Skip empty rows or rows with too few columns
+
+      // Skip completely empty rows
       if (values.length < 3 || !values.some(v => v && v.trim())) continue;
-      
+
       const row = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || '';
       });
-      
-      // Only include rows that have a student name
-      const hasName = row[headers[0]] || row[headers[1]] || row[headers[2]];
-      if (hasName && hasName.trim().length > 1) {
+
+      // Identify name field (could be in different positions)
+      let studentName = '';
+      for (const key of Object.keys(row)) {
+        const keyUpper = key.toUpperCase();
+        if (keyUpper.includes('NAME') && !keyUpper.includes('COLLEGE') && !keyUpper.includes('BATCH')) {
+          studentName = row[key];
+          break;
+        }
+      }
+
+      // Only include rows with valid student names (at least 3 chars, contains letters)
+      if (studentName && studentName.trim().length >= 3 && /[a-zA-Z]/.test(studentName)) {
         data.push(row);
       }
     }
-    
-    console.log('✅ Parsed CSV:', { headers: headers.length, dataRows: data.length });
-    console.log('📊 Sample header:', headers.slice(0, 5));
-    console.log('📊 Sample row:', data[0]);
-    
+
+    console.log('✅ CSV Parsed:', { 
+      totalLines: lines.length,
+      headerIndex: headerRowIndex,
+      headers: headers.length, 
+      dataRows: data.length,
+      sampleHeaders: headers.slice(0, 5),
+      firstRow: data[0]
+    });
+
     return { headers, data };
   };
 
   const cleanAndValidateData = (rawHeaders, rawData) => {
     const cleaningLog = [];
-    
-    // Step 1: Standardize column names
+
+    // Step 1: Enhanced column name standardization
     const columnMapping = {
-      'SL NO': ['SL NO', 'SL NO.', 'SL.NO.', 'SLNO', 'SERIAL NO', 'SR NO', 'SR.NO.', 'Roll No.', 'Roll No', 'ROLL NO', 'ROLL NO.'],
-      'PRN': ['PRN', 'P.R.N.', 'PRN NO', 'PRN NUMBER'],
-      'STUDENT NAME': ['STUDENT NAME', 'NAME', 'STUDENT', 'FULL NAME', 'Name', 'Student Name']
+      'SL NO': ['SL NO', 'SL NO.', 'SL.NO.', 'SLNO', 'SERIAL NO', 'SR NO', 'SR.NO.', 'SR. NO.', 'S.NO.', 'S NO', 'Roll No.', 'Roll No', 'ROLL NO', 'ROLL NO.', 'ROLL', 'SR'],
+      'PRN': ['PRN', 'P.R.N.', 'P.R.N', 'PRN NO', 'PRN NUMBER', 'PERMANENT REGISTRATION NUMBER', 'REGISTRATION NO'],
+      'STUDENT NAME': ['STUDENT NAME', 'NAME', 'STUDENT', 'FULL NAME', 'NAME OF STUDENT', 'STUDENT FULL NAME', 'Name', 'Student Name', 'Students Name']
     };
-    
+
     const standardizeColumnName = (col) => {
+      if (!col || col.trim() === '') return '';
       const upper = col.toUpperCase().trim();
+
       for (const [standard, variants] of Object.entries(columnMapping)) {
-        if (variants.some(v => upper === v.toUpperCase() || upper.includes(v.toUpperCase()))) {
-          if (upper !== standard) cleaningLog.push(`Standardized column "${col}" → "${standard}"`);
-          return standard;
+        for (const variant of variants) {
+          if (upper === variant || upper.includes(variant)) {
+            if (upper !== standard) cleaningLog.push(`Standardized "${col}" → "${standard}"`);
+            return standard;
+          }
         }
       }
       return col.trim();
     };
-    
-    const headers = rawHeaders.map(h => standardizeColumnName(h));
-    
-    // Step 2: Normalize attendance values
+
+    const headers = rawHeaders.map(h => standardizeColumnName(h)).filter(h => h.length > 0);
+
+    // Step 2: Advanced attendance value normalization
     const normalizeAttendance = (val) => {
-      if (!val) return '';
+      if (!val || val === null || val === undefined) return '';
       const normalized = val.toString().trim().toUpperCase();
-      
-      // Present variations
-      if (['P', 'PRESENT', '✓', 'YES', 'Y', '1'].includes(normalized)) return 'P';
-      
-      // Absent variations
-      if (['A', 'ABSENT', 'X', 'NO', 'N', '0', '-'].includes(normalized)) return 'A';
-      
+
+      // Present variations (comprehensive list)
+      if (['P', 'PRESENT', '✓', '✔', 'YES', 'Y', '1', 'TRUE', 'T', 'ATTENDED', 'HERE'].includes(normalized)) return 'P';
+
+      // Absent variations (comprehensive list)
+      if (['A', 'ABSENT', 'X', '✗', '✘', 'NO', 'N', '0', '-', 'FALSE', 'F', 'MISSING', 'NOT PRESENT'].includes(normalized)) return 'A';
+
+      // If it looks like a checkmark or cross symbol
+      if (normalized.includes('✓') || normalized.includes('✔')) return 'P';
+      if (normalized.includes('✗') || normalized.includes('✘') || normalized.includes('X')) return 'A';
+
       return val;
     };
-    
-    let data = rawData.map((row, idx) => {
+
+    let data = rawData.map((row) => {
       const cleanedRow = {};
       headers.forEach((header, i) => {
         const originalHeader = rawHeaders[i];
         const value = row[originalHeader];
-        
+
         // Normalize attendance for non-metadata columns
         const isMetadata = ['SL NO', 'PRN', 'STUDENT NAME'].includes(header);
         cleanedRow[header] = isMetadata ? (value || '').toString().trim() : normalizeAttendance(value);
       });
       return cleanedRow;
     });
-    
-    // Step 3: Remove duplicates
+
+    // Step 3: Enhanced duplicate removal with fuzzy matching
     const seen = new Set();
     const originalCount = data.length;
     data = data.filter((row) => {
-      const key = `${row['STUDENT NAME']}_${row['PRN']}`.toLowerCase();
+      const name = (row['STUDENT NAME'] || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      const prn = (row['PRN'] || '').toLowerCase().trim();
+      const key = `${name}_${prn}`;
+
       if (seen.has(key)) {
         cleaningLog.push(`Removed duplicate: ${row['STUDENT NAME']}`);
         return false;
@@ -219,33 +248,35 @@ export default function AdvancedAnalysis() {
       seen.add(key);
       return true;
     });
-    
+
     if (originalCount > data.length) {
       cleaningLog.push(`Removed ${originalCount - data.length} duplicate entries`);
     }
-    
-    // Step 4: Standardize date formats in headers
+
+    // Step 4: Enhanced date format standardization
     const standardizeDateColumn = (col) => {
+      // Match various date formats
       const dateMatch = col.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
       if (dateMatch) {
         const day = dateMatch[1].padStart(2, '0');
         const month = dateMatch[2].padStart(2, '0');
         let year = dateMatch[3];
         if (year.length === 2) year = '20' + year;
-        
-        const timeOfDay = col.match(/(morning|afternoon|evening)/i)?.[1] || '';
+
+        // Extract time of day if present
+        const timeOfDay = col.match(/(morning|afternoon|evening|am|pm)/i)?.[1] || '';
         const standardized = timeOfDay 
           ? `${day}.${month}.${year} ${timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1).toLowerCase()}`
           : `${day}.${month}.${year}`;
-        
+
         if (standardized !== col) {
-          cleaningLog.push(`Standardized date column "${col}" → "${standardized}"`);
+          cleaningLog.push(`Date format: "${col}" → "${standardized}"`);
         }
         return standardized;
       }
       return col;
     };
-    
+
     const finalHeaders = headers.map(h => standardizeDateColumn(h));
     const finalData = data.map(row => {
       const newRow = {};
@@ -254,10 +285,15 @@ export default function AdvancedAnalysis() {
       });
       return newRow;
     });
-    
-    cleaningLog.unshift(`✅ Cleaned ${finalData.length} student records`);
-    console.log('Data cleaning complete:', cleaningLog);
-    
+
+    cleaningLog.unshift(`✅ Successfully processed ${finalData.length} student records`);
+    console.log('🧹 Data Cleaning Report:', {
+      originalRows: rawData.length,
+      cleanedRows: finalData.length,
+      headers: finalHeaders.length,
+      changes: cleaningLog
+    });
+
     return { headers: finalHeaders, data: finalData, cleaningLog };
   };
 
@@ -297,8 +333,9 @@ export default function AdvancedAnalysis() {
         
         if (val !== undefined && val !== null && val !== '') {
           const valStr = val.toString().trim().toUpperCase();
-          if (valStr === 'P' || valStr === 'PRESENT' || valStr === '✓' || valStr === 'Y') pCount++;
-          if (valStr === 'A' || valStr === 'ABSENT' || valStr === 'X' || valStr === 'N' || valStr === '-') aCount++;
+          // Comprehensive attendance value detection
+          if (valStr === 'P' || valStr === 'PRESENT' || valStr === '✓' || valStr === '✔' || valStr === 'Y' || valStr === 'YES' || valStr === '1') pCount++;
+          if (valStr === 'A' || valStr === 'ABSENT' || valStr === 'X' || valStr === '✗' || valStr === '✘' || valStr === 'N' || valStr === 'NO' || valStr === '-' || valStr === '0') aCount++;
         }
       });
       
@@ -334,7 +371,8 @@ export default function AdvancedAnalysis() {
       let present = 0;
       data.forEach(row => {
         const value = row[dateCol]?.toString().trim().toUpperCase();
-        if (value === 'P' || value === 'PRESENT' || value === '✓') {
+        // Comprehensive present value detection
+        if (value === 'P' || value === 'PRESENT' || value === '✓' || value === '✔' || value === 'Y' || value === 'YES' || value === '1') {
           present++;
         }
       });
@@ -372,7 +410,8 @@ export default function AdvancedAnalysis() {
       let present = 0;
       dateColumns.forEach(dateCol => {
         const value = studentRow[dateCol]?.toString().trim().toUpperCase();
-        if (value === 'P' || value === 'PRESENT' || value === '✓') {
+        // Comprehensive present value detection
+        if (value === 'P' || value === 'PRESENT' || value === '✓' || value === '✔' || value === 'Y' || value === 'YES' || value === '1') {
           present++;
         }
       });

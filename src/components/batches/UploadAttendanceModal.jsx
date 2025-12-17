@@ -251,8 +251,10 @@ export default function UploadAttendanceModal({ isOpen, onClose, onSuccess, batc
         const session = await Session.create(sessionData);
         sessionsCreated.push(session);
 
-        // Create attendance records
+        // Create attendance records in batches to avoid rate limits
         let presentCount = 0;
+        const recordsToCreate = [];
+
         for (const row of data) {
           const prn = row[prnColumn]?.toString().trim().toUpperCase();
           if (!prn) continue;
@@ -261,13 +263,13 @@ export default function UploadAttendanceModal({ isOpen, onClose, onSuccess, batc
           if (!student) continue;
 
           matchedStudents++;
-          
+
           const attendanceValue = row[dateCol]?.toString().trim().toUpperCase();
           const isPresent = ['P', 'PRESENT', '✓', '✔', 'Y', 'YES', '1'].includes(attendanceValue);
-          
+
           if (isPresent) presentCount++;
 
-          const record = await AttendanceRecord.create({
+          recordsToCreate.push({
             student_id: student.id,
             session_id: session.id,
             batch_id: batch.batch_id,
@@ -275,8 +277,19 @@ export default function UploadAttendanceModal({ isOpen, onClose, onSuccess, batc
             marked_at: new Date().toISOString(),
             marked_by: user.email
           });
-          
-          recordsCreated.push(record);
+        }
+
+        // Batch create with delays to avoid rate limits
+        const batchSize = 20;
+        for (let i = 0; i < recordsToCreate.length; i += batchSize) {
+          const batch = recordsToCreate.slice(i, i + batchSize);
+          const created = await AttendanceRecord.bulkCreate(batch);
+          recordsCreated.push(...created);
+
+          // Add delay between batches to avoid rate limits
+          if (i + batchSize < recordsToCreate.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
 
         // Update session present count

@@ -70,11 +70,12 @@ export default function AdvancedAnalysis() {
     const file = event.target.files[0];
     if (file && (file.type === 'text/csv' || file.name.endsWith('.csv') || 
                  file.type === 'application/vnd.ms-excel' || file.name.endsWith('.xlsx') ||
-                 file.type === 'application/pdf' || file.name.endsWith('.pdf'))) {
+                 file.type === 'application/pdf' || file.name.endsWith('.pdf') ||
+                 file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
       setSelectedFile(file);
       setMessage(null);
     } else {
-      setMessage({ type: "error", text: "Please select a valid CSV, Excel, or PDF file" });
+      setMessage({ type: "error", text: "Please select a valid CSV, Excel, PDF, or HTML file" });
     }
   };
 
@@ -1098,10 +1099,61 @@ export default function AdvancedAnalysis() {
     try {
       let headers, data;
 
+      // Handle HTML files
+      if (selectedFile.type === 'text/html' || selectedFile.name.endsWith('.html') || selectedFile.name.endsWith('.htm')) {
+        setMessage({ type: "info", text: "📄 Reading HTML attendance report..." });
+
+        const reader = new FileReader();
+        await new Promise((resolve) => {
+          reader.onload = (e) => {
+            const htmlContent = e.target.result;
+
+            // Parse HTML content
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+
+            // Try to find the attendance table
+            const tables = doc.querySelectorAll('table');
+            let foundTable = null;
+
+            // Look for table with attendance data
+            for (const table of tables) {
+              const headerRow = table.querySelector('tr');
+              if (headerRow && headerRow.textContent.match(/PRN|Student|Roll|Name/i)) {
+                foundTable = table;
+                break;
+              }
+            }
+
+            if (!foundTable) {
+              throw new Error("Could not find attendance table in HTML file");
+            }
+
+            const rows = Array.from(foundTable.querySelectorAll('tr'));
+            const headerRow = rows[0];
+            headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => cell.textContent.trim());
+
+            data = rows.slice(1).map(row => {
+              const cells = Array.from(row.querySelectorAll('td'));
+              const rowData = {};
+              headers.forEach((header, index) => {
+                if (cells[index]) {
+                  rowData[header] = cells[index].textContent.trim();
+                }
+              });
+              return rowData;
+            }).filter(row => Object.values(row).some(val => val && val.length > 0));
+
+            console.log('HTML Parsed:', { headers, dataLength: data.length, firstRow: data[0] });
+            resolve();
+          };
+          reader.readAsText(selectedFile);
+        });
+      }
       // Handle PDF files with OCR
-      if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+      else if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
         setMessage({ type: "info", text: "📄 Uploading PDF for OCR analysis..." });
-        
+
         const { file_url } = await UploadFile({ file: selectedFile });
 
         setMessage({ type: "info", text: "🔍 Extracting attendance data from PDF..." });
@@ -1109,50 +1161,40 @@ export default function AdvancedAnalysis() {
         const ocrSchema = {
           type: "object",
           properties: {
+            headers: {
+              type: "array",
+              description: "Extract ALL column headers from the table in exact order. Include: SL NO, PRN, STUDENT NAME, and ALL date columns (like '08.12.2025', '09.12.2025', '10.12.2025', etc.). List EVERY column you see.",
+              items: { type: "string" }
+            },
             students: {
               type: "array",
-              description: `This is an attendance sheet with multiple pages. Extract EVERY student record you see.
-              
-              The table structure is:
-              - Column 1: SL NO (serial numbers 1-73)
-              - Column 2: PRN (student IDs like 24UET001, 24UET002, etc.)
-              - Column 3: STUDENT NAME (full names in CAPITAL LETTERS)
-              - Remaining columns: Date-time slots with attendance marked as 'P' (Present) or 'A' (Absent)
-              
-              Date-time columns follow this pattern across different dates: "DD.MM.YYYY Morning", "DD.MM.YYYY Afternoon", "DD.MM.YYYY Evening"
-              For example: "08.12.2025 Morning", "08.12.2025 Afternoon", "08.12.2025 Evening", "9.12.2025 Morning", etc.
-              
-              IMPORTANT: There are 3 shifts per day (Morning, Afternoon, Evening). Extract attendance for ALL date-time combinations you find.
-              
-              Extract all ~73 students with their complete attendance records.`,
+              description: "Extract EVERY student row with ALL data. For each student, extract data for EVERY column in the same order as headers.",
               items: {
                 type: "object",
                 properties: {
                   sl_no: { 
                     type: "string", 
-                    description: "Serial number from first column (1, 2, 3...73)" 
+                    description: "Serial number / Roll No from first column" 
                   },
                   prn: { 
                     type: "string", 
-                    description: "PRN from second column (e.g., 24UET001, 24UET002, 22UET079, 23UET059)" 
+                    description: "PRN number from second column" 
                   },
                   name: { 
                     type: "string", 
-                    description: "Full student name from third column (e.g., ADITYA RAVINDRA CHOUGULE, AITAWADE VIDHI RAJENDRA)" 
+                    description: "Full student name from third column" 
                   },
-                  attendance: {
-                    type: "object",
-                    description: "Object where each key is a date-time combination (like '08.12.2025 Morning', '08.12.2025 Afternoon', '08.12.2025 Evening', '9.12.2025 Morning', '10.12.2026 Afternoon', '11.12.202 Morning', '12.12.2025 Morning', '12.12.2025 Afternoon', '13.12.2025 Evening', '13.12.2025 Morning') and value is either 'P' or 'A'",
-                    additionalProperties: { 
-                      type: "string"
-                    }
+                  attendance_data: {
+                    type: "array",
+                    description: "Array of attendance values for each date column IN ORDER. Use 'P' for present (checkmark/tick), 'A' for absent (cross/X), or empty string if blank. Include value for EVERY date column.",
+                    items: { type: "string" }
                   }
                 },
-                required: ["name", "attendance"]
+                required: ["name", "attendance_data"]
               }
             }
           },
-          required: ["students"]
+          required: ["headers", "students"]
         };
 
         const ocrResult = await ExtractDataFromUploadedFile({
@@ -1160,94 +1202,69 @@ export default function AdvancedAnalysis() {
           json_schema: ocrSchema
         });
 
-        if (ocrResult.status !== "success" || !ocrResult.output?.students) {
-          throw new Error("Failed to extract data from PDF");
+        if (ocrResult.status !== "success" || !ocrResult.output?.students || !ocrResult.output?.headers) {
+          throw new Error("Failed to extract data from PDF. The file structure may be too complex.");
         }
 
-        // Convert OCR result to CSV-like format
+        // Convert OCR result to CSV-like format using the new structure
+        const extractedHeaders = ocrResult.output.headers;
         const students = ocrResult.output.students;
-        
+
         if (!students || students.length === 0) {
-          throw new Error("PDF extraction failed. The PDF structure may be too complex. Try converting to CSV/Excel first.");
+          throw new Error("No student records found in PDF. Please verify the file format.");
         }
-        
+
         console.log('✅ OCR extracted:', { 
           studentCount: students.length,
-          sampleStudents: students.slice(0, 3)
+          headerCount: extractedHeaders.length,
+          headers: extractedHeaders,
+          sampleStudent: students[0]
         });
 
-        // Collect all unique date-time columns from all students
-        const allDateColumns = new Set();
-        students.forEach(student => {
-          Object.keys(student.attendance || {}).forEach(dateKey => {
-            if (dateKey.trim()) allDateColumns.add(dateKey.trim());
-          });
+        // Filter date columns (skip metadata columns)
+        const metadataKeywords = ['SL NO', 'PRN', 'STUDENT NAME', 'ROLL', 'NAME', 'SERIAL'];
+        const dateColumns = extractedHeaders.filter(h => {
+          const upper = h.toUpperCase();
+          return !metadataKeywords.some(keyword => upper.includes(keyword)) && h.trim().length > 0;
         });
 
-        const dateColumns = Array.from(allDateColumns);
-        console.log('📅 Detected session columns:', dateColumns);
+        console.log('📅 Detected date columns:', dateColumns.length, dateColumns.slice(0, 10));
 
         if (dateColumns.length === 0) {
-          throw new Error("No attendance date columns found in PDF. Please check the file format.");
+          throw new Error("No attendance date columns found in PDF. Please ensure the file has date columns with attendance marked.");
         }
 
-        // Sort date columns chronologically with proper time-of-day ordering
-        const sortedDateColumns = dateColumns.sort((a, b) => {
-          const parseDateTime = (str) => {
-            const match = str.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
-            if (!match) return { date: new Date(0), shift: 0 };
-            
-            const year = match[3].length === 2 ? '20' + match[3] : match[3];
-            const date = new Date(year, match[2] - 1, match[1]);
-            
-            let shift = 0;
-            if (str.toLowerCase().includes('morning')) shift = 0;
-            else if (str.toLowerCase().includes('afternoon')) shift = 1;
-            else if (str.toLowerCase().includes('evening')) shift = 2;
-            
-            return { date, shift };
-          };
-          
-          const aData = parseDateTime(a);
-          const bData = parseDateTime(b);
-          
-          if (aData.date.getTime() !== bData.date.getTime()) {
-            return aData.date - bData.date;
-          }
-          return aData.shift - bData.shift;
-        });
-
-        console.log('📊 Sorted sessions:', sortedDateColumns);
-
         // Build CSV-like structure
-        headers = ['SL NO', 'PRN', 'STUDENT NAME', ...sortedDateColumns];
+        headers = ['SL NO', 'PRN', 'STUDENT NAME', ...dateColumns];
         data = students.map(student => {
           const row = {
-            'SL NO': student.sl_no || student.roll_no || '',
+            'SL NO': student.sl_no || '',
             'PRN': student.prn || '',
-            'STUDENT NAME': student.name || student.student_name || ''
+            'STUDENT NAME': student.name || ''
           };
-          
-          sortedDateColumns.forEach(dateCol => {
-            row[dateCol] = student.attendance?.[dateCol] || '';
+
+          // Map attendance data to date columns
+          const attendanceData = student.attendance_data || [];
+          dateColumns.forEach((dateCol, idx) => {
+            row[dateCol] = attendanceData[idx] || '';
           });
-          
+
           return row;
-        }).filter(row => row['STUDENT NAME'] && row['STUDENT NAME'].length > 2);
+        }).filter(row => row['STUDENT NAME'] && row['STUDENT NAME'].trim().length > 2);
 
         console.log('✅ Final structured data:', { 
           students: data.length, 
-          sessions: sortedDateColumns.length,
+          sessions: dateColumns.length,
           headers,
           sample: data[0]
         });
-        
+
         if (data.length === 0) {
           throw new Error("No valid student records found after processing");
         }
-        
-        setMessage({ type: "info", text: `✅ Extracted ${data.length} students with ${sortedDateColumns.length} attendance sessions (3 shifts/day)!` });
-      } else {
+
+        setMessage({ type: "info", text: `✅ Extracted ${data.length} students with ${dateColumns.length} attendance sessions!` });
+        } else {
         // Handle CSV files
         const reader = new FileReader();
         await new Promise((resolve) => {
@@ -1500,16 +1517,16 @@ export default function AdvancedAnalysis() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.xlsx,.xls,.pdf"
+                  accept=".csv,.xlsx,.xls,.pdf,.html,.htm"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
                 <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {selectedFile ? selectedFile.name : "Drop your PDF, CSV, or Excel file here"}
+                  {selectedFile ? selectedFile.name : "Drop your attendance file here"}
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Upload attendance sheet (PDF with OCR support or CSV/Excel)
+                  Supports PDF (OCR), CSV, Excel, and HTML files
                 </p>
                 <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
                   <Upload className="w-4 h-4 mr-2" />
@@ -1548,11 +1565,12 @@ export default function AdvancedAnalysis() {
                 <li className="flex items-center gap-2">👥 <strong>Student-wise performance</strong> analysis with rankings</li>
                 <li className="flex items-center gap-2">🏆 <strong>Top performers</strong> showcase with animations</li>
                 <li className="flex items-center gap-2">⚠️ <strong>At-risk students</strong> identification (below 75%)</li>
-                <li className="flex items-center gap-2">📊 <strong>Comprehensive statistics</strong> and insights</li>
+                <li className="flex items-center gap-2">🤖 <strong>AI-powered insights</strong> and recommendations</li>
+                <li className="flex items-center gap-2">📊 <strong>Comprehensive statistics</strong> and metrics</li>
                 <li className="flex items-center gap-2">🎨 <strong>Professional design</strong> ready to share</li>
               </ul>
               <div className="mt-3 p-3 bg-yellow-100 rounded-md border border-yellow-300">
-                <p className="text-xs text-yellow-900 font-semibold">📄 Supports PDF (with OCR), CSV, and Excel files!</p>
+                <p className="text-xs text-yellow-900 font-semibold">📄 Supports PDF (OCR), CSV, Excel, and HTML files!</p>
               </div>
             </div>
             </CardContent>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Batch, Student, Session, AttendanceRecord, User, Faculty } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, Users, Calendar, Edit, Trash2, TrendingUp, Download, Clock, Camera, Plus, ScanLine } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Edit, Trash2, TrendingUp, Download, Clock, Camera, Plus, ScanLine, Upload } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { format, parseISO } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Student, Batch } from "@/entities/all";
+import { Student, Batch, User } from "@/entities/all";
 import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -398,7 +398,9 @@ export default function UploadPage() {
           duplicateEntries.push(`${student.name} (PRN: ${student.prn})`);
         } else {
           const studentData = {
-            ...student,
+            name: student.name,
+            prn: student.prn || null,
+            roll_no: student.roll_no,
             college_name: selectedBatch.college_name || null,
             year: selectedBatch.year || null,
             branch: selectedBatch.branch || null,
@@ -423,9 +425,37 @@ export default function UploadPage() {
         return;
       }
       
-      // Update the student count of the selected batch
-      await Batch.update(selectedBatch.id, {
-        student_count: (selectedBatch.student_count || 0) + studentsToCreate.length
+      // Create or update batch in database
+      let batchRecord = selectedBatch;
+      
+      if (selectedBatch.batch_type === 'private') {
+        // Private batch already exists in database, just get it
+        batchRecord = await Batch.get(selectedBatch.id);
+      } else {
+        // For standard/custom batches, check if batch exists or create it
+        const existingBatches = await Batch.filter({ batch_id: selectedBatch.batch_id });
+        
+        if (existingBatches.length > 0) {
+          batchRecord = existingBatches[0];
+        } else {
+          // Create new batch
+          batchRecord = await Batch.create({
+            batch_type: selectedBatch.batch_type,
+            batch_id: selectedBatch.batch_id,
+            batch_name: selectedBatch.batch_name,
+            college_name: selectedBatch.college_name,
+            year: selectedBatch.year,
+            branch: selectedBatch.branch,
+            division: selectedBatch.division,
+            batch_description: selectedBatch.batch_description,
+            student_count: 0
+          });
+        }
+      }
+      
+      // Update the student count
+      await Batch.update(batchRecord.id, {
+        student_count: (batchRecord.student_count || 0) + studentsToCreate.length
       });
       
       const chunkSize = 50; 

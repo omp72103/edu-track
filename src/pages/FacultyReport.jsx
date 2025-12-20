@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Session, Faculty, AttendanceRecord } from "@/entities/all";
+import { Session, Faculty, AttendanceRecord, FacultySession, FacultyExpense } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, FileText, Filter, Eye, Calendar, Users } from "lucide-react";
+import { Download, FileText, DollarSign, TrendingUp } from "lucide-react";
 import { format } from 'date-fns';
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import FacultyReportCard from "../components/faculty/FacultyReportCard";
 
 // Helper function to parse duration string to hours
 const parseDurationToHours = (duration) => {
@@ -25,272 +23,141 @@ const parseDurationToHours = (duration) => {
 export default function FacultyReport() {
     const [sessions, setSessions] = useState([]);
     const [faculty, setFaculty] = useState([]);
-    const [attendanceRecords, setAttendanceRecords] = useState([]);
+    const [facultySessions, setFacultySessions] = useState([]);
+    const [facultyExpenses, setFacultyExpenses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedFaculty, setSelectedFaculty] = useState(null);
-    const [showFacultyDetails, setShowFacultyDetails] = useState(false);
 
     useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            try {
-                const [sessionData, facultyData, attendanceData] = await Promise.all([
-                    Session.list('-created_date', 500),
-                    Faculty.list(),
-                    AttendanceRecord.list(null, 1000)
-                ]);
-                setSessions(sessionData);
-                setFaculty(facultyData);
-                setAttendanceRecords(attendanceData);
-            } catch (error) {
-                console.error("Error fetching report data:", error);
-            }
-            setIsLoading(false);
-        };
         fetchData();
     }, []);
 
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [sessionData, facultyData, facultySessionsData, facultyExpensesData] = await Promise.all([
+                Session.list('-created_date', 500),
+                Faculty.list(),
+                FacultySession.list(),
+                FacultyExpense.list()
+            ]);
+            setSessions(sessionData);
+            setFaculty(facultyData);
+            setFacultySessions(facultySessionsData);
+            setFacultyExpenses(facultyExpensesData);
+        } catch (error) {
+            console.error("Error fetching report data:", error);
+        }
+        setIsLoading(false);
+    };
+
     const facultyReportData = useMemo(() => {
-        const report = faculty.map(f => {
-            const facultySessions = sessions.filter(s => s.faculty_email === f.email);
-            const totalSessions = facultySessions.length;
-            const completed = facultySessions.filter(s => s.status === 'completed').length;
-            const scheduled = facultySessions.filter(s => s.status === 'scheduled').length;
-            const totalHours = facultySessions.reduce((sum, s) => sum + parseDurationToHours(s.duration), 0);
-            
-            // Calculate students attended from attendance records
-            const sessionIds = facultySessions.map(s => s.id);
-            const sessionAttendance = attendanceRecords.filter(r => sessionIds.includes(r.session_id));
-            const studentsAttended = sessionAttendance.filter(r => r.is_present).length;
+        return faculty.map(f => {
+            const fSessions = facultySessions.filter(s => s.faculty_id === f.id);
+            const fExpenses = facultyExpenses.filter(e => e.faculty_id === f.id);
+            const totalHours = fSessions.reduce((sum, s) => sum + (s.total_hours || 0), 0);
+            const totalExpenses = fExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+            const totalEarnings = totalHours * (f.rate_per_hour || 0);
+            const netPayable = totalEarnings + totalExpenses;
 
             return {
-                id: f.id,
-                facultyName: f.name,
-                email: f.email,
-                department: f.department,
-                totalSessions,
-                completed,
-                scheduled,
+                ...f,
+                totalSessions: fSessions.length,
                 totalHours: totalHours.toFixed(1),
-                studentsAttended,
-                sessions: facultySessions
+                totalExpenses: totalExpenses.toFixed(2),
+                totalEarnings: totalEarnings.toFixed(2),
+                netPayable: netPayable.toFixed(2)
             };
         });
-        return report;
-    }, [sessions, faculty, attendanceRecords]);
+    }, [faculty, facultySessions, facultyExpenses]);
     
     const exportToCSV = () => {
-        const headers = ["Faculty Name", "Email", "Department", "Total Sessions", "Completed", "Scheduled", "Total Hours", "Students Attended"];
+        const headers = ["Faculty Name", "Email", "Department", "Rate/Hour", "Total Sessions", "Total Hours", "Earnings", "Expenses", "Net Payable"];
         const rows = facultyReportData.map(row => 
             [
-                row.facultyName,
+                row.name,
                 row.email,
                 row.department,
+                row.rate_per_hour || 0,
                 row.totalSessions,
-                row.completed,
-                row.scheduled,
                 row.totalHours,
-                row.studentsAttended
+                row.totalEarnings,
+                row.totalExpenses,
+                row.netPayable
             ].join(',')
         );
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `faculty_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+        link.setAttribute("download", `faculty_billing_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
-    const handleViewFacultyDetails = (facultyData) => {
-        setSelectedFaculty(facultyData);
-        setShowFacultyDetails(true);
-    };
+    const totalHoursAll = facultyReportData.reduce((sum, f) => sum + parseFloat(f.totalHours), 0);
+    const totalEarningsAll = facultyReportData.reduce((sum, f) => sum + parseFloat(f.totalEarnings), 0);
+    const totalExpensesAll = facultyReportData.reduce((sum, f) => sum + parseFloat(f.totalExpenses), 0);
+    const totalPayableAll = facultyReportData.reduce((sum, f) => sum + parseFloat(f.netPayable), 0);
 
     return (
-        <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+        <div className="p-4 md:p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
             <div className="max-w-7xl mx-auto">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-600 rounded-lg">
-                            <FileText className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">📊 Faculty Tracking Report</h1>
-                            <p className="text-gray-600">Track faculty performance and session analytics</p>
-                        </div>
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                            <DollarSign className="w-8 h-8 text-green-600" />
+                            Faculty Billing & Payment Report
+                        </h1>
+                        <p className="text-gray-600 mt-1">Manage sessions, expenses, and generate invoices</p>
                     </div>
+                    <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700">
+                        <Download className="w-4 h-4 mr-2" />
+                        Export CSV
+                    </Button>
                 </div>
 
-                <Card className="mb-6 bg-white border border-gray-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-gray-800">
-                            <Filter className="w-5 h-5" />
-                            🎯 Actions & Export
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap items-center gap-4">
-                        <Button onClick={exportToCSV} className="bg-green-600 hover:bg-green-700 text-white">
-                            <Download className="w-4 h-4 mr-2" />
-                            📊 Export Report
-                        </Button>
-                        <div className="text-sm text-gray-600">
-                            Total Faculty: <strong>{faculty.length}</strong> | 
-                            Total Sessions: <strong>{sessions.length}</strong>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                    <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                        <CardContent className="p-6 text-center">
+                            <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                            <p className="text-3xl font-bold">{totalHoursAll.toFixed(1)}</p>
+                            <p className="text-sm opacity-90">Total Hours</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+                        <CardContent className="p-6 text-center">
+                            <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                            <p className="text-3xl font-bold">₹{totalEarningsAll.toFixed(0)}</p>
+                            <p className="text-sm opacity-90">Total Earnings</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+                        <CardContent className="p-6 text-center">
+                            <FileText className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                            <p className="text-3xl font-bold">₹{totalExpensesAll.toFixed(0)}</p>
+                            <p className="text-sm opacity-90">Total Expenses</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                        <CardContent className="p-6 text-center">
+                            <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                            <p className="text-3xl font-bold">₹{totalPayableAll.toFixed(0)}</p>
+                            <p className="text-sm opacity-90">Total Payable</p>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                <Card className="bg-white border border-gray-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-gray-800">
-                            <Users className="w-5 h-5" />
-                            👥 Faculty Performance Tracking
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="space-y-2">
-                                <Skeleton className="h-10 w-full" />
-                                <Skeleton className="h-10 w-full" />
-                                <Skeleton className="h-10 w-full" />
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-gray-50">
-                                            <TableHead className="font-semibold text-gray-700">👤 Faculty Name</TableHead>
-                                            <TableHead className="font-semibold text-gray-700">🏢 Department</TableHead>
-                                            <TableHead className="font-semibold text-gray-700 text-center">📚 Total Sessions</TableHead>
-                                            <TableHead className="font-semibold text-gray-700 text-center">✅ Completed</TableHead>
-                                            <TableHead className="font-semibold text-gray-700 text-center">📅 Scheduled</TableHead>
-                                            <TableHead className="font-semibold text-gray-700 text-center">⏰ Total Hours</TableHead>
-                                            <TableHead className="font-semibold text-gray-700 text-center">👥 Students Attended</TableHead>
-                                            <TableHead className="font-semibold text-gray-700 text-center">⚙️ Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {facultyReportData.map((row, index) => (
-                                            <TableRow key={index} className="hover:bg-gray-50">
-                                                <TableCell className="font-medium text-gray-800">{row.facultyName}</TableCell>
-                                                <TableCell className="text-gray-600">{row.department}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                                        {row.totalSessions}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge className="bg-green-500 text-white">
-                                                        {row.completed}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                                                        {row.scheduled}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center font-semibold text-gray-800">
-                                                    {row.totalHours}h
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                                                        {row.studentsAttended}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-center">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleViewFacultyDetails(row)}
-                                                        className="hover:bg-blue-50"
-                                                    >
-                                                        <Eye className="w-4 h-4 mr-1" />
-                                                        👁️ View Details
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Faculty Details Dialog */}
-            <Dialog open={showFacultyDetails} onOpenChange={setShowFacultyDetails}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-xl">
-                            <Users className="w-6 h-6" />
-                            👤 {selectedFaculty?.facultyName} - Session Details
-                        </DialogTitle>
-                    </DialogHeader>
-                    {selectedFaculty && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div>
-                                    <p className="text-sm text-gray-600">📧 Email</p>
-                                    <p className="font-semibold">{selectedFaculty.email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">🏢 Department</p>
-                                    <p className="font-semibold">{selectedFaculty.department}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">⏰ Total Hours</p>
-                                    <p className="font-semibold">{selectedFaculty.totalHours}h</p>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                    <Calendar className="w-5 h-5" />
-                                    📚 Sessions Conducted ({selectedFaculty.sessions.length})
-                                </h3>
-                                {selectedFaculty.sessions.length === 0 ? (
-                                    <p className="text-gray-500 text-center py-4">📭 No sessions found for this faculty</p>
-                                ) : (
-                                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                                        {selectedFaculty.sessions
-                                            .sort((a, b) => new Date(b.session_date) - new Date(a.session_date))
-                                            .map((session) => (
-                                            <div key={session.id} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="font-semibold text-gray-800">📖 {session.session_name}</p>
-                                                        <p className="text-sm text-gray-600">🎯 {session.topic_taught}</p>
-                                                        <p className="text-xs text-gray-500">
-                                                            📅 {format(new Date(session.session_date), 'dd MMM yyyy')} | 
-                                                            ⏰ {session.session_time} | 
-                                                            🏛️ {session.college_name}
-                                                        </p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <Badge className={
-                                                            session.status === 'completed' ? 'bg-green-500 text-white' :
-                                                            session.status === 'active' ? 'bg-blue-500 text-white' :
-                                                            'bg-orange-500 text-white'
-                                                        }>
-                                                            {session.status}
-                                                        </Badge>
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            {session.present_count || 0}/{session.total_students || 0} present
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                <div className="space-y-4">
+                    {isLoading ? (
+                        Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
+                    ) : (
+                        facultyReportData.map((facultyMember) => (
+                            <FacultyReportCard key={facultyMember.id} faculty={facultyMember} onUpdate={fetchData} />
+                        ))
                     )}
-                </DialogContent>
-            </Dialog>
+                </div>
+            </div>
         </div>
     );
 }

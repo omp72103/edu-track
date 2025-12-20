@@ -22,9 +22,21 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
 
   useEffect(() => {
     if (facultyMember) {
-      setFormData(facultyMember);
+      setFormData({
+        name: facultyMember.name || "",
+        email: facultyMember.email || "",
+        department: facultyMember.department || "",
+        status: facultyMember.status || "active",
+        rate_per_hour: facultyMember.rate_per_hour || 0,
+      });
     } else {
-      setFormData({ name: "", email: "", department: "", status: "active" });
+      setFormData({ 
+        name: "", 
+        email: "", 
+        department: "", 
+        status: "active",
+        rate_per_hour: 0
+      });
     }
   }, [facultyMember]);
 
@@ -81,6 +93,17 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="rate_per_hour">Rate per Hour (₹)</Label>
+            <Input
+              id="rate_per_hour"
+              type="number"
+              step="0.01"
+              placeholder="Enter hourly rate"
+              value={formData.rate_per_hour}
+              onChange={(e) => setFormData({ ...formData, rate_per_hour: parseFloat(e.target.value) || 0 })}
+            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

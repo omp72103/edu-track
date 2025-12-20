@@ -17,6 +17,7 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
     email: "",
     department: "",
     status: "active",
+    rate_per_hour: 0,
   });
 
   useEffect(() => {

@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Faculty } from "@/entities/all";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Edit, Trash2, UserCog, Mail, Building } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, Edit, Trash2, UserCog, Mail, Building, DollarSign } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FacultyFormModal from "../components/faculty/FacultyFormModal";
+import FacultySessionsTab from "../components/faculty/FacultySessionsTab";
+import FacultyExpensesTab from "../components/faculty/FacultyExpensesTab";
+import FacultyInvoicesTab from "../components/faculty/FacultyInvoicesTab";
+import FacultySummaryTab from "../components/faculty/FacultySummaryTab";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +29,8 @@ export default function ManageFaculty() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
+  const [selectedFaculty, setSelectedFaculty] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const fetchFaculty = useCallback(async () => {
     setIsLoading(true);
@@ -68,14 +76,18 @@ export default function ManageFaculty() {
     }
   };
 
+  const handleViewDetails = (facultyMember) => {
+    setSelectedFaculty(facultyMember);
+    setIsDetailsModalOpen(true);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Manage Faculty</h1>
-            <p className="text-gray-600 mt-1">Add, edit, and manage faculty members</p>
+            <h1 className="text-3xl font-bold text-gray-900">Faculty Management & Billing Portal</h1>
+            <p className="text-gray-600 mt-1">Manage faculty, track hours, expenses, and generate invoices</p>
           </div>
           <Button 
             onClick={() => { setEditingFaculty(null); setIsModalOpen(true); }}
@@ -86,7 +98,6 @@ export default function ManageFaculty() {
           </Button>
         </div>
 
-        {/* Faculty List - Rectangular Cards */}
         <div className="space-y-4">
           {isLoading ? (
             Array(6).fill(0).map((_, i) => (
@@ -121,7 +132,11 @@ export default function ManageFaculty() {
             </div>
           ) : (
             faculty.map((facultyMember) => (
-              <Card key={facultyMember.id} className="bg-white shadow-sm hover:shadow-md transition-shadow">
+              <Card 
+                key={facultyMember.id} 
+                className="bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleViewDetails(facultyMember)}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -148,15 +163,23 @@ export default function ManageFaculty() {
                             <Mail className="w-4 h-4" />
                             <span>{facultyMember.email}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Building className="w-4 h-4" />
-                            <span>{facultyMember.department || 'Not specified'}</span>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <Building className="w-4 h-4" />
+                              <span>{facultyMember.department || 'Not specified'}</span>
+                            </div>
+                            {facultyMember.rate_per_hour && (
+                              <div className="flex items-center gap-2 text-green-600 font-semibold">
+                                <DollarSign className="w-4 h-4" />
+                                <span>₹{facultyMember.rate_per_hour}/hour</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -203,10 +226,86 @@ export default function ManageFaculty() {
 
       <FacultyFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); setEditingFaculty(null); }}
         onSave={handleSave}
         facultyMember={editingFaculty}
       />
+
+      <Dialog open={isDetailsModalOpen} onOpenChange={setIsDetailsModalOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              {selectedFaculty?.name} - Faculty Management Portal
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedFaculty && (
+            <Tabs defaultValue="summary" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="sessions">Sessions</TabsTrigger>
+                <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                <TabsTrigger value="invoices">Invoices</TabsTrigger>
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="summary" className="mt-6">
+                <FacultySummaryTab faculty={selectedFaculty} />
+              </TabsContent>
+
+              <TabsContent value="sessions" className="mt-6">
+                <FacultySessionsTab faculty={selectedFaculty} />
+              </TabsContent>
+
+              <TabsContent value="expenses" className="mt-6">
+                <FacultyExpensesTab faculty={selectedFaculty} />
+              </TabsContent>
+
+              <TabsContent value="invoices" className="mt-6">
+                <FacultyInvoicesTab faculty={selectedFaculty} />
+              </TabsContent>
+
+              <TabsContent value="profile" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Faculty Profile</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Name</p>
+                        <p className="font-semibold">{selectedFaculty.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Email</p>
+                        <p className="font-semibold">{selectedFaculty.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Department</p>
+                        <p className="font-semibold">{selectedFaculty.department || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Rate per Hour</p>
+                        <p className="font-semibold text-green-600">₹{selectedFaculty.rate_per_hour || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Status</p>
+                        <span className={`px-3 py-1 rounded-full text-sm ${selectedFaculty.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                          {selectedFaculty.status}
+                        </span>
+                      </div>
+                    </div>
+                    <Button onClick={() => { setIsDetailsModalOpen(false); handleEdit(selectedFaculty); }}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

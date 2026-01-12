@@ -167,30 +167,44 @@ export default function UploadPage() {
         const schema = {
           type: "object",
           properties: {
-            students: {
+            divisions: {
               type: "array",
-              description: "Extract all student information from the document including names and roll numbers.",
+              description: "Extract divisions in order (e.g., CSE-TY - A, CSE-TY - B) with their students listed in exact order",
               items: {
                 type: "object",
                 properties: {
-                  name: { 
-                    type: "string", 
-                    description: "Full student name" 
+                  division_name: {
+                    type: "string",
+                    description: "Division name (e.g., 'CSE-TY - A', 'CSE-TY - B')"
                   },
-                  prn: { 
-                    type: "string", 
-                    description: "PRN or registration number (optional for private batches)" 
-                  },
-                  roll_no: { 
-                    type: "string", 
-                    description: "Roll number or serial number" 
+                  students: {
+                    type: "array",
+                    description: "Students in this division, in exact order from PDF",
+                    items: {
+                      type: "object",
+                      properties: {
+                        roll_no: { 
+                          type: "string", 
+                          description: "Roll number (e.g., TYA01, TYB02)" 
+                        },
+                        prn: { 
+                          type: "string", 
+                          description: "PRN number" 
+                        },
+                        name: { 
+                          type: "string", 
+                          description: "Full student name" 
+                        }
+                      },
+                      required: ["roll_no", "prn", "name"]
+                    }
                   }
                 },
-                required: ["name"]
+                required: ["division_name", "students"]
               }
             }
           },
-          required: ["students"]
+          required: ["divisions"]
         };
 
         const result = await ExtractDataFromUploadedFile({
@@ -198,18 +212,31 @@ export default function UploadPage() {
           json_schema: schema
         });
 
-        if (result.status === "success" && result.output?.students && result.output.students.length > 0) {
-          const processedStudents = result.output.students
-            .filter(student => student.name && student.name.trim().length > 0)
-            .map((student, index) => ({
-              name: student.name.trim(),
-              prn: isPrivate ? "" : (student.prn ? student.prn.trim() : `PRN${Date.now()}${index}`),
-              roll_no: student.roll_no ? student.roll_no.trim() : (index + 1).toString()
-            }));
+        if (result.status === "success" && result.output?.divisions && result.output.divisions.length > 0) {
+          // Flatten all divisions into a single student list, maintaining order
+          const processedStudents = [];
+          
+          for (const division of result.output.divisions) {
+            if (division.students && Array.isArray(division.students)) {
+              for (const student of division.students) {
+                if (student.name && student.name.trim().length > 0) {
+                  processedStudents.push({
+                    name: student.name.trim().toUpperCase(),
+                    prn: isPrivate ? "" : (student.prn ? student.prn.trim() : ""),
+                    roll_no: student.roll_no ? student.roll_no.trim() : ""
+                  });
+                }
+              }
+            }
+          }
 
-          setExtractedStudents(processedStudents);
-          setSuccessMessage(`Successfully extracted ${processedStudents.length} student records from PDF file.`);
-          setStep(3);
+          if (processedStudents.length > 0) {
+            setExtractedStudents(processedStudents);
+            setSuccessMessage(`Successfully extracted ${processedStudents.length} student records from PDF file across ${result.output.divisions.length} division(s).`);
+            setStep(3);
+          } else {
+            throw new Error("No valid student data found in PDF.");
+          }
         } else {
           throw new Error("Could not extract student data from PDF.");
         }

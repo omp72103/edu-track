@@ -1,35 +1,37 @@
-import Dashboard from './pages/Dashboard';
-import Upload from './pages/Upload';
+import AdvancedAnalysis from './pages/AdvancedAnalysis';
 import Attendance from './pages/Attendance';
-import CreateSession from './pages/CreateSession';
-import Batches from './pages/Batches';
 import BatchDetails from './pages/BatchDetails';
 import BatchDetailsPage from './pages/BatchDetailsPage';
+import Batches from './pages/Batches';
+import ConsolidatedReport from './pages/ConsolidatedReport';
+import CreateSession from './pages/CreateSession';
+import Dashboard from './pages/Dashboard';
+import FacultyReport from './pages/FacultyReport';
+import Home from './pages/Home';
 import ManageColleges from './pages/ManageColleges';
 import ManageFaculty from './pages/ManageFaculty';
-import FacultyReport from './pages/FacultyReport';
 import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
-import ConsolidatedReport from './pages/ConsolidatedReport';
-import AdvancedAnalysis from './pages/AdvancedAnalysis';
+import Upload from './pages/Upload';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Upload": Upload,
+    "AdvancedAnalysis": AdvancedAnalysis,
     "Attendance": Attendance,
-    "CreateSession": CreateSession,
-    "Batches": Batches,
     "BatchDetails": BatchDetails,
     "BatchDetailsPage": BatchDetailsPage,
+    "Batches": Batches,
+    "ConsolidatedReport": ConsolidatedReport,
+    "CreateSession": CreateSession,
+    "Dashboard": Dashboard,
+    "FacultyReport": FacultyReport,
+    "Home": Home,
     "ManageColleges": ManageColleges,
     "ManageFaculty": ManageFaculty,
-    "FacultyReport": FacultyReport,
     "QRAttendance": QRAttendance,
     "QRAttendanceStudent": QRAttendanceStudent,
-    "ConsolidatedReport": ConsolidatedReport,
-    "AdvancedAnalysis": AdvancedAnalysis,
+    "Upload": Upload,
 }
 
 export const pagesConfig = {

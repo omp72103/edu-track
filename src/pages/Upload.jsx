@@ -31,14 +31,7 @@ const branches = [
 ];
 const divisions = ["A", "B", "C", "D", "Not Applicable"];
 
-const customBatches = [
-  { id: "batch-01", name: "Batch No. 01", description: "CSE A (All Class) + CSE B (Roll No. TYB01 to TYB38)"},
-  { id: "batch-02", name: "Batch No. 02", description: "CSE B (Roll No. TYB39 to TYB79) + CSE C (All Class)"},
-  { id: "batch-03", name: "Batch No. 03", description: "AIML A (All Class) + AIML B (Roll No. 01 to 49)"},
-  { id: "batch-04", name: "Batch No. 04", description: "AIML B (Roll No. 50 to 81) + DS (All Class)"},
-  { id: "batch-05", name: "Batch No. 05", description: "CSBS (All Class) + E&TC A (Roll No. 01 to 41)"},
-  { id: "batch-06", name: "Batch No. 06", description: "E&TC A (Roll No. 42 to 82) + E&TC (All Class)"}
-];
+// Custom batches are now fetched from database
 
 // Hardcoded colleges to ensure they're always available
 const COLLEGES = [
@@ -57,6 +50,7 @@ export default function UploadPage() {
   const [batchType, setBatchType] = useState("standard");
   const [colleges, setColleges] = useState(COLLEGES);
   const [privateBatches, setPrivateBatches] = useState([]);
+  const [customBatches, setCustomBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [formData, setFormData] = useState({
     college_name: "",
@@ -74,9 +68,9 @@ export default function UploadPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch private batches
         const allBatches = await Batch.list('-created_date', 200);
         setPrivateBatches(allBatches.filter(b => b.batch_type === 'private'));
+        setCustomBatches(allBatches.filter(b => b.batch_type === 'custom'));
       } catch (err) {
         console.error("Error fetching batches:", err);
       }
@@ -106,23 +100,17 @@ export default function UploadPage() {
         division: formData.division
       };
     } else if (batchType === "custom") {
-      if (!formData.college_name || !formData.year || !formData.custom_batch_id) {
-        setError("Please fill all required fields for custom batch");
+      if (!formData.custom_batch_id) {
+        setError("Please select a custom batch");
         return;
       }
-      const selectedCollege = colleges.find(c => c.college_name === formData.college_name);
-      const collegeShortName = selectedCollege ? selectedCollege.short_name : formData.college_name;
       const selectedCustomBatch = customBatches.find(b => b.id === formData.custom_batch_id);
-      const batchId = `${collegeShortName}_${formData.year}_${formData.custom_batch_id}`.toLowerCase().replace(/[^\w-]+/g, '-');
+      if (!selectedCustomBatch) {
+        setError("Selected custom batch not found");
+        return;
+      }
       
-      batchData = {
-        batch_type: "custom",
-        batch_id: batchId,
-        batch_name: selectedCustomBatch.name,
-        college_name: formData.college_name,
-        year: formData.year,
-        batch_description: selectedCustomBatch.description
-      };
+      batchData = selectedCustomBatch;
     } else { // Private batch
       if (!formData.private_batch_id) {
         setError("Please select a private batch");
@@ -563,6 +551,22 @@ export default function UploadPage() {
                           </Select>
                         </div>
                       </div>
+                    ) : batchType === "custom" ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="font-semibold text-slate-700">Select Custom Batch *</label>
+                          <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})}>
+                            <SelectTrigger><SelectValue placeholder="Select custom batch"/></SelectTrigger>
+                            <SelectContent>
+                              {customBatches.map(batch => (
+                                <SelectItem key={batch.id} value={batch.id}>
+                                  {batch.batch_name} - {batch.college_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     ) : (
                       <div className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
@@ -592,46 +596,30 @@ export default function UploadPage() {
                           </div>
                         </div>
 
-                        {batchType === "standard" && (
-                          <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="font-semibold text-slate-700">Branch *</label>
-                              <Select value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value})}>
-                                <SelectTrigger><SelectValue placeholder="Select branch"/></SelectTrigger>
-                                <SelectContent>
-                                  {branches.map(branch => (
-                                    <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <label className="font-semibold text-slate-700">Division *</label>
-                              <Select value={formData.division} onValueChange={(value) => setFormData({...formData, division: value})}>
-                                <SelectTrigger><SelectValue placeholder="Select division"/></SelectTrigger>
-                                <SelectContent>
-                                  {divisions.map(division => (
-                                    <SelectItem key={division} value={division}>{division}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        )}
-
-                        {batchType === "custom" && (
+                        <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <label className="font-semibold text-slate-700">Custom Batch *</label>
-                            <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})}>
-                              <SelectTrigger><SelectValue placeholder="Select custom batch"/></SelectTrigger>
+                            <label className="font-semibold text-slate-700">Branch *</label>
+                            <Select value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value})}>
+                              <SelectTrigger><SelectValue placeholder="Select branch"/></SelectTrigger>
                               <SelectContent>
-                                {customBatches.map(batch => (
-                                  <SelectItem key={batch.id} value={batch.id}>{batch.name}</SelectItem>
+                                {branches.map(branch => (
+                                  <SelectItem key={branch} value={branch}>{branch}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </div>
-                        )}
+                          <div>
+                            <label className="font-semibold text-slate-700">Division *</label>
+                            <Select value={formData.division} onValueChange={(value) => setFormData({...formData, division: value})}>
+                              <SelectTrigger><SelectValue placeholder="Select division"/></SelectTrigger>
+                              <SelectContent>
+                                {divisions.map(division => (
+                                  <SelectItem key={division} value={division}>{division}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                       </div>
                     )}
                     

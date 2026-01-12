@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Batch, Session, User, Faculty, Student, College } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,14 +31,7 @@ const branches = [
 ];
 const divisions = ["A", "B", "C", "D", "Not Applicable"];
 const durations = ["1 Hour", "1.5 Hours", "2 Hours", "2.5 Hours", "3 Hours"];
-const customBatches = [
-  { id: "batch-01", name: "Batch No. 01", description: "CSE A (All Class) + CSE B (Roll No. TYB01 to TYB38)"},
-  { id: "batch-02", name: "Batch No. 02", description: "CSE B (Roll No. TYB39 to TYB79) + CSE C (All Class)"},
-  { id: "batch-03", name: "Batch No. 03", description: "AIML A (All Class) + AIML B (Roll No. 01 to 49)"},
-  { id: "batch-04", name: "Batch No. 04", description: "AIML B (Roll No. 50 to 81) + DS (All Class)"},
-  { id: "batch-05", name: "Batch No. 05", description: "CSBS (All Class) + E&TC A (Roll No. 01 to 41)"},
-  { id: "batch-06", name: "Batch No. 06", description: "E&TC A (Roll No. 42 to 82) + E&TC (All Class)"}
-];
+// Custom batches are now fetched from database
 
 export default function CreateSession() {
   const navigate = useNavigate();
@@ -48,6 +40,7 @@ export default function CreateSession() {
   const [colleges, setColleges] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [privateBatches, setPrivateBatches] = useState([]);
+  const [customBatches, setCustomBatches] = useState([]);
   const [stats, setStats] = useState({ batches: 0, students: 0, faculty: 0 });
   const [batchType, setBatchType] = useState("standard");
   const [error, setError] = useState(null);
@@ -84,6 +77,7 @@ export default function CreateSession() {
         setColleges(collegeData);
         setFaculties(facultyData);
         setPrivateBatches(batchData.filter(b => b.batch_type === 'private'));
+        setCustomBatches(batchData.filter(b => b.batch_type === 'custom'));
 
         const userAsFaculty = facultyData.find(f => f.email === currentUser.email);
         if(userAsFaculty) {
@@ -166,26 +160,24 @@ export default function CreateSession() {
         sessionBranch = formData.branch;
         sessionDivision = formData.division;
       } else if (batchType === "custom") {
-        if (!formData.college_name || !formData.year || !formData.custom_batch_id) {
-          setError("For a Custom Batch, please select College, Year, and the Custom Batch type.");
+        if (!formData.custom_batch_id) {
+          setError("Please select a Custom Batch.");
           setIsLoading(false);
           return;
         }
 
-        const selectedCollege = colleges.find(c => c.college_name === formData.college_name);
-        const collegeShortName = selectedCollege ? selectedCollege.short_name : formData.college_name;
         const selectedCustomBatch = customBatches.find(b => b.id === formData.custom_batch_id);
         if (!selectedCustomBatch) {
             setError("Selected custom batch not found.");
             setIsLoading(false);
             return;
         }
-        batchId = `${collegeShortName}_${formData.year}_${formData.custom_batch_id}`.toLowerCase().replace(/[^\w-]+/g, '-');
-        batchName = selectedCustomBatch.name;
-        batchDescription = selectedCustomBatch.description;
-        sessionCollege = formData.college_name;
-        sessionYear = formData.year;
-        sessionBranch = undefined; // Custom batches might not have specific branch/division
+        batchId = selectedCustomBatch.batch_id;
+        batchName = selectedCustomBatch.batch_name;
+        batchDescription = selectedCustomBatch.batch_description || selectedCustomBatch.batch_name;
+        sessionCollege = selectedCustomBatch.college_name;
+        sessionYear = selectedCustomBatch.year;
+        sessionBranch = undefined;
         sessionDivision = undefined;
       } else { // Private batch
         if (!formData.private_batch_id) {
@@ -213,19 +205,19 @@ export default function CreateSession() {
         sessionDivision = undefined;
       }
 
-      // Only create batch if it's not a private batch (private batches are assumed to exist)
-      if (batchType !== 'private') {
+      // Only create batch if it's a standard batch (private and custom batches already exist)
+      if (batchType === 'standard') {
         const existingBatches = await Batch.filter({ batch_id: batchId });
-        if (existingBatches.length === 0) { // Create only if batch doesn't exist
+        if (existingBatches.length === 0) {
           await Batch.create({
             batch_id: batchId,
             batch_name: batchName,
             batch_description: batchDescription,
             batch_type: batchType,
-            college_name: formData.college_name, // These are from formData as they define the new batch
+            college_name: formData.college_name,
             year: formData.year,
-            branch: batchType === 'standard' ? formData.branch : undefined,
-            division: batchType === 'standard' ? formData.division : undefined,
+            branch: formData.branch,
+            division: formData.division,
             student_count: 0,
             created_by: user.email
           });
@@ -350,11 +342,11 @@ export default function CreateSession() {
                     </Select>
                 </div>
 
-                { (batchType === 'standard' || batchType === 'custom') &&
+                {batchType === 'standard' && (
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                         <Label htmlFor="college_name" className="font-semibold text-slate-700">College Name *</Label>
-                        <Select value={formData.college_name} onValueChange={(value) => setFormData({...formData, college_name: value})} required={batchType !== 'private'}>
+                        <Select value={formData.college_name} onValueChange={(value) => setFormData({...formData, college_name: value})} required>
                             <SelectTrigger className="mt-2"><SelectValue placeholder="Select college" /></SelectTrigger>
                             <SelectContent>
                                 {colleges.map((c) => (
@@ -370,13 +362,13 @@ export default function CreateSession() {
                     </div>
                     <div>
                         <Label htmlFor="year" className="font-semibold text-slate-700">Academic Year *</Label>
-                        <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})} required={batchType !== 'private'}>
+                        <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})} required>
                             <SelectTrigger className="mt-2"><SelectValue placeholder="Select year" /></SelectTrigger>
                             <SelectContent>{years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
                   </div>
-                }
+                )}
 
                 {batchType === 'standard' && (
                     <div className="grid md:grid-cols-2 gap-6 pt-4">
@@ -399,12 +391,25 @@ export default function CreateSession() {
                 {batchType === 'custom' && (
                     <div className="pt-4">
                         <Label htmlFor="custom_batch" className="font-semibold text-slate-700">Custom Batch *</Label>
-                        <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})} required={batchType === 'custom'}>
+                        <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})} required>
                             <SelectTrigger className="mt-2"><SelectValue placeholder="Select custom batch" /></SelectTrigger>
                             <SelectContent>
-                                {customBatches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name} - ({b.description})</SelectItem>)}
+                                {customBatches.length === 0 ? (
+                                  <SelectItem value={null} disabled>No custom batches found</SelectItem>
+                                ) : (
+                                  customBatches.map((b) => (
+                                    <SelectItem key={b.id} value={b.id}>
+                                      {b.batch_name} - {b.college_name}
+                                    </SelectItem>
+                                  ))
+                                )}
                             </SelectContent>
                         </Select>
+                        {customBatches.length === 0 && (
+                          <p className="text-sm text-gray-500 mt-2">
+                            No custom batches found. Contact admin to create custom batches.
+                          </p>
+                        )}
                     </div>
                 )}
                 {batchType === 'private' && (

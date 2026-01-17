@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award } from "lucide-react";
+import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Upload } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,10 @@ export default function PerformancePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPerformance, setEditingPerformance] = useState(null);
   const [message, setMessage] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
+  const [emailFormData, setEmailFormData] = useState({ student_id: "", email: "" });
+  const [bulkEmailFile, setBulkEmailFile] = useState(null);
   const [filterBatch, setFilterBatch] = useState("");
   const [filterStudent, setFilterStudent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -218,6 +222,59 @@ export default function PerformancePage() {
 
   const filteredStudents = students.filter(s => !filterBatch || s.batch_id === batches.find(b => b.id === filterBatch)?.batch_id);
 
+  const handleAddEmail = async (e) => {
+    e.preventDefault();
+    try {
+      const student = students.find(s => s.id === emailFormData.student_id);
+      if (!student) {
+        setMessage({ type: "error", text: "Student not found" });
+        return;
+      }
+      
+      await Student.update(student.id, { email: emailFormData.email });
+      setMessage({ type: "success", text: "Email added successfully" });
+      await loadData();
+      setShowEmailModal(false);
+      setEmailFormData({ student_id: "", email: "" });
+    } catch (error) {
+      console.error("Error adding email:", error);
+      setMessage({ type: "error", text: "Failed to add email" });
+    }
+  };
+
+  const handleBulkEmailUpload = async (e) => {
+    e.preventDefault();
+    if (!bulkEmailFile) return;
+
+    try {
+      const text = await bulkEmailFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      let updated = 0;
+      for (const line of lines) {
+        const [name, rollNo, email] = line.split(',').map(s => s.trim());
+        if (!email || !rollNo) continue;
+        
+        const student = students.find(s => 
+          s.roll_no === rollNo || s.name.toLowerCase() === name.toLowerCase()
+        );
+        
+        if (student && !student.email) {
+          await Student.update(student.id, { email });
+          updated++;
+        }
+      }
+      
+      setMessage({ type: "success", text: `${updated} student emails updated` });
+      await loadData();
+      setShowBulkEmailModal(false);
+      setBulkEmailFile(null);
+    } catch (error) {
+      console.error("Error bulk uploading emails:", error);
+      setMessage({ type: "error", text: "Failed to upload emails" });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-6 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -234,7 +291,15 @@ export default function PerformancePage() {
             </h1>
             <p className="text-gray-600">Track and manage student academic performance</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => setShowEmailModal(true)} variant="outline" className="gap-2">
+              <Mail className="w-4 h-4" />
+              Add Email
+            </Button>
+            <Button onClick={() => setShowBulkEmailModal(true)} variant="outline" className="gap-2">
+              <Upload className="w-4 h-4" />
+              Bulk Upload Emails
+            </Button>
             <Button onClick={exportToCSV} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
               Export CSV

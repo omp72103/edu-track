@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Session, Student, Batch } from "@/entities/all";
+import { Session, Student, Batch, AttendanceRecord, User } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Users, Calendar, TrendingUp, Clock } from "lucide-react";
+import { Plus, Users, Calendar, TrendingUp, Clock, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [studentCount, setStudentCount] = useState(0);
   const [batches, setBatches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -56,6 +58,49 @@ export default function Dashboard() {
     navigate(createPageUrl(`BatchDetails?batch_id=${batchId}`));
   };
 
+  const sendAttendanceReports = async () => {
+    if (!confirm("Send attendance reports to all students with emails?")) return;
+    
+    setIsSendingEmails(true);
+    try {
+      const allStudents = await Student.list();
+      const studentsWithEmails = allStudents.filter(s => s.email);
+      
+      if (studentsWithEmails.length === 0) {
+        alert("No students with emails found");
+        setIsSendingEmails(false);
+        return;
+      }
+
+      let sent = 0;
+      for (const student of studentsWithEmails) {
+        try {
+          const attendanceRecords = await AttendanceRecord.filter({ student_id: student.id });
+          const totalSessions = attendanceRecords.length;
+          const presentCount = attendanceRecords.filter(r => r.is_present).length;
+          const attendancePercentage = totalSessions > 0 ? ((presentCount / totalSessions) * 100).toFixed(2) : 0;
+
+          const emailBody = `Dear ${student.name},\n\nYour Attendance Report:\n\nTotal Sessions: ${totalSessions}\nPresent: ${presentCount}\nAttendance: ${attendancePercentage}%\n\nBest Regards,\nEDU TRACK Team`;
+
+          await base44.integrations.Core.SendEmail({
+            to: student.email,
+            subject: "Your Attendance Report - EDU TRACK",
+            body: emailBody
+          });
+          sent++;
+        } catch (error) {
+          console.error(`Failed to send email to ${student.email}:`, error);
+        }
+      }
+
+      alert(`Attendance reports sent to ${sent} students`);
+    } catch (error) {
+      console.error("Error sending reports:", error);
+      alert("Failed to send attendance reports");
+    }
+    setIsSendingEmails(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -78,7 +123,7 @@ export default function Dashboard() {
               </p>
             </div>
             
-            <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap gap-3 w-full md:w-auto">
               <Link to={createPageUrl("CreateSession")} className="flex-1 md:flex-none">
                 <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
                   <Plus className="w-5 h-5 mr-2" />
@@ -91,6 +136,15 @@ export default function Dashboard() {
                   Take Attendance
                 </Button>
               </Link>
+              <Button 
+                onClick={sendAttendanceReports} 
+                disabled={isSendingEmails}
+                variant="outline" 
+                className="flex-1 md:flex-none backdrop-blur-md bg-white/50 border-white/50 hover:bg-white/70"
+              >
+                <Mail className="w-5 h-5 mr-2" />
+                {isSendingEmails ? "Sending..." : "Email Reports"}
+              </Button>
             </div>
           </div>
         </div>

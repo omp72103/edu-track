@@ -16,7 +16,9 @@ import {
   Menu,
   GraduationCap,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Calendar,
+  BarChart3
 } from "lucide-react";
 
 const mainNavItems = [
@@ -25,6 +27,8 @@ const mainNavItems = [
   { name: "Upload", label: "Upload Students", icon: Upload },
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck },
   { name: "Batches", label: "Manage Batches", icon: Users },
+  { name: "TimeTable", label: "Class Timetable", icon: Calendar },
+  { name: "Performance", label: "Student Performance", icon: BarChart3 },
 ];
 
 const adminNavItems = [
@@ -123,8 +127,8 @@ export default function Layout({ children, currentPageName }) {
             <div className="bg-blue-600 p-3 rounded-lg inline-block mb-4">
               <GraduationCap className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">APT-TECH</h1>
-            <p className="text-gray-600">Attendance Management System</p>
+            <h1 className="text-2xl font-bold text-gray-900">EDU TRACK</h1>
+            <p className="text-gray-600">Complete Education Management Platform</p>
           </div>
           <p className="text-gray-700 mb-6">Please log in to access the faculty dashboard.</p>
           <button 
@@ -151,8 +155,8 @@ export default function Layout({ children, currentPageName }) {
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-lg text-gray-800">APT-TECH</span>
-                <span className="text-xs text-gray-500">Attendance Mgmt.</span>
+                <span className="font-bold text-lg text-gray-800">EDU TRACK</span>
+                <span className="text-xs text-gray-500">Education Platform</span>
               </div>
             </div>
           </div>
@@ -244,7 +248,7 @@ export default function Layout({ children, currentPageName }) {
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="font-bold text-lg">APT-TECH</div>
+          <div className="font-bold text-lg">EDU TRACK</div>
           <div className="w-10"></div>
         </header>
 
@@ -260,7 +264,9 @@ export default function Layout({ children, currentPageName }) {
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
           onClick={() => setIsSidebarOpen(false)}
         />
-      )}
-    </div>
-  );
-}
+        )}
+        </div>
+        );
+        }
+
+        export const appName = "EDU TRACK";

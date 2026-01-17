@@ -57,109 +57,114 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-8 relative z-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome to EDU TRACK
-            </h1>
-            <p className="text-gray-600 text-lg">
-              Complete Education Management Platform
-            </p>
-          </div>
-          
-          <div className="flex gap-3 w-full md:w-auto">
-            <Link to={createPageUrl("CreateSession")} className="flex-1 md:flex-none">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 shadow-sm">
-                <Plus className="w-5 h-5 mr-2" />
-                Create Session
-              </Button>
-            </Link>
-            <Link to={createPageUrl("Attendance")} className="flex-1 md:flex-none">
-              <Button variant="outline" className="w-full bg-white hover:bg-gray-50">
-                <Calendar className="w-5 h-5 mr-2" />
-                Take Attendance
-              </Button>
-            </Link>
+        <div className="backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-2xl p-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Welcome to EDU TRACK
+              </h1>
+              <p className="text-gray-700 text-lg mt-2">
+                Complete Education Management Platform
+              </p>
+            </div>
+            
+            <div className="flex gap-3 w-full md:w-auto">
+              <Link to={createPageUrl("CreateSession")} className="flex-1 md:flex-none">
+                <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Create Session
+                </Button>
+              </Link>
+              <Link to={createPageUrl("Attendance")} className="flex-1 md:flex-none">
+                <Button variant="outline" className="w-full backdrop-blur-md bg-white/50 border-white/50 hover:bg-white/70">
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Take Attendance
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Calendar className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Sessions</p>
-                  <p className="text-2xl font-bold text-gray-900">{sessions.length}</p>
-                  <p className="text-xs text-gray-500">Recently created</p>
+          <div className="group backdrop-blur-xl bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-2xl border border-white/50 shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-600/0 group-hover:from-blue-500/10 group-hover:to-blue-600/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <p className="text-sm font-medium text-blue-900 mb-2">Total Sessions</p>
+              <p className="text-4xl font-bold text-blue-700">{sessions.length}</p>
+              <p className="text-xs text-blue-600 mt-2">Recently created</p>
+            </div>
+          </div>
 
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Clock className="w-6 h-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Today's Sessions</p>
-                  <p className="text-2xl font-bold text-gray-900">{todaySessions.length}</p>
-                  <p className="text-xs text-gray-500">Scheduled for today</p>
+          <div className="group backdrop-blur-xl bg-gradient-to-br from-green-500/20 to-green-600/30 rounded-2xl border border-white/50 shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 to-green-600/0 group-hover:from-green-500/10 group-hover:to-green-600/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-green-600 to-green-700 rounded-xl shadow-lg">
+                  <Clock className="w-6 h-6 text-white" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <p className="text-sm font-medium text-green-900 mb-2">Today's Sessions</p>
+              <p className="text-4xl font-bold text-green-700">{todaySessions.length}</p>
+              <p className="text-xs text-green-600 mt-2">Scheduled for today</p>
+            </div>
+          </div>
 
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="w-6 h-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900">{studentCount}</p>
-                  <p className="text-xs text-gray-500">Across all batches</p>
+          <div className="group backdrop-blur-xl bg-gradient-to-br from-purple-500/20 to-purple-600/30 rounded-2xl border border-white/50 shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-600/0 group-hover:from-purple-500/10 group-hover:to-purple-600/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl shadow-lg">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <p className="text-sm font-medium text-purple-900 mb-2">Total Students</p>
+              <p className="text-4xl font-bold text-purple-700">{studentCount}</p>
+              <p className="text-xs text-purple-600 mt-2">Across all batches</p>
+            </div>
+          </div>
 
-          <Card className="bg-white shadow-sm border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Avg Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">{avgAttendance.toFixed(1)}%</p>
-                  <p className="text-xs text-gray-500">Overall average</p>
+          <div className="group backdrop-blur-xl bg-gradient-to-br from-orange-500/20 to-orange-600/30 rounded-2xl border border-white/50 shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/0 to-orange-600/0 group-hover:from-orange-500/10 group-hover:to-orange-600/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl shadow-lg">
+                  <TrendingUp className="w-6 h-6 text-white" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <p className="text-sm font-medium text-orange-900 mb-2">Avg Attendance</p>
+              <p className="text-4xl font-bold text-orange-700">{avgAttendance.toFixed(1)}%</p>
+              <p className="text-xs text-orange-600 mt-2">Overall average</p>
+            </div>
+          </div>
         </div>
 
         {/* Content Grid */}
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Recent Sessions */}
-          <Card className="bg-white shadow-sm border-0">
-            <CardHeader className="border-b bg-gray-50">
-              <CardTitle className="text-xl flex items-center gap-2 text-gray-900">
+          <div className="backdrop-blur-xl bg-white/70 rounded-3xl border border-white/50 shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-6 border-b border-white/30">
+              <CardTitle className="text-xl flex items-center gap-2 text-gray-900 font-bold">
                 <Calendar className="w-5 h-5" />
                 Recent Sessions
               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+            </div>
+            <div className="p-6">
               {isLoading ? (
                 <p>Loading sessions...</p>
               ) : sessions.length === 0 ? (
@@ -167,13 +172,13 @@ export default function Dashboard() {
                   <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No sessions created yet</p>
                   <Link to={createPageUrl("CreateSession")}>
-                    <Button className="mt-4">Create Your First Session</Button>
+                    <Button className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600">Create Your First Session</Button>
                   </Link>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {sessions.slice(0, 5).map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                    <div key={session.id} className="flex items-center justify-between p-4 backdrop-blur-md bg-white/60 border border-white/50 rounded-xl hover:bg-white/80 hover:shadow-lg transition-all duration-200">
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-900">{session.session_name}</h3>
                         <p className="text-sm text-gray-600">{session.batch_description || session.topic_taught}</p>
@@ -194,18 +199,18 @@ export default function Dashboard() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Recent Batches Overview - Fixed Rectangular Cards */}
-          <Card className="bg-white shadow-sm border-0">
-            <CardHeader className="border-b bg-gray-50">
-              <CardTitle className="text-xl flex items-center gap-2 text-gray-900">
+          {/* Recent Batches Overview */}
+          <div className="backdrop-blur-xl bg-white/70 rounded-3xl border border-white/50 shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-6 border-b border-white/30">
+              <CardTitle className="text-xl flex items-center gap-2 text-gray-900 font-bold">
                 <Users className="w-5 h-5" />
                 Recent Batches Overview
               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+            </div>
+            <div className="p-6">
               {isLoading ? (
                 <p>Loading batches...</p>
               ) : batches.length === 0 ? (
@@ -213,7 +218,7 @@ export default function Dashboard() {
                   <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No batches created yet</p>
                   <Link to={createPageUrl("Upload")}>
-                    <Button className="mt-4">Upload Students</Button>
+                    <Button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600">Upload Students</Button>
                   </Link>
                 </div>
               ) : (
@@ -222,29 +227,45 @@ export default function Dashboard() {
                     <div 
                       key={batch.id} 
                       onClick={() => handleBatchClick(batch.id)}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all duration-200"
+                      className="group p-4 backdrop-blur-md bg-white/60 border border-white/50 rounded-xl hover:bg-white/80 hover:shadow-lg cursor-pointer transition-all duration-200"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-base">{batch.batch_name}</h3>
-                            <p className="text-sm text-gray-600 mt-1">{batch.batch_description || `${batch.year} - ${batch.branch}`}</p>
-                            <p className="text-xs text-gray-500 mt-1">{batch.college_name}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-purple-600 mb-1">{batch.student_count || 0}</div>
-                            <div className="text-xs text-gray-500">Students</div>
-                          </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 text-base group-hover:text-purple-700 transition-colors">{batch.batch_name}</h3>
+                          <p className="text-sm text-gray-600 mt-1">{batch.batch_description || `${batch.year} - ${batch.branch}`}</p>
+                          <p className="text-xs text-gray-500 mt-1">{batch.college_name}</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">{batch.student_count || 0}</div>
+                          <div className="text-xs text-gray-500">Students</div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
   );
 }

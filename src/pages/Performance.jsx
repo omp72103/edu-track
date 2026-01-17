@@ -495,7 +495,74 @@ export default function PerformancePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Add Email Modal */}
+        <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Student Email</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAddEmail} className="space-y-4">
+              <div>
+                <Label>Student *</Label>
+                <Select value={emailFormData.student_id} onValueChange={(value) => setEmailFormData({...emailFormData, student_id: value})}>
+                  <SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger>
+                  <SelectContent>
+                    {students.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({s.roll_no}) {s.email ? '✓' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input type="email" value={emailFormData.email} onChange={(e) => setEmailFormData({...emailFormData, email: e.target.value})} required />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowEmailModal(false)}>Cancel</Button>
+                <Button type="submit" className="bg-blue-600">Add Email</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Email Upload Modal */}
+        <Dialog open={showBulkEmailModal} onOpenChange={setShowBulkEmailModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Bulk Upload Student Emails</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleBulkEmailUpload} className="space-y-4">
+              <div>
+                <Label>Upload CSV File</Label>
+                <Input type="file" accept=".csv,.txt" onChange={(e) => setBulkEmailFile(e.target.files[0])} required />
+                <p className="text-xs text-gray-500 mt-2">Format: Name, Roll No, Email (one per line)</p>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setShowBulkEmailModal(false)}>Cancel</Button>
+                <Button type="submit" className="bg-blue-600">Upload</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   );
 }

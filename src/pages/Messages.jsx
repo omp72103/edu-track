@@ -112,7 +112,7 @@ export default function MessagesPage() {
               </h1>
               <p className="text-gray-700">Direct messaging with faculty and students</p>
             </div>
-          <Dialog open={showComposeModal} onOpenChange={setShowComposeModal}>
+            <Dialog open={showComposeModal} onOpenChange={setShowComposeModal}>
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg gap-2">
                 <Plus className="w-4 h-4" />
@@ -155,6 +155,7 @@ export default function MessagesPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {alertMessage && (

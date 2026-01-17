@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award } from "lucide-react";
+import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
 
 const assessmentTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Assignment", "Project", "Practical", "Final Exam", "Quiz"];
 const grades = ["A+", "A", "B+", "B", "C", "D", "F"];
@@ -24,6 +25,7 @@ export default function PerformancePage() {
   const [filterBatch, setFilterBatch] = useState("");
   const [filterStudent, setFilterStudent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showEmailModal, setShowEmailModal] = useState(false);
   
   const [formData, setFormData] = useState({
     student_id: "",
@@ -235,6 +237,10 @@ export default function PerformancePage() {
             <p className="text-gray-600">Track and manage student academic performance</p>
           </div>
           <div className="flex gap-3">
+            <Button onClick={() => setShowEmailModal(true)} variant="outline" className="gap-2">
+              <Mail className="w-4 h-4" />
+              Manage Emails
+            </Button>
             <Button onClick={exportToCSV} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
               Export CSV
@@ -431,6 +437,13 @@ export default function PerformancePage() {
           </CardContent>
         </Card>
       </div>
+
+      <ManageStudentEmailsModal 
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        students={students}
+        onUpdate={loadData}
+      />
     </div>
   );
 }

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Plus, Edit, Trash2, Award, FileText } from "lucide-react";
+import { TrendingUp, Plus, Edit, Trash2, Award, FileText, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
 
 const examTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Mid Semester", "End Semester", "Assignment", "Project", "Quiz"];
 
@@ -19,6 +20,7 @@ export default function StudentPerformancePage() {
   const [selectedStudent, setSelectedStudent] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [formData, setFormData] = useState({
     student_id: "",
     student_name: "",
@@ -159,17 +161,28 @@ export default function StudentPerformancePage() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-blue-600" />
-              Student Performance Tracking
-            </h1>
-            <p className="text-gray-600 mt-1">Track and manage student academic performance</p>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 -right-20 w-96 h-96 bg-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+        <div className="backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-2xl p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-3">
+                <TrendingUp className="w-8 h-8 text-indigo-600" />
+                Student Performance Tracking
+              </h1>
+              <p className="text-gray-700 mt-1">Track and manage student academic performance</p>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={() => setShowEmailModal(true)} variant="outline" className="gap-2">
+                <Mail className="w-4 h-4" />
+                Manage Emails
+              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
@@ -246,10 +259,12 @@ export default function StudentPerformancePage() {
               </form>
             </DialogContent>
           </Dialog>
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          <Card>
+          <Card className="backdrop-blur-xl bg-white/70 border-white/50 shadow-xl">
             <CardHeader className="bg-gray-50">
               <CardTitle>Select Batch</CardTitle>
             </CardHeader>
@@ -266,7 +281,7 @@ export default function StudentPerformancePage() {
           </Card>
 
           {selectedBatch && (
-            <Card>
+            <Card className="backdrop-blur-xl bg-white/70 border-white/50 shadow-xl">
               <CardHeader className="bg-gray-50">
                 <CardTitle>Select Student</CardTitle>
               </CardHeader>
@@ -286,7 +301,7 @@ export default function StudentPerformancePage() {
 
         {selectedStudent && (
           <>
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
+            <Card className="backdrop-blur-xl bg-gradient-to-r from-blue-50/80 to-purple-50/80 border-white/50 shadow-xl">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-around">
                   <div className="text-center">
@@ -308,8 +323,8 @@ export default function StudentPerformancePage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="bg-gray-50">
+            <Card className="backdrop-blur-xl bg-white/70 border-white/50 shadow-xl">
+              <CardHeader className="bg-white/50">
                 <CardTitle>Performance Records</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
@@ -356,6 +371,28 @@ export default function StudentPerformancePage() {
           </>
         )}
       </div>
+
+      <ManageStudentEmailsModal 
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        students={students}
+        onUpdate={loadData}
+      />
+
+      <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   );
 }

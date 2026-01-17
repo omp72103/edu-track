@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Session, Student, Batch } from "@/entities/all";
+import { Session, Student, Batch, AttendanceRecord, AttendanceSession } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Users, Calendar, TrendingUp, Clock } from "lucide-react";
+import { Plus, Users, Calendar, TrendingUp, Clock, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
+  const [students, setStudents] = useState([]);
   const [studentCount, setStudentCount] = useState(0);
   const [batches, setBatches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
+  const [emailMessage, setEmailMessage] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -30,6 +35,7 @@ export default function Dashboard() {
       ]);
       
       setSessions(sessionsData);
+      setStudents(allStudents);
       setStudentCount(allStudents.length);
       setBatches(batchesData);
     } catch (error) {
@@ -56,6 +62,63 @@ export default function Dashboard() {
     navigate(createPageUrl(`BatchDetails?batch_id=${batchId}`));
   };
 
+  const sendAttendanceReports = async () => {
+    setIsSendingEmails(true);
+    setEmailMessage(null);
+    
+    try {
+      const studentsWithEmail = students.filter(s => s.email && s.email.includes('@'));
+      
+      if (studentsWithEmail.length === 0) {
+        setEmailMessage({ type: "error", text: "No students have email addresses configured" });
+        setIsSendingEmails(false);
+        return;
+      }
+
+      let sent = 0;
+      for (const student of studentsWithEmail) {
+        const attendanceRecords = await base44.entities.AttendanceRecord.filter({ student_id: student.id });
+        const attendanceSessions = await base44.entities.AttendanceSession.filter({ batch_id: student.batch_id });
+        
+        const totalSessions = attendanceSessions.length;
+        const presentCount = attendanceRecords.filter(r => r.is_present).length;
+        const attendancePercentage = totalSessions > 0 ? ((presentCount / totalSessions) * 100).toFixed(2) : 0;
+
+        const emailBody = `Dear ${student.name},
+
+Here is your current attendance report:
+
+Total Sessions: ${totalSessions}
+Sessions Attended: ${presentCount}
+Attendance Percentage: ${attendancePercentage}%
+
+Batch: ${batches.find(b => b.batch_id === student.batch_id)?.batch_name || student.batch_id}
+Roll Number: ${student.roll_no}
+
+${attendancePercentage < 75 ? '\n⚠️ Warning: Your attendance is below 75%. Please improve your attendance.\n' : ''}
+
+Best regards,
+EDU TRACK Team`;
+
+        await base44.integrations.Core.SendEmail({
+          to: student.email,
+          subject: `Attendance Report - ${student.name}`,
+          body: emailBody,
+          from_name: "EDU TRACK"
+        });
+        
+        sent++;
+      }
+
+      setEmailMessage({ type: "success", text: `Attendance reports sent to ${sent} students successfully!` });
+    } catch (error) {
+      console.error("Error sending emails:", error);
+      setEmailMessage({ type: "error", text: "Failed to send some emails. Please try again." });
+    }
+    
+    setIsSendingEmails(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -78,7 +141,16 @@ export default function Dashboard() {
               </p>
             </div>
             
-            <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex gap-3 w-full md:w-auto flex-wrap">
+              <Button 
+                onClick={sendAttendanceReports}
+                disabled={isSendingEmails}
+                variant="outline"
+                className="backdrop-blur-md bg-white/50 border-white/50 hover:bg-white/70"
+              >
+                <Mail className="w-5 h-5 mr-2" />
+                {isSendingEmails ? "Sending..." : "Email Reports"}
+              </Button>
               <Link to={createPageUrl("CreateSession")} className="flex-1 md:flex-none">
                 <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
                   <Plus className="w-5 h-5 mr-2" />
@@ -94,6 +166,14 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {emailMessage && (
+          <Alert className={emailMessage.type === "error" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
+            <AlertDescription className={emailMessage.type === "error" ? "text-red-800" : "text-green-800"}>
+              {emailMessage.text}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

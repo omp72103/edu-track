@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 const mainNavItems = [
+  { name: "Home", icon: LayoutDashboard },
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "CreateSession", label: "Create Session", icon: PlusCircle },
   { name: "Upload", label: "Upload Students", icon: Upload },
@@ -55,7 +56,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const fetchUser = async () => {
       // Public pages - no auth needed
-      if (currentPageName === "QRAttendanceStudent") {
+      if (currentPageName === "QRAttendanceStudent" || currentPageName === "Home") {
         setUserLoading(false);
         return;
       }
@@ -113,7 +114,7 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName]);
 
   // Public pages - render without layout
-  if (currentPageName === "QRAttendanceStudent" || currentPageName === "StudentPortal") {
+  if (currentPageName === "QRAttendanceStudent" || currentPageName === "StudentPortal" || currentPageName === "Home") {
     return <>{children}</>;
   }
 

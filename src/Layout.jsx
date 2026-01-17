@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { User, Faculty } from "@/entities/all";
+import { User, Faculty, Student } from "@/entities/all";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard,
@@ -75,13 +75,22 @@ export default function Layout({ children, currentPageName }) {
       
       try {
         const currentUser = await User.me();
-        setUser(currentUser);
         
         console.log("✅ User logged in:", currentUser.email, "Role:", currentUser.role);
         
-        // AUTO-FIX: If user is not admin and not in Faculty table, add them automatically
+        // Check if user is a student first
         if (currentUser.role !== 'admin') {
           try {
+            const studentRecords = await Student.filter({ email: currentUser.email });
+            
+            if (studentRecords.length > 0) {
+              // User is a student - redirect to student portal
+              console.log("👨‍🎓 Student detected, redirecting to Student Portal...");
+              window.location.href = createPageUrl("StudentPortal");
+              return;
+            }
+            
+            // Not a student, check if they're in Faculty table
             const facultyRecords = await Faculty.filter({ email: currentUser.email });
             
             if (facultyRecords.length === 0) {
@@ -99,11 +108,13 @@ export default function Layout({ children, currentPageName }) {
             } else {
               console.log("✅ User already exists in Faculty table");
             }
-          } catch (facultyError) {
-            console.error("❌ Error checking/creating faculty record:", facultyError);
+          } catch (checkError) {
+            console.error("❌ Error checking student/faculty records:", checkError);
             // Don't block access even if this fails
           }
         }
+        
+        setUser(currentUser);
         
       } catch (error) {
         console.error("❌ User not logged in:", error);

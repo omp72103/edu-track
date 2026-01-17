@@ -115,7 +115,7 @@ export default function AnnouncementsPage() {
               </h1>
               <p className="text-gray-700">Broadcast messages to students and faculty</p>
             </div>
-          {user && user.role === "admin" && (
+            {user && user.role === "admin" && (
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg gap-2">
@@ -190,7 +190,8 @@ export default function AnnouncementsPage() {
                 </form>
               </DialogContent>
             </Dialog>
-          )}
+            )}
+          </div>
         </div>
 
         {message && (

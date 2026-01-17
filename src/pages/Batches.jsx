@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Batch, Student, Session, AttendanceRecord } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -191,38 +192,31 @@ export default function BatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-      </div>
-      
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-2xl p-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
-                <Users className="w-8 h-8 text-blue-600" />
-                Manage Batches
-              </h1>
-              <p className="text-gray-700 mt-1">View, export, and manage all student batches</p>
-            </div>
-            <Button onClick={() => setCreateModalOpen(true)} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg">
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create Private Batch
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          {/* Back button removed as per new UI */}
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
+              📚 Manage Batches
+            </h1>
+            <p className="text-slate-600 mt-1">View, export, and manage all student batches</p>
           </div>
+          <Button onClick={() => setCreateModalOpen(true)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg">
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Create Private Batch
+          </Button>
         </div>
 
         {/* Enhanced Filter Card */}
-        <div className="backdrop-blur-xl bg-white/70 rounded-2xl border border-white/50 shadow-2xl overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-6 border-b border-white/30">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <Card className="mb-6 shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2">
               <Filter className="w-5 h-5" />
-              Search & Filter Batches
-            </h3>
-          </div>
-          <div className="p-6 space-y-4">
+              🔍 Search & Filter Batches
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-2">
                 <Input
@@ -264,18 +258,18 @@ export default function BatchesPage() {
                 📊 Showing {filteredBatches.length} of {batches.length} batches
               </span>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Enhanced Batches Table */}
-        <div className="backdrop-blur-xl bg-white/70 rounded-2xl border border-white/50 shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-6 border-b border-white/30">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+          <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Batches Overview ({filteredBatches.length})
-            </h3>
-          </div>
-          <div className="p-0">
+              📋 Batches Overview ({filteredBatches.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
@@ -472,29 +466,14 @@ export default function BatchesPage() {
                 <p>Try adjusting your search filters or create a new batch.</p>
               </div>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
-
-      <style jsx>{`
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-      `}</style>
-    </div>
-  );
-}
       <CreateBatchModal
         isOpen={isCreateModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onBatchCreated={loadBatches}
+        onBatchCreated={loadBatches} // Reload batches after a new one is created
       />
+    </div>
+  );
+}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Upload } from "lucide-react";
+import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +21,6 @@ export default function PerformancePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingPerformance, setEditingPerformance] = useState(null);
   const [message, setMessage] = useState(null);
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
-  const [emailFormData, setEmailFormData] = useState({ student_id: "", email: "" });
-  const [bulkEmailFile, setBulkEmailFile] = useState(null);
   const [filterBatch, setFilterBatch] = useState("");
   const [filterStudent, setFilterStudent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -222,59 +218,6 @@ export default function PerformancePage() {
 
   const filteredStudents = students.filter(s => !filterBatch || s.batch_id === batches.find(b => b.id === filterBatch)?.batch_id);
 
-  const handleAddEmail = async (e) => {
-    e.preventDefault();
-    try {
-      const student = students.find(s => s.id === emailFormData.student_id);
-      if (!student) {
-        setMessage({ type: "error", text: "Student not found" });
-        return;
-      }
-      
-      await Student.update(student.id, { email: emailFormData.email });
-      setMessage({ type: "success", text: "Email added successfully" });
-      await loadData();
-      setShowEmailModal(false);
-      setEmailFormData({ student_id: "", email: "" });
-    } catch (error) {
-      console.error("Error adding email:", error);
-      setMessage({ type: "error", text: "Failed to add email" });
-    }
-  };
-
-  const handleBulkEmailUpload = async (e) => {
-    e.preventDefault();
-    if (!bulkEmailFile) return;
-
-    try {
-      const text = await bulkEmailFile.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      let updated = 0;
-      for (const line of lines) {
-        const [name, rollNo, email] = line.split(',').map(s => s.trim());
-        if (!email || !rollNo) continue;
-        
-        const student = students.find(s => 
-          s.roll_no === rollNo || s.name.toLowerCase() === name.toLowerCase()
-        );
-        
-        if (student && !student.email) {
-          await Student.update(student.id, { email });
-          updated++;
-        }
-      }
-      
-      setMessage({ type: "success", text: `${updated} student emails updated` });
-      await loadData();
-      setShowBulkEmailModal(false);
-      setBulkEmailFile(null);
-    } catch (error) {
-      console.error("Error bulk uploading emails:", error);
-      setMessage({ type: "error", text: "Failed to upload emails" });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-6 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -291,15 +234,7 @@ export default function PerformancePage() {
             </h1>
             <p className="text-gray-600">Track and manage student academic performance</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => setShowEmailModal(true)} variant="outline" className="gap-2">
-              <Mail className="w-4 h-4" />
-              Add Email
-            </Button>
-            <Button onClick={() => setShowBulkEmailModal(true)} variant="outline" className="gap-2">
-              <Upload className="w-4 h-4" />
-              Bulk Upload Emails
-            </Button>
+          <div className="flex gap-3">
             <Button onClick={exportToCSV} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
               Export CSV
@@ -495,74 +430,7 @@ export default function PerformancePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Add Email Modal */}
-        <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Student Email</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddEmail} className="space-y-4">
-              <div>
-                <Label>Student *</Label>
-                <Select value={emailFormData.student_id} onValueChange={(value) => setEmailFormData({...emailFormData, student_id: value})}>
-                  <SelectTrigger><SelectValue placeholder="Select student"/></SelectTrigger>
-                  <SelectContent>
-                    {students.map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} ({s.roll_no}) {s.email ? '✓' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Email *</Label>
-                <Input type="email" value={emailFormData.email} onChange={(e) => setEmailFormData({...emailFormData, email: e.target.value})} required />
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setShowEmailModal(false)}>Cancel</Button>
-                <Button type="submit" className="bg-blue-600">Add Email</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Bulk Email Upload Modal */}
-        <Dialog open={showBulkEmailModal} onOpenChange={setShowBulkEmailModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Bulk Upload Student Emails</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleBulkEmailUpload} className="space-y-4">
-              <div>
-                <Label>Upload CSV File</Label>
-                <Input type="file" accept=".csv,.txt" onChange={(e) => setBulkEmailFile(e.target.files[0])} required />
-                <p className="text-xs text-gray-500 mt-2">Format: Name, Roll No, Email (one per line)</p>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => setShowBulkEmailModal(false)}>Cancel</Button>
-                <Button type="submit" className="bg-blue-600">Upload</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
-
-      <style jsx>{`
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-      `}</style>
     </div>
   );
 }

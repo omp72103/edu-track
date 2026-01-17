@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Student, StudentPerformance, AttendanceRecord, AttendanceSession, User } from "@/entities/all";
+import { Student, StudentPerformance, AttendanceRecord, AttendanceSession, User, Announcement } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, TrendingUp, CalendarCheck, User as UserIcon, LogOut } from "lucide-react";
+import { GraduationCap, TrendingUp, CalendarCheck, User as UserIcon, LogOut, Bell, Megaphone, BookOpen, Award, Menu, X, Home, BarChart3 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function StudentPortal() {
   const [user, setUser] = useState(null);
@@ -12,8 +13,11 @@ export default function StudentPortal() {
   const [performance, setPerformance] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadStudentData();
@@ -56,6 +60,15 @@ export default function StudentPortal() {
         batch_id: studentData.batch_id 
       });
       setSessions(sessionData);
+
+      // Load announcements
+      const announcementsData = await Announcement.list('-announcement_date', 10);
+      const relevantAnnouncements = announcementsData.filter(a => 
+        a.recipient_type === "All" || 
+        a.recipient_type === "Students" || 
+        (a.recipient_type === "Batch" && a.batch_id === studentData.batch_id)
+      );
+      setAnnouncements(relevantAnnouncements);
 
     } catch (err) {
       console.error("Error loading student data:", err);
@@ -143,22 +156,435 @@ export default function StudentPortal() {
   const attendancePercentage = calculateAttendancePercentage();
   const averageGrade = calculateAverageGrade();
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">EDU TRACK</h1>
-                <p className="text-sm text-gray-600">Student Portal</p>
-              </div>
+  const navItems = [
+    { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "performance", label: "Performance", icon: BarChart3 },
+    { id: "announcements", label: "Announcements", icon: Megaphone },
+    { id: "profile", label: "Profile", icon: UserIcon },
+  ];
+
+  const renderContent = () => {
+    switch(activeTab) {
+      case "dashboard":
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            {/* Stats Overview */}
+            <div className="grid md:grid-cols-3 gap-6">
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 300 }}>
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 backdrop-blur-lg bg-opacity-80">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
+                      <CalendarCheck className="w-5 h-5" />
+                      Attendance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-blue-600">{attendancePercentage}%</div>
+                    <p className="text-sm text-blue-600 mt-1">
+                      {attendanceRecords.filter(r => r.is_present).length} / {sessions.length} classes
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 300 }}>
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 backdrop-blur-lg bg-opacity-80">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
+                      <Award className="w-5 h-5" />
+                      Average Grade
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-green-600">{averageGrade}</div>
+                    <p className="text-sm text-green-600 mt-1">{performance.length} assessments</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 300 }}>
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 backdrop-blur-lg bg-opacity-80">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Overall Score
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-purple-600">
+                      {performance.length > 0 ? Math.round(performance.reduce((sum, p) => sum + p.percentage, 0) / performance.length) : 0}%
+                    </div>
+                    <p className="text-sm text-purple-600 mt-1">Average performance</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             </div>
-            <Button onClick={() => User.logout()} variant="outline" size="sm">
+
+            {/* Recent Announcements */}
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                  Recent Announcements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {announcements.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No announcements at the moment</p>
+                ) : (
+                  <div className="space-y-3">
+                    {announcements.slice(0, 3).map((announcement) => (
+                      <motion.div 
+                        key={announcement.id} 
+                        whileHover={{ x: 4 }}
+                        className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-gray-900">{announcement.title}</h4>
+                          <Badge className={
+                            announcement.priority === "Urgent" ? "bg-red-100 text-red-700" :
+                            announcement.priority === "High" ? "bg-orange-100 text-orange-700" :
+                            "bg-blue-100 text-blue-700"
+                          }>
+                            {announcement.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-700">{announcement.message}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {new Date(announcement.announcement_date).toLocaleDateString()}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Attendance Summary */}
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle>Attendance Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sessions.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No attendance records available yet</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+                      <div className="text-sm font-medium text-gray-600 mb-1">Total Sessions</div>
+                      <div className="text-3xl font-bold text-gray-900">{sessions.length}</div>
+                    </div>
+                    <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                      <div className="text-sm font-medium text-green-700 mb-1">Present</div>
+                      <div className="text-3xl font-bold text-green-600">{attendanceRecords.filter(r => r.is_present).length}</div>
+                    </div>
+                    <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
+                      <div className="text-sm font-medium text-red-700 mb-1">Absent</div>
+                      <div className="text-3xl font-bold text-red-600">{sessions.length - attendanceRecords.filter(r => r.is_present).length}</div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
+      case "performance":
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-blue-600" />
+                  Academic Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {performance.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No performance records available yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Subject</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Assessment</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Marks</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Percentage</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Grade</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {performance.map((record) => (
+                          <motion.tr 
+                            key={record.id} 
+                            whileHover={{ backgroundColor: "rgba(59, 130, 246, 0.05)" }}
+                            className="transition-colors"
+                          >
+                            <td className="px-4 py-3 text-sm font-medium">{record.subject}</td>
+                            <td className="px-4 py-3 text-sm">{record.assessment_type}</td>
+                            <td className="px-4 py-3 text-sm font-semibold">{record.marks_obtained}/{record.total_marks}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" 
+                                    style={{ width: `${record.percentage}%` }}
+                                  />
+                                </div>
+                                <span className="font-semibold">{record.percentage}%</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <Badge className={
+                                record.grade === "A+" || record.grade === "A" ? "bg-green-100 text-green-800" :
+                                record.grade === "B+" || record.grade === "B" ? "bg-blue-100 text-blue-800" :
+                                "bg-yellow-100 text-yellow-800"
+                              }>
+                                {record.grade}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{record.assessment_date}</td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
+      case "announcements":
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="w-5 h-5 text-blue-600" />
+                  All Announcements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {announcements.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No announcements available</p>
+                ) : (
+                  <div className="space-y-4">
+                    {announcements.map((announcement) => (
+                      <motion.div 
+                        key={announcement.id}
+                        whileHover={{ scale: 1.01 }}
+                        className="p-5 rounded-xl bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 shadow-md"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900">{announcement.title}</h3>
+                            <p className="text-xs text-gray-600 mt-1">
+                              From: {announcement.sender_name} • {new Date(announcement.announcement_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge className={
+                              announcement.priority === "Urgent" ? "bg-red-100 text-red-700" :
+                              announcement.priority === "High" ? "bg-orange-100 text-orange-700" :
+                              announcement.priority === "Medium" ? "bg-yellow-100 text-yellow-700" :
+                              "bg-green-100 text-green-700"
+                            }>
+                              {announcement.priority}
+                            </Badge>
+                            <Badge variant="outline">{announcement.category}</Badge>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">{announcement.message}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
+      case "profile":
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserIcon className="w-5 h-5 text-blue-600" />
+                  My Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-6">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <span className="text-4xl font-bold text-white">{student.name.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h2 className="text-3xl font-bold text-gray-900 mb-1">{student.name}</h2>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                      <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
+                        <div className="text-xs text-gray-600 mb-1">PRN Number</div>
+                        <div className="text-lg font-bold text-gray-900">{student.prn || "N/A"}</div>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
+                        <div className="text-xs text-gray-600 mb-1">Roll Number</div>
+                        <div className="text-lg font-bold text-gray-900">{student.roll_no}</div>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
+                        <div className="text-xs text-gray-600 mb-1">Year</div>
+                        <div className="text-lg font-bold text-gray-900">{student.year}</div>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg">
+                        <div className="text-xs text-gray-600 mb-1">Branch</div>
+                        <div className="text-lg font-bold text-gray-900">{student.branch}</div>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg col-span-2">
+                        <div className="text-xs text-gray-600 mb-1">College</div>
+                        <div className="text-lg font-bold text-gray-900">{student.college_name}</div>
+                      </div>
+                      {student.division && (
+                        <div className="p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg col-span-2">
+                          <div className="text-xs text-gray-600 mb-1">Division</div>
+                          <div className="text-lg font-bold text-gray-900">{student.division}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+        <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+      </div>
+
+      {/* Sidebar */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black z-40 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+            <motion.div
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed left-0 top-0 h-full w-64 bg-white/95 backdrop-blur-xl shadow-2xl z-50 lg:hidden"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl shadow-lg">
+                      <GraduationCap className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-gray-900">EDU TRACK</h2>
+                      <p className="text-xs text-gray-500">Student Portal</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden">
+                    <X className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+                
+                <nav className="space-y-2">
+                  {navItems.map((item) => (
+                    <motion.button
+                      key={item.id}
+                      whileHover={{ x: 4 }}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                        activeTab === item.id
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {item.label}
+                    </motion.button>
+                  ))}
+                </nav>
+
+                <div className="mt-8 pt-6 border-t">
+                  <Button
+                    onClick={() => User.logout()}
+                    variant="outline"
+                    className="w-full justify-start text-red-600 hover:bg-red-50 border-red-200"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block fixed left-0 top-0 h-full w-64 bg-white/95 backdrop-blur-xl shadow-2xl z-30">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-xl shadow-lg">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-900">EDU TRACK</h2>
+              <p className="text-xs text-gray-500">Student Portal</p>
+            </div>
+          </div>
+          
+          <nav className="space-y-2">
+            {navItems.map((item) => (
+              <motion.button
+                key={item.id}
+                whileHover={{ x: 4 }}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                  activeTab === item.id
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </motion.button>
+            ))}
+          </nav>
+
+          <div className="mt-8 pt-6 border-t">
+            <Button
+              onClick={() => User.logout()}
+              variant="outline"
+              className="w-full justify-start text-red-600 hover:bg-red-50 border-red-200"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>
@@ -166,159 +592,69 @@ export default function StudentPortal() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Student Info */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                <UserIcon className="w-8 h-8 text-blue-600" />
+      {/* Main Content */}
+      <div className="lg:ml-64 relative z-10">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-xl shadow-md sticky top-0 z-20 border-b border-gray-200">
+          <div className="px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <Menu className="w-6 h-6 text-gray-700" />
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Welcome back, {student?.name?.split(' ')[0]}!
+                  </h1>
+                  <p className="text-sm text-gray-600">Have a great learning day</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900">{student.name}</h2>
-                <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">PRN:</span>
-                    <span className="ml-2 font-semibold">{student.prn}</span>
+              
+              <div className="flex items-center gap-3">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <button className="relative p-2 rounded-full bg-gradient-to-br from-blue-50 to-indigo-100 hover:from-blue-100 hover:to-indigo-200">
+                    <Bell className="w-5 h-5 text-blue-600" />
+                    {announcements.length > 0 && (
+                      <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full" />
+                    )}
+                  </button>
+                </motion.div>
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                    {student?.name?.charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <span className="text-gray-500">Roll No:</span>
-                    <span className="ml-2 font-semibold">{student.roll_no}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Year:</span>
-                    <span className="ml-2 font-semibold">{student.year}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Branch:</span>
-                    <span className="ml-2 font-semibold">{student.branch}</span>
-                  </div>
+                  <span className="font-medium text-gray-900 text-sm">{student?.roll_no}</span>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </header>
 
-        {/* Stats Overview */}
-        <div className="grid md:grid-cols-3 gap-6 mb-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <CalendarCheck className="w-4 h-4" />
-                Attendance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">{attendancePercentage}%</div>
-              <p className="text-sm text-gray-500 mt-1">
-                {attendanceRecords.filter(r => r.is_present).length} / {sessions.length} classes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Average Grade
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">{averageGrade}</div>
-              <p className="text-sm text-gray-500 mt-1">{performance.length} assessments</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <GraduationCap className="w-4 h-4" />
-                Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-600">
-                {performance.length > 0 ? Math.round(performance.reduce((sum, p) => sum + p.percentage, 0) / performance.length) : 0}%
-              </div>
-              <p className="text-sm text-gray-500 mt-1">Overall average</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Performance Records */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Academic Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {performance.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No performance records available yet</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assessment</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Marks</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {performance.map((record) => (
-                      <tr key={record.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-medium">{record.subject}</td>
-                        <td className="px-4 py-3 text-sm">{record.assessment_type}</td>
-                        <td className="px-4 py-3 text-sm">{record.marks_obtained}/{record.total_marks}</td>
-                        <td className="px-4 py-3 text-sm">{record.percentage}%</td>
-                        <td className="px-4 py-3 text-sm">
-                          <Badge className={
-                            record.grade === "A+" || record.grade === "A" ? "bg-green-100 text-green-800" :
-                            record.grade === "B+" || record.grade === "B" ? "bg-blue-100 text-blue-800" :
-                            "bg-yellow-100 text-yellow-800"
-                          }>
-                            {record.grade}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{record.assessment_date}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Attendance Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Attendance Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sessions.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No attendance records available yet</p>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium">Total Sessions</span>
-                  <span className="font-bold">{sessions.length}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <span className="text-sm font-medium">Present</span>
-                  <span className="font-bold text-green-600">{attendanceRecords.filter(r => r.is_present).length}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                  <span className="text-sm font-medium">Absent</span>
-                  <span className="font-bold text-red-600">{sessions.length - attendanceRecords.filter(r => r.is_present).length}</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Page Content */}
+        <main className="px-4 py-6 sm:px-6 lg:px-8">
+          {renderContent()}
+        </main>
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+      `}</style>
     </div>
   );
 }

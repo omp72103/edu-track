@@ -16,7 +16,11 @@ import {
   Menu,
   GraduationCap,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Calendar,
+  MessageSquare,
+  Megaphone,
+  Sparkles
 } from "lucide-react";
 
 const mainNavItems = [

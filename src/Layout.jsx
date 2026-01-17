@@ -20,7 +20,9 @@ import {
   Calendar,
   MessageSquare,
   Megaphone,
-  Sparkles
+  Sparkles,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 const mainNavItems = [
@@ -51,6 +53,7 @@ export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
@@ -158,25 +161,35 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'} w-64`}>
         <div className="flex flex-col h-full">
           {/* Logo Section */}
-          <div className="p-6 border-b">
+          <div className="p-6 border-b relative">
             <div className="flex items-center gap-3">
               <div className="bg-blue-600 p-2 rounded-lg">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-lg text-gray-800">EDU TRACK</span>
-                <span className="text-xs text-gray-500">Education Management</span>
-              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col">
+                  <span className="font-bold text-lg text-gray-800">EDU TRACK</span>
+                  <span className="text-xs text-gray-500">Education Management</span>
+                </div>
+              )}
             </div>
+            {/* Collapse Button - Desktop Only */}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+              title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 flex flex-col gap-4 p-4">
+          <div className="flex-1 flex flex-col gap-4 p-4 overflow-y-auto">
             <div>
-              <span className="text-xs font-semibold text-gray-500 px-3">MAIN MENU</span>
+              {!isSidebarCollapsed && <span className="text-xs font-semibold text-gray-500 px-3">MAIN MENU</span>}
               <div className="mt-2 space-y-1">
                 {mainNavItems.map((item) => {
                   const isActive = location.pathname.startsWith(createPageUrl(item.name));
@@ -188,11 +201,12 @@ export default function Layout({ children, currentPageName }) {
                         isActive 
                           ? 'bg-blue-100 text-blue-700' 
                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                      }`}
+                      } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                       onClick={() => setIsSidebarOpen(false)}
+                      title={isSidebarCollapsed ? (item.label || item.name) : ''}
                     >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.label || item.name}</span>
+                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
                     </Link>
                   );
                 })}
@@ -201,7 +215,7 @@ export default function Layout({ children, currentPageName }) {
             
             {user && user.role === 'admin' && (
               <div>
-                <span className="text-xs font-semibold text-gray-500 px-3">ADMIN</span>
+                {!isSidebarCollapsed && <span className="text-xs font-semibold text-gray-500 px-3">ADMIN</span>}
                 <div className="mt-2 space-y-1">
                   {adminNavItems.map((item) => {
                     const isActive = location.pathname.startsWith(createPageUrl(item.name));
@@ -213,11 +227,12 @@ export default function Layout({ children, currentPageName }) {
                           isActive 
                             ? 'bg-blue-100 text-blue-700' 
                             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                        }`}
+                        } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                         onClick={() => setIsSidebarOpen(false)}
+                        title={isSidebarCollapsed ? (item.label || item.name) : ''}
                       >
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.label || item.name}</span>
+                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
                       </Link>
                     );
                   })}
@@ -228,7 +243,7 @@ export default function Layout({ children, currentPageName }) {
 
           {/* User Section */}
           <div className="p-4 border-t">
-            {user && (
+            {user && !isSidebarCollapsed && (
               <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 mb-3">
                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
                   {user.full_name.charAt(0).toUpperCase()}
@@ -239,12 +254,20 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               </div>
             )}
+            {user && isSidebarCollapsed && (
+              <div className="flex justify-center mb-3">
+                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold" title={user.full_name}>
+                  {user.full_name.charAt(0).toUpperCase()}
+                </div>
+              </div>
+            )}
             <button
               onClick={() => User.logout()}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors w-full"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors w-full ${isSidebarCollapsed ? 'justify-center' : ''}`}
+              title={isSidebarCollapsed ? 'Logout' : ''}
             >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              {!isSidebarCollapsed && <span>Logout</span>}
             </button>
           </div>
         </div>

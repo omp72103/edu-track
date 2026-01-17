@@ -581,11 +581,22 @@ export default function UploadPage() {
                     ) : batchType === "custom" ? (
                       <div className="space-y-4">
                         <div>
+                          <label className="font-semibold text-slate-700">Year Filter</label>
+                          <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value, custom_batch_id: ""})}>
+                            <SelectTrigger><SelectValue placeholder="All years"/></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={null}>All Years</SelectItem>
+                              <SelectItem value="Second Year">Second Year</SelectItem>
+                              <SelectItem value="Third Year">Third Year</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
                           <label className="font-semibold text-slate-700">Select Custom Batch *</label>
                           <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})}>
                             <SelectTrigger><SelectValue placeholder="Select custom batch"/></SelectTrigger>
                             <SelectContent>
-                              {customBatches.map(batch => (
+                              {customBatches.filter(b => !formData.year || b.year === formData.year).map(batch => (
                                 <SelectItem key={batch.id} value={batch.id}>
                                   {batch.batch_name} - {batch.college_name}
                                 </SelectItem>

@@ -13,6 +13,8 @@ import ManageFaculty from './pages/ManageFaculty';
 import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
 import Upload from './pages/Upload';
+import ManageTimeTable from './pages/ManageTimeTable';
+import StudentPerformance from './pages/StudentPerformance';
 import __Layout from './Layout.jsx';
 
 
@@ -32,6 +34,8 @@ export const PAGES = {
     "QRAttendance": QRAttendance,
     "QRAttendanceStudent": QRAttendanceStudent,
     "Upload": Upload,
+    "ManageTimeTable": ManageTimeTable,
+    "StudentPerformance": StudentPerformance,
 }
 
 export const pagesConfig = {

@@ -51,6 +51,7 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   
   const [user, setUser] = useState(null);
+  const [isStudent, setIsStudent] = useState(false);
   const [userLoading, setUserLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -84,9 +85,17 @@ export default function Layout({ children, currentPageName }) {
             const studentRecords = await Student.filter({ email: currentUser.email });
             
             if (studentRecords.length > 0) {
-              // User is a student - redirect to student portal
-              console.log("👨‍🎓 Student detected, redirecting to Student Portal...");
-              window.location.href = createPageUrl("StudentPortal");
+              // User is a student - they should ONLY access StudentPortal
+              console.log("👨‍🎓 Student detected:", currentUser.email);
+              setIsStudent(true);
+              setUser(currentUser);
+              setUserLoading(false);
+              
+              // If not already on StudentPortal, redirect
+              if (currentPageName !== "StudentPortal") {
+                console.log("🔄 Redirecting to Student Portal...");
+                window.location.href = createPageUrl("StudentPortal");
+              }
               return;
             }
             
@@ -144,6 +153,30 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
+  // If user is a student, block faculty dashboard access
+  if (isStudent && currentPageName !== "StudentPortal") {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="mb-6">
+            <div className="bg-blue-600 p-3 rounded-lg inline-block mb-4">
+              <GraduationCap className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">EDU TRACK</h1>
+            <p className="text-gray-600">Student Portal Access Only</p>
+          </div>
+          <p className="text-gray-700 mb-6">You are logged in as a student. Redirecting to Student Portal...</p>
+          <button 
+            onClick={() => window.location.href = createPageUrl("StudentPortal")}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+          >
+            Go to Student Portal
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Not logged in - show login prompt
   if (!user) {
     return (
@@ -156,7 +189,7 @@ export default function Layout({ children, currentPageName }) {
             <h1 className="text-2xl font-bold text-gray-900">EDU TRACK</h1>
             <p className="text-gray-600">Education Management Platform</p>
           </div>
-          <p className="text-gray-700 mb-6">Please log in to access the faculty dashboard.</p>
+          <p className="text-gray-700 mb-6">Please log in to access the dashboard.</p>
           <button 
             onClick={() => User.login()}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"

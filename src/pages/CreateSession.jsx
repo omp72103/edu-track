@@ -257,25 +257,30 @@ export default function CreateSession() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 md:p-8 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 -right-20 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+      
+      <div className="max-w-4xl mx-auto relative z-10">
          <div className="flex items-center gap-4 mb-8">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate(createPageUrl("Dashboard"))}
-            className="bg-white"
+            className="backdrop-blur-md bg-white/70 border-white/50 hover:bg-white/90"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Create New Session</h1>
-            <p className="text-slate-600 mt-1">Schedule a new attendance session for your class</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Create New Session</h1>
+            <p className="text-gray-700 mt-1">Schedule a new attendance session for your class</p>
           </div>
         </div>
 
         {user && (
-            <Alert className="mb-6 bg-blue-50 border-blue-200">
+            <Alert className="mb-6 backdrop-blur-xl bg-blue-50/80 border-blue-200/50">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
                     Logged in as: <strong>{user.full_name || user.email}</strong>.
@@ -285,16 +290,16 @@ export default function CreateSession() {
         )}
 
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-6 backdrop-blur-xl bg-red-50/80 border-red-200/50">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <Card className="shadow-md border-slate-200 bg-white">
-          <CardHeader className="bg-slate-100 border-b">
-            <CardTitle className="text-xl flex items-center gap-3 text-slate-800">
+        <Card className="backdrop-blur-xl bg-white/70 border-white/50 shadow-2xl">
+          <CardHeader className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-b border-white/30">
+            <CardTitle className="text-xl flex items-center gap-3 text-gray-900">
               <CalendarIcon className="w-6 h-6" />
               Session Details
             </CardTitle>
@@ -492,8 +497,8 @@ export default function CreateSession() {
               </div>
 
               <div className="flex justify-end gap-4 pt-6 border-t">
-                <Button type="button" variant="outline" onClick={() => navigate(createPageUrl("Dashboard"))} className="px-8 bg-white">Cancel</Button>
-                <Button type="submit" disabled={isLoading} className="px-8 bg-blue-600 hover:bg-blue-700">
+                <Button type="button" variant="outline" onClick={() => navigate(createPageUrl("Dashboard"))} className="px-8 backdrop-blur-md bg-white/70">Cancel</Button>
+                <Button type="submit" disabled={isLoading} className="px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                   {isLoading ? 'Creating...' : 'Create Session'}
                 </Button>
               </div>
@@ -501,6 +506,21 @@ export default function CreateSession() {
           </CardContent>
         </Card>
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   );
 }

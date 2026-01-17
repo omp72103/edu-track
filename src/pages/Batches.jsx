@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Batch, Student, Session, AttendanceRecord } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -192,15 +191,20 @@ export default function BatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-8 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 -right-20 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           {/* Back button removed as per new UI */}
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
               📚 Manage Batches
             </h1>
-            <p className="text-slate-600 mt-1">View, export, and manage all student batches</p>
+            <p className="text-gray-700 mt-1">View, export, and manage all student batches</p>
           </div>
           <Button onClick={() => setCreateModalOpen(true)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg">
             <PlusCircle className="w-4 h-4 mr-2" />
@@ -209,9 +213,9 @@ export default function BatchesPage() {
         </div>
 
         {/* Enhanced Filter Card */}
-        <Card className="mb-6 shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-2">
+        <Card className="mb-6 backdrop-blur-xl bg-white/70 border-white/50 shadow-2xl">
+          <CardHeader className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-b border-white/30">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
               <Filter className="w-5 h-5" />
               🔍 Search & Filter Batches
             </CardTitle>
@@ -262,9 +266,9 @@ export default function BatchesPage() {
         </Card>
 
         {/* Enhanced Batches Table */}
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-2">
+        <Card className="backdrop-blur-xl bg-white/70 border-white/50 shadow-2xl">
+          <CardHeader className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border-b border-white/30">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
               <Users className="w-5 h-5" />
               📋 Batches Overview ({filteredBatches.length})
             </CardTitle>
@@ -474,6 +478,21 @@ export default function BatchesPage() {
         onClose={() => setCreateModalOpen(false)}
         onBatchCreated={loadBatches} // Reload batches after a new one is created
       />
+
+      <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   );
 }

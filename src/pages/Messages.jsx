@@ -96,19 +96,25 @@ export default function MessagesPage() {
   const displayMessages = activeTab === "inbox" ? inbox : sent;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <MessageSquare className="w-8 h-8 text-blue-600" />
-              Messages
-            </h1>
-            <p className="text-gray-600">Direct messaging with faculty and students</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-6 relative overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-40 -right-40 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-20 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
+        <div className="backdrop-blur-xl bg-white/60 rounded-3xl border border-white/50 shadow-2xl p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-3">
+                <MessageSquare className="w-8 h-8 text-purple-600" />
+                Messages
+              </h1>
+              <p className="text-gray-700">Direct messaging with faculty and students</p>
+            </div>
           <Dialog open={showComposeModal} onOpenChange={setShowComposeModal}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
+              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg gap-2">
                 <Plus className="w-4 h-4" />
                 Compose
               </Button>
@@ -176,8 +182,8 @@ export default function MessagesPage() {
           </Button>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
+        <div className="backdrop-blur-xl bg-white/70 rounded-2xl border border-white/50 shadow-2xl overflow-hidden">
+          <div className="p-6">
             {displayMessages.length === 0 ? (
               <div className="text-center py-12">
                 <Mail className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -209,8 +215,8 @@ export default function MessagesPage() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {selectedMessage && (
           <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
@@ -234,6 +240,21 @@ export default function MessagesPage() {
           </Dialog>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   );
 }

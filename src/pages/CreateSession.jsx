@@ -389,27 +389,40 @@ export default function CreateSession() {
                     </div>
                 )}
                 {batchType === 'custom' && (
-                    <div className="pt-4">
-                        <Label htmlFor="custom_batch" className="font-semibold text-slate-700">Custom Batch *</Label>
-                        <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})} required>
-                            <SelectTrigger className="mt-2"><SelectValue placeholder="Select custom batch" /></SelectTrigger>
+                    <div className="pt-4 space-y-4">
+                        <div>
+                          <Label className="font-semibold text-slate-700">Year Filter</Label>
+                          <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value, custom_batch_id: ""})}>
+                            <SelectTrigger className="mt-2"><SelectValue placeholder="All years" /></SelectTrigger>
                             <SelectContent>
-                                {customBatches.length === 0 ? (
-                                  <SelectItem value={null} disabled>No custom batches found</SelectItem>
-                                ) : (
-                                  customBatches.map((b) => (
-                                    <SelectItem key={b.id} value={b.id}>
-                                      {b.batch_name} - {b.college_name}
-                                    </SelectItem>
-                                  ))
-                                )}
+                              <SelectItem value={null}>All Years</SelectItem>
+                              <SelectItem value="Second Year">Second Year</SelectItem>
+                              <SelectItem value="Third Year">Third Year</SelectItem>
                             </SelectContent>
-                        </Select>
-                        {customBatches.length === 0 && (
-                          <p className="text-sm text-gray-500 mt-2">
-                            No custom batches found. Contact admin to create custom batches.
-                          </p>
-                        )}
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="custom_batch" className="font-semibold text-slate-700">Custom Batch *</Label>
+                          <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})} required>
+                              <SelectTrigger className="mt-2"><SelectValue placeholder="Select custom batch" /></SelectTrigger>
+                              <SelectContent>
+                                  {customBatches.filter(b => !formData.year || b.year === formData.year).length === 0 ? (
+                                    <SelectItem value={null} disabled>No custom batches found</SelectItem>
+                                  ) : (
+                                    customBatches.filter(b => !formData.year || b.year === formData.year).map((b) => (
+                                      <SelectItem key={b.id} value={b.id}>
+                                        {b.batch_name} - {b.college_name}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                              </SelectContent>
+                          </Select>
+                          {customBatches.length === 0 && (
+                            <p className="text-sm text-gray-500 mt-2">
+                              No custom batches found. Contact admin to create custom batches.
+                            </p>
+                          )}
+                        </div>
                     </div>
                 )}
                 {batchType === 'private' && (

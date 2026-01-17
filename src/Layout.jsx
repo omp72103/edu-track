@@ -25,8 +25,11 @@ const mainNavItems = [
   { name: "Upload", label: "Upload Students", icon: Upload },
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck },
   { name: "Batches", label: "Manage Batches", icon: Users },
-  { name: "ManageTimeTable", label: "Time Table", icon: CalendarCheck },
-  { name: "StudentPerformance", label: "Performance", icon: TrendingUp },
+  { name: "TimeTable", label: "Timetable", icon: Calendar },
+  { name: "Performance", label: "Performance", icon: TrendingUp },
+  { name: "Announcements", label: "Announcements", icon: Megaphone },
+  { name: "Messages", label: "Messages", icon: MessageSquare },
+  { name: "AITimetableGenerator", label: "AI Timetable", icon: Sparkles },
 ];
 
 const adminNavItems = [

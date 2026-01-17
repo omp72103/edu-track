@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Student, StudentPerformance, AttendanceRecord, AttendanceSession, User, Announcement } from "@/entities/all";
+import { Student, StudentPerformance, AttendanceRecord, AttendanceSession, User, Announcement, TimeTable, Session } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, TrendingUp, CalendarCheck, User as UserIcon, LogOut, Bell, Megaphone, BookOpen, Award, Menu, X, Home, BarChart3 } from "lucide-react";
+import { GraduationCap, TrendingUp, CalendarCheck, User as UserIcon, LogOut, Bell, Megaphone, BookOpen, Award, Menu, X, Home, BarChart3, Calendar, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -14,6 +14,8 @@ export default function StudentPortal() {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [timetable, setTimetable] = useState([]);
+  const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -69,6 +71,16 @@ export default function StudentPortal() {
         (a.recipient_type === "Batch" && a.batch_id === studentData.batch_id)
       );
       setAnnouncements(relevantAnnouncements);
+
+      // Load timetable
+      const timetableData = await TimeTable.filter({ batch_id: studentData.batch_id });
+      setTimetable(timetableData);
+
+      // Load upcoming sessions
+      const sessionsData = await Session.filter({ batch_id: studentData.batch_id });
+      const today = new Date();
+      const upcoming = sessionsData.filter(s => new Date(s.session_date) >= today).sort((a, b) => new Date(a.session_date) - new Date(b.session_date));
+      setUpcomingSessions(upcoming.slice(0, 5));
 
     } catch (err) {
       console.error("Error loading student data:", err);
@@ -158,10 +170,36 @@ export default function StudentPortal() {
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "attendance", label: "Attendance", icon: CalendarCheck },
     { id: "performance", label: "Performance", icon: BarChart3 },
+    { id: "timetable", label: "Timetable", icon: Calendar },
     { id: "announcements", label: "Announcements", icon: Megaphone },
     { id: "profile", label: "Profile", icon: UserIcon },
   ];
+
+  const calculateSubjectWiseAttendance = () => {
+    const subjectMap = {};
+    
+    sessions.forEach(session => {
+      const subject = session.session_name || "General";
+      if (!subjectMap[subject]) {
+        subjectMap[subject] = { total: 0, present: 0 };
+      }
+      subjectMap[subject].total++;
+      
+      const attendance = attendanceRecords.find(r => r.session_id === session.id);
+      if (attendance && attendance.is_present) {
+        subjectMap[subject].present++;
+      }
+    });
+
+    return Object.entries(subjectMap).map(([subject, data]) => ({
+      subject,
+      total: data.total,
+      present: data.present,
+      percentage: data.total > 0 ? Math.round((data.present / data.total) * 100) : 0
+    }));
+  };
 
   const renderContent = () => {
     switch(activeTab) {
@@ -260,6 +298,42 @@ export default function StudentPortal() {
               </CardContent>
             </Card>
 
+            {/* Upcoming Classes */}
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Upcoming Classes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {upcomingSessions.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No upcoming sessions scheduled</p>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingSessions.map((session) => (
+                      <motion.div
+                        key={session.id}
+                        whileHover={{ x: 4 }}
+                        className="p-4 rounded-lg bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{session.topic_taught}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{session.faculty_name}</p>
+                          </div>
+                          <Badge className="bg-indigo-100 text-indigo-700">
+                            {new Date(session.session_date).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">{session.session_time} • {session.duration}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Attendance Summary */}
             <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
               <CardHeader>
@@ -282,6 +356,115 @@ export default function StudentPortal() {
                       <div className="text-sm font-medium text-red-700 mb-1">Absent</div>
                       <div className="text-3xl font-bold text-red-600">{sessions.length - attendanceRecords.filter(r => r.is_present).length}</div>
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
+      case "attendance":
+        const subjectWiseAttendance = calculateSubjectWiseAttendance();
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarCheck className="w-5 h-5 text-blue-600" />
+                  Overall Attendance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-center mb-6">
+                  <div className="relative w-40 h-40">
+                    <svg className="transform -rotate-90 w-40 h-40">
+                      <circle cx="80" cy="80" r="70" stroke="#e5e7eb" strokeWidth="12" fill="none" />
+                      <circle 
+                        cx="80" 
+                        cy="80" 
+                        r="70" 
+                        stroke="url(#gradient)" 
+                        strokeWidth="12" 
+                        fill="none"
+                        strokeDasharray={`${(attendancePercentage / 100) * 440} 440`}
+                        strokeLinecap="round"
+                      />
+                      <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#8b5cf6" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        {attendancePercentage}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">{sessions.length}</div>
+                    <div className="text-sm text-gray-500">Total Classes</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">{attendanceRecords.filter(r => r.is_present).length}</div>
+                    <div className="text-sm text-gray-500">Present</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-red-600">{sessions.length - attendanceRecords.filter(r => r.is_present).length}</div>
+                    <div className="text-sm text-gray-500">Absent</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-blue-600" />
+                  Subject-wise Attendance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {subjectWiseAttendance.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No subject data available</p>
+                ) : (
+                  <div className="space-y-4">
+                    {subjectWiseAttendance.map((item, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200"
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-semibold text-gray-900">{item.subject}</h4>
+                          <Badge className={
+                            item.percentage >= 75 ? "bg-green-100 text-green-700" :
+                            item.percentage >= 60 ? "bg-yellow-100 text-yellow-700" :
+                            "bg-red-100 text-red-700"
+                          }>
+                            {item.percentage}%
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${item.percentage}%` }}
+                              transition={{ duration: 0.5, delay: index * 0.1 }}
+                              className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full"
+                            />
+                          </div>
+                          <span className="text-sm text-gray-600 font-medium">
+                            {item.present}/{item.total}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -399,6 +582,75 @@ export default function StudentPortal() {
                         </div>
                         <p className="text-gray-700 leading-relaxed">{announcement.message}</p>
                       </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        );
+
+      case "timetable":
+        const daysOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const groupedTimetable = daysOrder.reduce((acc, day) => {
+          acc[day] = timetable.filter(t => t.day_of_week === day).sort((a, b) => a.time_slot.localeCompare(b.time_slot));
+          return acc;
+        }, {});
+
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="backdrop-blur-md bg-white/90 border-gray-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  Weekly Timetable
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {timetable.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No timetable available</p>
+                ) : (
+                  <div className="space-y-6">
+                    {daysOrder.map((day) => (
+                      groupedTimetable[day] && groupedTimetable[day].length > 0 && (
+                        <div key={day}>
+                          <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600" />
+                            {day}
+                          </h3>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {groupedTimetable[day].map((slot, index) => (
+                              <motion.div
+                                key={index}
+                                whileHover={{ scale: 1.02 }}
+                                className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200"
+                              >
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <h4 className="font-bold text-gray-900">{slot.subject}</h4>
+                                    <p className="text-sm text-gray-600 mt-1">{slot.faculty_name}</p>
+                                  </div>
+                                  <Badge className="bg-indigo-100 text-indigo-700">
+                                    {slot.class_type || "Lecture"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-gray-600 mt-3">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="w-4 h-4" />
+                                    {slot.time_slot}
+                                  </div>
+                                  {slot.room_number && (
+                                    <div className="flex items-center gap-1">
+                                      <BookOpen className="w-4 h-4" />
+                                      Room {slot.room_number}
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+                      )
                     ))}
                   </div>
                 )}

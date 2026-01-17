@@ -20,6 +20,7 @@ import Performance from './pages/Performance';
 import Announcements from './pages/Announcements';
 import Messages from './pages/Messages';
 import AITimetableGenerator from './pages/AITimetableGenerator';
+import StudentPortal from './pages/StudentPortal';
 import __Layout from './Layout.jsx';
 
 
@@ -46,6 +47,7 @@ export const PAGES = {
     "Announcements": Announcements,
     "Messages": Messages,
     "AITimetableGenerator": AITimetableGenerator,
+    "StudentPortal": StudentPortal,
 }
 
 export const pagesConfig = {

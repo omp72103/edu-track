@@ -54,8 +54,14 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     const fetchUser = async () => {
-      // Public page - no auth needed
+      // Public pages - no auth needed
       if (currentPageName === "QRAttendanceStudent") {
+        setUserLoading(false);
+        return;
+      }
+
+      // Student portal - separate auth flow
+      if (currentPageName === "StudentPortal") {
         setUserLoading(false);
         return;
       }
@@ -106,8 +112,8 @@ export default function Layout({ children, currentPageName }) {
     fetchUser();
   }, [currentPageName]);
 
-  // Public student page - render without layout
-  if (currentPageName === "QRAttendanceStudent") {
+  // Public pages - render without layout
+  if (currentPageName === "QRAttendanceStudent" || currentPageName === "StudentPortal") {
     return <>{children}</>;
   }
 

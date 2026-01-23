@@ -131,53 +131,6 @@ export default function CreateSession() {
       sessionBranch = BRANCH_NAME;
       sessionDivision = formData.division;
 
-      if (false) { // Disabled batch selection - all sessions are standard KIT AIML batches
-        if (batchType === "custom") {
-        if (!formData.custom_batch_id) {
-          setError("Please select a Custom Batch.");
-          setIsLoading(false);
-          return;
-        }
-
-        const selectedCustomBatch = customBatches.find(b => b.id === formData.custom_batch_id);
-        if (!selectedCustomBatch) {
-            setError("Selected custom batch not found.");
-            setIsLoading(false);
-            return;
-        }
-        batchId = selectedCustomBatch.batch_id;
-        batchName = selectedCustomBatch.batch_name;
-        batchDescription = selectedCustomBatch.batch_description || selectedCustomBatch.batch_name;
-        sessionCollege = selectedCustomBatch.college_name;
-        sessionYear = selectedCustomBatch.year;
-        sessionBranch = undefined;
-        sessionDivision = undefined;
-      } else { // Private batch
-        if (!formData.private_batch_id) {
-          setError("Please select a Private Batch.");
-          setIsLoading(false);
-          return;
-        }
-
-        const selectedPrivateBatch = privateBatches.find(b => b.id === formData.private_batch_id);
-        if (!selectedPrivateBatch) {
-            setError("Selected private batch not found. Please refresh and try again.");
-            setIsLoading(false);
-            return;
-        }
-
-        // Use private batch data for batch_id, name, description
-        batchId = selectedPrivateBatch.batch_id;
-        batchName = selectedPrivateBatch.batch_name;
-        batchDescription = selectedPrivateBatch.batch_description || selectedPrivateBatch.batch_name; // Fallback to batch_name
-
-        // Set generic values for session context for private batches
-        sessionCollege = "Private Training";
-        sessionYear = "Mixed";
-        sessionBranch = undefined;
-        sessionDivision = undefined;
-      }
-
       // Create batch if it doesn't exist
       const existingBatches = await base44.entities.Batch.filter({ batch_id: batchId });
       if (existingBatches.length === 0) {

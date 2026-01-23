@@ -25,7 +25,8 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPin,
-  X
+  X,
+  User as UserIcon
 } from "lucide-react";
 
 // Faculty Nav Items (visible to both admin and faculty)
@@ -48,7 +49,7 @@ const adminNavItems = [
 ];
 
 const commonNavItems = [
-  { name: "Profile", label: "My Profile", icon: User },
+  { name: "Profile", label: "My Profile", icon: UserIcon },
 ];
 
 export default function Layout({ children, currentPageName }) {

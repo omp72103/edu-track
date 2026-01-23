@@ -77,6 +77,12 @@ export default function AITimetableGenerator() {
     try {
       const batch = batches.find(b => b.id === selectedBatch);
       
+      if (!batch) {
+        setMessage({ type: "error", text: "Selected batch not found" });
+        setIsGenerating(false);
+        return;
+      }
+      
       // Build faculty-subject mapping
       const facultyMapping = Object.entries(facultySubjects)
         .filter(([_, subjects]) => subjects.length > 0)
@@ -512,7 +518,7 @@ Generate ONLY valid JSON with this structure for ALL lectures across ALL working
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
                   <h4 className="font-semibold text-green-900">Ready to Generate:</h4>
                   <p className="text-sm text-green-700">✓ Academic Year: {academicYear}</p>
-                  <p className="text-sm text-green-700">✓ Batch: {batches.find(b => b.id === selectedBatch)?.batch_name}</p>
+                  <p className="text-sm text-green-700">✓ Batch: {batches.find(b => b.id === selectedBatch)?.batch_name || "Not selected"}</p>
                   <p className="text-sm text-green-700">✓ Subjects: {subjectData.length}</p>
                   <p className="text-sm text-green-700">✓ Working Days: {timetableStructure.working_days}</p>
                   <p className="text-sm text-green-700">✓ Lectures/Day: {timetableStructure.lectures_per_day}</p>
@@ -575,7 +581,7 @@ Generate ONLY valid JSON with this structure for ALL lectures across ALL working
         {generatedTimetable && (
           <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-2xl">
             <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-              <CardTitle className="text-2xl">📅 Generated Timetable - {generatedTimetable.batch_name}</CardTitle>
+              <CardTitle className="text-2xl">📅 Generated Timetable{generatedTimetable.batch_name ? ` - ${generatedTimetable.batch_name}` : ''}</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="overflow-x-auto">

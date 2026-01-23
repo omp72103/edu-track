@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Plus, Users, Calendar, TrendingUp, Clock, Mail } from "lucide-react";
+import { Plus, Users, Calendar, TrendingUp, Clock, Mail, UserCog } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingEmails, setIsSendingEmails] = useState(false);
   const [emailMessage, setEmailMessage] = useState(null);
+  const [facultyCount, setFacultyCount] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -28,16 +29,18 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [sessionsData, allStudents, batchesData] = await Promise.all([
+      const [sessionsData, allStudents, batchesData, facultyData] = await Promise.all([
         Session.list("-created_date", 20),
         Student.list(),
-        Batch.list("-created_date", 10)
+        Batch.list("-created_date", 10),
+        base44.entities.Faculty.list()
       ]);
       
       setSessions(sessionsData);
       setStudents(allStudents);
       setStudentCount(allStudents.length);
       setBatches(batchesData);
+      setFacultyCount(facultyData.length);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
     }
@@ -157,12 +160,6 @@ EDU TRACK Team`;
                   Create Session
                 </Button>
               </Link>
-              <Link to={createPageUrl("Attendance")} className="flex-1 md:flex-none">
-                <Button variant="outline" className="w-full backdrop-blur-md bg-white/50 border-white/50 hover:bg-white/70">
-                  <Calendar className="w-5 h-5 mr-2" />
-                  Take Attendance
-                </Button>
-              </Link>
             </div>
           </div>
         </div>
@@ -176,7 +173,7 @@ EDU TRACK Team`;
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="group backdrop-blur-xl bg-gradient-to-br from-blue-500/20 to-blue-600/30 rounded-2xl border border-white/50 shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-600/0 group-hover:from-blue-500/10 group-hover:to-blue-600/10 transition-all"></div>
             <div className="relative z-10">
@@ -230,6 +227,20 @@ EDU TRACK Team`;
               <p className="text-sm font-medium text-orange-900 mb-2">Avg Attendance</p>
               <p className="text-4xl font-bold text-orange-700">{avgAttendance.toFixed(1)}%</p>
               <p className="text-xs text-orange-600 mt-2">Overall average</p>
+            </div>
+          </div>
+
+          <div className="group backdrop-blur-xl bg-gradient-to-br from-indigo-500/20 to-indigo-600/30 rounded-2xl border border-white/50 shadow-xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/0 to-indigo-600/0 group-hover:from-indigo-500/10 group-hover:to-indigo-600/10 transition-all"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl shadow-lg">
+                  <UserCog className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <p className="text-sm font-medium text-indigo-900 mb-2">Total Faculty</p>
+              <p className="text-4xl font-bold text-indigo-700">{facultyCount}</p>
+              <p className="text-xs text-indigo-600 mt-2">AIML Department</p>
             </div>
           </div>
         </div>

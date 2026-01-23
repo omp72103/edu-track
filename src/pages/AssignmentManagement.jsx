@@ -1,0 +1,569 @@
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Edit, Trash2, Eye, FileText, Upload, Download, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { format, isPast } from "date-fns";
+import { toast } from "sonner";
+
+export default function AssignmentManagement() {
+  const [user, setUser] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEvaluateModalOpen, setIsEvaluateModalOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    subject: "",
+    batch_id: "",
+    deadline: "",
+    max_marks: 100,
+    assignment_type: "Individual",
+    attachment_url: ""
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      const [assignmentsList, batchesList] = await Promise.all([
+        base44.entities.Assignment.filter({ faculty_email: currentUser.email }, '-created_date'),
+        base44.entities.Batch.list()
+      ]);
+
+      setAssignments(assignmentsList);
+      setBatches(batchesList);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+    setLoading(false);
+  };
+
+  const handleCreateAssignment = async () => {
+    try {
+      const selectedBatch = batches.find(b => b.batch_id === formData.batch_id);
+      
+      await base44.entities.Assignment.create({
+        ...formData,
+        faculty_email: user.email,
+        faculty_name: user.full_name,
+        college_name: selectedBatch?.college_name || "KIT's College of Engineering, Kolhapur",
+        year: selectedBatch?.year || "",
+        branch: selectedBatch?.branch || "Artificial Intelligence & Machine Learning",
+        status: 'active'
+      });
+
+      await fetchData();
+      setIsCreateModalOpen(false);
+      resetForm();
+      toast.success("Assignment created successfully!");
+    } catch (error) {
+      console.error("Error creating assignment:", error);
+      toast.error("Failed to create assignment");
+    }
+  };
+
+  const handleDeleteAssignment = async (id) => {
+    if (!confirm("Delete this assignment? All submissions will be lost.")) return;
+    
+    try {
+      await base44.entities.Assignment.delete(id);
+      await fetchData();
+      toast.success("Assignment deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast.error("Failed to delete assignment");
+    }
+  };
+
+  const handleViewSubmissions = async (assignment) => {
+    try {
+      const submissionsList = await base44.entities.AssignmentSubmission.filter({
+        assignment_id: assignment.id
+      });
+      setSubmissions(submissionsList);
+      setSelectedAssignment(assignment);
+      setIsEvaluateModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+    }
+  };
+
+  const handleEvaluateSubmission = async (submissionId, marks, remarks) => {
+    try {
+      await base44.entities.AssignmentSubmission.update(submissionId, {
+        marks_obtained: marks,
+        faculty_remarks: remarks,
+        status: 'Evaluated',
+        evaluated_at: new Date().toISOString()
+      });
+
+      // Refresh submissions
+      const updatedSubmissions = await base44.entities.AssignmentSubmission.filter({
+        assignment_id: selectedAssignment.id
+      });
+      setSubmissions(updatedSubmissions);
+      toast.success("Submission evaluated successfully!");
+    } catch (error) {
+      console.error("Error evaluating submission:", error);
+      toast.error("Failed to evaluate submission");
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: "",
+      description: "",
+      subject: "",
+      batch_id: "",
+      deadline: "",
+      max_marks: 100,
+      assignment_type: "Individual",
+      attachment_url: ""
+    });
+  };
+
+  const getSubmissionStats = (assignmentId) => {
+    const assignmentSubmissions = submissions.filter(s => s.assignment_id === assignmentId);
+    return {
+      total: assignmentSubmissions.length,
+      submitted: assignmentSubmissions.filter(s => s.status === 'Submitted').length,
+      late: assignmentSubmissions.filter(s => s.is_late).length,
+      evaluated: assignmentSubmissions.filter(s => s.status === 'Evaluated').length
+    };
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">📝 Assignment Management</h1>
+            <p className="text-gray-600 mt-1">Create, manage, and evaluate student assignments</p>
+          </div>
+          <Button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Assignment
+          </Button>
+        </div>
+
+        {/* Assignments List */}
+        <div className="space-y-4">
+          {assignments.map(assignment => {
+            const isOverdue = isPast(new Date(assignment.deadline));
+            
+            return (
+              <Card key={assignment.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">{assignment.title}</h3>
+                        <Badge className={assignment.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                          {assignment.status}
+                        </Badge>
+                        {isOverdue && <Badge className="bg-red-100 text-red-700">Overdue</Badge>}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-3">{assignment.description}</p>
+                      
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <FileText className="w-4 h-4" />
+                          <span>{assignment.subject}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>Due: {format(new Date(assignment.deadline), 'PPP')}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>Max Marks: {assignment.max_marks}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span>Type: {assignment.assignment_type}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewSubmissions(assignment)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View Submissions
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteAssignment(assignment.id)}
+                        className="text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {assignments.length === 0 && (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No assignments created yet</p>
+              <Button onClick={() => setIsCreateModalOpen(true)}>
+                Create Your First Assignment
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Create Assignment Modal */}
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Assignment</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Title *</Label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  placeholder="e.g., Machine Learning Assignment 1"
+                />
+              </div>
+
+              <div>
+                <Label>Description *</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="Detailed description of the assignment..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Subject *</Label>
+                  <Input
+                    value={formData.subject}
+                    onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                    placeholder="e.g., Machine Learning"
+                  />
+                </div>
+
+                <div>
+                  <Label>Batch/Class *</Label>
+                  <Select value={formData.batch_id} onValueChange={(value) => setFormData({...formData, batch_id: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {batches.map(batch => (
+                        <SelectItem key={batch.id} value={batch.batch_id}>
+                          {batch.batch_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Deadline *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.deadline}
+                    onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <Label>Maximum Marks</Label>
+                  <Input
+                    type="number"
+                    value={formData.max_marks}
+                    onChange={(e) => setFormData({...formData, max_marks: parseInt(e.target.value)})}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Assignment Type</Label>
+                <Select value={formData.assignment_type} onValueChange={(value) => setFormData({...formData, assignment_type: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Individual">Individual</SelectItem>
+                    <SelectItem value="Group">Group</SelectItem>
+                    <SelectItem value="Lab">Lab</SelectItem>
+                    <SelectItem value="Project">Project</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateAssignment}
+                  disabled={!formData.title || !formData.subject || !formData.batch_id || !formData.deadline}
+                >
+                  Create Assignment
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Submissions & Evaluation Modal */}
+        <Dialog open={isEvaluateModalOpen} onOpenChange={setIsEvaluateModalOpen}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedAssignment?.title} - Submissions
+              </DialogTitle>
+            </DialogHeader>
+
+            {selectedAssignment && (
+              <Tabs defaultValue="submissions">
+                <TabsList>
+                  <TabsTrigger value="submissions">Submissions ({submissions.length})</TabsTrigger>
+                  <TabsTrigger value="stats">Statistics</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="submissions" className="space-y-4 mt-4">
+                  {submissions.map(submission => (
+                    <SubmissionCard 
+                      key={submission.id} 
+                      submission={submission} 
+                      assignment={selectedAssignment}
+                      onEvaluate={handleEvaluateSubmission}
+                    />
+                  ))}
+
+                  {submissions.length === 0 && (
+                    <div className="text-center py-12">
+                      <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-600">No submissions yet</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="stats" className="mt-4">
+                  <SubmissionStats submissions={submissions} assignment={selectedAssignment} />
+                </TabsContent>
+              </Tabs>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
+
+// Submission Card Component
+function SubmissionCard({ submission, assignment, onEvaluate }) {
+  const [marks, setMarks] = useState(submission.marks_obtained || '');
+  const [remarks, setRemarks] = useState(submission.faculty_remarks || '');
+  const [isEvaluating, setIsEvaluating] = useState(false);
+
+  const handleEvaluate = async () => {
+    setIsEvaluating(true);
+    await onEvaluate(submission.id, marks, remarks);
+    setIsEvaluating(false);
+  };
+
+  return (
+    <Card className={`border-2 ${submission.is_late ? 'border-orange-200 bg-orange-50' : 'border-gray-200'}`}>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h4 className="font-bold text-lg">{submission.student_name}</h4>
+            <p className="text-sm text-gray-600">Roll No: {submission.roll_no} | PRN: {submission.prn}</p>
+            <p className="text-sm text-gray-600">
+              Submitted: {format(new Date(submission.submitted_at), 'PPP p')}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Badge className={
+              submission.status === 'Evaluated' ? 'bg-green-100 text-green-700' :
+              submission.is_late ? 'bg-orange-100 text-orange-700' :
+              'bg-blue-100 text-blue-700'
+            }>
+              {submission.status}
+            </Badge>
+            {submission.is_late && (
+              <Badge className="bg-red-100 text-red-700">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Late Submission
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-4 p-3 bg-white rounded-lg border">
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.submission_text}</p>
+        </div>
+
+        {submission.status !== 'Evaluated' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Marks (out of {assignment.max_marks})</Label>
+              <Input
+                type="number"
+                max={assignment.max_marks}
+                value={marks}
+                onChange={(e) => setMarks(e.target.value)}
+                placeholder="Enter marks"
+              />
+            </div>
+            <div>
+              <Label>Remarks/Feedback</Label>
+              <Textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Enter your feedback..."
+                rows={3}
+              />
+            </div>
+          </div>
+        )}
+
+        {submission.status !== 'Evaluated' && (
+          <div className="mt-4">
+            <Button 
+              onClick={handleEvaluate}
+              disabled={!marks || isEvaluating}
+              className="w-full"
+            >
+              {isEvaluating ? 'Evaluating...' : 'Evaluate Submission'}
+            </Button>
+          </div>
+        )}
+
+        {submission.status === 'Evaluated' && (
+          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-sm font-semibold text-green-900">
+              Marks: {submission.marks_obtained} / {assignment.max_marks}
+            </p>
+            {submission.faculty_remarks && (
+              <p className="text-sm text-green-700 mt-2">
+                <strong>Feedback:</strong> {submission.faculty_remarks}
+              </p>
+            )}
+            <p className="text-xs text-green-600 mt-2">
+              Evaluated on: {format(new Date(submission.evaluated_at), 'PPP')}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Submission Statistics Component
+function SubmissionStats({ submissions, assignment }) {
+  const totalSubmissions = submissions.length;
+  const lateSubmissions = submissions.filter(s => s.is_late).length;
+  const evaluatedSubmissions = submissions.filter(s => s.status === 'Evaluated').length;
+  const avgMarks = evaluatedSubmissions > 0 
+    ? (submissions.filter(s => s.marks_obtained).reduce((sum, s) => sum + s.marks_obtained, 0) / evaluatedSubmissions).toFixed(2)
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-gray-600">Total Submissions</p>
+            <p className="text-3xl font-bold text-blue-600">{totalSubmissions}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-gray-600">Late Submissions</p>
+            <p className="text-3xl font-bold text-orange-600">{lateSubmissions}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-gray-600">Evaluated</p>
+            <p className="text-3xl font-bold text-green-600">{evaluatedSubmissions}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-gray-600">Average Marks</p>
+            <p className="text-3xl font-bold text-purple-600">{avgMarks}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Submission Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {submissions.map(s => (
+              <div key={s.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-semibold">{s.student_name}</p>
+                  <p className="text-sm text-gray-600">Roll: {s.roll_no}</p>
+                </div>
+                <div className="text-right">
+                  {s.status === 'Evaluated' ? (
+                    <p className="font-semibold text-green-600">
+                      {s.marks_obtained}/{assignment.max_marks}
+                    </p>
+                  ) : (
+                    <Badge>Pending</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

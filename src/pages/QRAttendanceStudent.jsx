@@ -20,6 +20,8 @@ export default function QRAttendanceStudent() {
   const [successData, setSuccessData] = useState(null);
   const [gpsLocation, setGpsLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
+  const [deviceFingerprint, setDeviceFingerprint] = useState("");
+  const [heartbeatActive, setHeartbeatActive] = useState(false);
 
   // Get parameters from URL
   const urlParams = new URLSearchParams(location.search);
@@ -112,6 +114,10 @@ export default function QRAttendanceStudent() {
         setIsPrivateBatch(batch_type === 'private');
         setStatus("ready");
         
+        // Generate device fingerprint
+        const fingerprint = btoa(navigator.userAgent).substring(0, 32);
+        setDeviceFingerprint(fingerprint);
+        
         // Set basic session info (we'll get full details after submission)
         setSessionInfo({
           id: session_id,
@@ -141,9 +147,6 @@ export default function QRAttendanceStudent() {
             };
             setGpsLocation(locationData);
             setLocationError("");
-
-            // Note: Student will be logged when they submit PRN
-            // No need to log before PRN entry
           },
           (error) => {
             console.error("Location error:", error);
@@ -183,6 +186,43 @@ export default function QRAttendanceStudent() {
     return () => clearInterval(timer);
   }, [timestamp, status]);
 
+  // GPS Heartbeat - Send location every 5 seconds after PRN submission
+  useEffect(() => {
+    if (!heartbeatActive || !session_id || !deviceFingerprint) return;
+
+    const sendHeartbeat = async () => {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              await base44.functions.invoke('updateStudentHeartbeat', {
+                session_id,
+                device_fingerprint: deviceFingerprint,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                gps_accuracy: position.coords.accuracy
+              });
+            } catch (error) {
+              console.error("Heartbeat error:", error);
+            }
+          },
+          (error) => {
+            console.error("Location error during heartbeat:", error);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      }
+    };
+
+    // Send heartbeat every 5 seconds
+    const interval = setInterval(sendHeartbeat, 5000);
+    
+    // Send first heartbeat immediately
+    sendHeartbeat();
+
+    return () => clearInterval(interval);
+  }, [heartbeatActive, session_id, deviceFingerprint]);
+
   const handleSubmitAttendance = async () => {
     // FINAL SECURITY CHECK: Verify QR is still valid before submission
     if (timeRemaining <= 0) {
@@ -207,15 +247,20 @@ export default function QRAttendanceStudent() {
     try {
       // First, log to active students table
       try {
-        await base44.functions.invoke('logQRPortalAccess', {
+        const logResponse = await base44.functions.invoke('logQRPortalAccess', {
           session_id,
           student_identifier: studentIdentifier.trim(),
           batch_type,
           latitude: gpsLocation.latitude,
           longitude: gpsLocation.longitude,
           gps_accuracy: gpsLocation.accuracy,
-          device_fingerprint: btoa(navigator.userAgent).substring(0, 32)
+          device_fingerprint: deviceFingerprint
         });
+
+        // Start heartbeat tracking after successful PRN submission
+        if (logResponse.data.success) {
+          setHeartbeatActive(true);
+        }
       } catch (logError) {
         console.error("Error logging to active students:", logError);
       }
@@ -236,6 +281,7 @@ export default function QRAttendanceStudent() {
         setStatus("success");
         setMessage(response.data.message);
         setSuccessData(response.data);
+        setHeartbeatActive(false); // Stop heartbeat on success
       } else {
         if (response.data.expired) {
           setStatus("expired");
@@ -317,6 +363,9 @@ export default function QRAttendanceStudent() {
             <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
               <Shield className="w-4 h-4 mx-auto mb-1" />
               ✅ You can now close this page. Your attendance has been securely recorded.
+              {heartbeatActive && (
+                <p className="mt-2 text-xs">📍 Your location is being tracked in real-time for security.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -414,6 +463,11 @@ export default function QRAttendanceStudent() {
                 <Shield className="w-4 h-4" />
                 <span>🔒 No login required - Just scan, enter your ID, and mark attendance!</span>
               </div>
+              {heartbeatActive && (
+                <p className="mt-2 text-xs text-green-700">
+                  📍 GPS tracking active - Your location is being verified in real-time
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

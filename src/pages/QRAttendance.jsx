@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Session, Batch } from "@/entities/all";
+import { Session, Batch, GeoFenceZone, QRActiveStudent } from "@/entities/all";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, RefreshCw, Clock, Users, MapPin, AlertCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, RefreshCw, Clock, Users, MapPin, AlertCircle, Map as MapIcon } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import LiveTrackingMap from "@/components/attendance/LiveTrackingMap";
 
 const QR_EXPIRY_SECONDS = 120;
 
@@ -27,6 +29,7 @@ export default function QRAttendancePage() {
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState([]);
   const [modalTitle, setModalTitle] = useState("");
+  const [geoFence, setGeoFence] = useState(null);
 
   // Get session_id from query parameters
   const urlParams = new URLSearchParams(location.search);
@@ -88,10 +91,32 @@ export default function QRAttendancePage() {
     }
   }, [session, batch, generateQRCodeData]);
 
-  // Load active students real-time
+  // Load geo-fence
   useEffect(() => {
     if (!session_id) return;
 
+    const loadGeoFence = async () => {
+      try {
+        const zones = await base44.entities.GeoFenceZone.filter({ 
+          session_id,
+          is_active: true 
+        });
+        if (zones.length > 0) {
+          setGeoFence(zones[0]);
+        }
+      } catch (error) {
+        console.error("Error loading geo-fence:", error);
+      }
+    };
+
+    loadGeoFence();
+  }, [session_id]);
+
+  // Real-time subscription to active students
+  useEffect(() => {
+    if (!session_id) return;
+
+    // Initial load
     const loadActiveStudents = async () => {
       try {
         const students = await base44.entities.QRActiveStudent.filter({ 
@@ -108,8 +133,20 @@ export default function QRAttendancePage() {
     };
 
     loadActiveStudents();
-    const interval = setInterval(loadActiveStudents, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
+
+    // Subscribe to real-time updates
+    const unsubscribe = base44.entities.QRActiveStudent.subscribe((event) => {
+      // Reload when any change occurs to active students in this session
+      loadActiveStudents();
+    });
+
+    // Also poll every 3 seconds as backup
+    const interval = setInterval(loadActiveStudents, 3000);
+    
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, [session_id]);
 
   useEffect(() => {
@@ -159,85 +196,145 @@ export default function QRAttendancePage() {
           Back to Attendance
         </Button>
 
-        <div className="grid md:grid-cols-3 gap-4 mb-6">
-          {/* QR Code Card */}
-          <Card className="md:col-span-2 shadow-2xl">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold">Scan for Attendance</CardTitle>
-              <p className="text-slate-600">{session.session_name}</p>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-6">
-              <div className="bg-white p-4 rounded-lg border-4 border-slate-800">
-                {qrCodeDataUrl ? (
-                  <img src={qrCodeDataUrl} alt="Attendance QR Code" width={256} height={256} />
-                ) : (
-                  <Skeleton className="w-64 h-64" />
-                )}
-              </div>
-              <div className="text-center">
-                <p className="flex items-center justify-center gap-2 text-lg font-semibold text-red-600">
-                  <Clock className="w-5 h-5 animate-spin" />
-                  QR refreshes in: {countdown}s
+        <Tabs defaultValue="qr" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="qr">QR Code & Stats</TabsTrigger>
+            <TabsTrigger value="map">
+              <MapIcon className="w-4 h-4 mr-2" />
+              Live Map Tracking
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="qr">
+            <div className="grid md:grid-cols-3 gap-4">
+              {/* QR Code Card */}
+              <Card className="md:col-span-2 shadow-2xl">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl font-bold">Scan for Attendance</CardTitle>
+                  <p className="text-slate-600">{session.session_name}</p>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center gap-6">
+                  <div className="bg-white p-4 rounded-lg border-4 border-slate-800">
+                    {qrCodeDataUrl ? (
+                      <img src={qrCodeDataUrl} alt="Attendance QR Code" width={256} height={256} />
+                    ) : (
+                      <Skeleton className="w-64 h-64" />
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <p className="flex items-center justify-center gap-2 text-lg font-semibold text-red-600">
+                      <Clock className="w-5 h-5 animate-spin" />
+                      QR refreshes in: {countdown}s
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Point your camera at the QR Code to mark attendance.</p>
+                  </div>
+                  <Button variant="outline" onClick={generateQRCodeData} className="w-full">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh QR Manually
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Live Stats Card */}
+              <Card className="shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Live Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div 
+                    className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onClick={() => openModal(activeStudents, 'All Active Students')}
+                  >
+                    <p className="text-sm text-blue-600 font-medium">Active Students</p>
+                    <p className="text-3xl font-bold text-blue-700">{activeStudents.length}</p>
+                    <p className="text-xs text-blue-500 mt-1">Click to view details</p>
+                  </div>
+
+                  <div 
+                    className="bg-green-50 border-2 border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors"
+                    onClick={() => openModal(insideGeofence, 'Students Inside Geo-Fence')}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="w-4 h-4 text-green-600" />
+                      <p className="text-sm text-green-600 font-medium">Inside Zone</p>
+                    </div>
+                    <p className="text-3xl font-bold text-green-700">{insideGeofence.length}</p>
+                    <p className="text-xs text-green-500 mt-1">Click to view details</p>
+                  </div>
+
+                  <div 
+                    className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 cursor-pointer hover:bg-orange-100 transition-colors"
+                    onClick={() => openModal(outsideGeofence, 'Students Outside Geo-Fence')}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="w-4 h-4 text-orange-600" />
+                      <p className="text-sm text-orange-600 font-medium">Outside Zone</p>
+                    </div>
+                    <p className="text-3xl font-bold text-orange-700">{outsideGeofence.length}</p>
+                    <p className="text-xs text-orange-500 mt-1">Click to view details</p>
+                  </div>
+
+                  <div className="pt-3 border-t">
+                    <p className="text-xs text-gray-500 text-center">
+                      🔄 Real-time updates
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="map">
+            <Card className="shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <MapIcon className="w-6 h-6" />
+                  Real-Time Student Location Tracking
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  Live GPS tracking • Green markers = Inside zone • Red markers = Outside zone
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Point your camera at the QR Code to mark attendance.</p>
-              </div>
-              <Button variant="outline" onClick={generateQRCodeData} className="w-full">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh QR Manually
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Live Stats Card */}
-          <Card className="shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Live Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div 
-                className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
-                onClick={() => openModal(activeStudents, 'All Active Students')}
-              >
-                <p className="text-sm text-blue-600 font-medium">Active Students</p>
-                <p className="text-3xl font-bold text-blue-700">{activeStudents.length}</p>
-                <p className="text-xs text-blue-500 mt-1">Click to view details</p>
-              </div>
-
-              <div 
-                className="bg-green-50 border-2 border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors"
-                onClick={() => openModal(insideGeofence, 'Students Inside Geo-Fence')}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <MapPin className="w-4 h-4 text-green-600" />
-                  <p className="text-sm text-green-600 font-medium">Inside Zone</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-4 gap-3 mb-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                    <p className="text-xs text-blue-600 font-medium">Active</p>
+                    <p className="text-2xl font-bold text-blue-700">{activeStudents.length}</p>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                    <p className="text-xs text-green-600 font-medium">Inside Zone</p>
+                    <p className="text-2xl font-bold text-green-700">{insideGeofence.length}</p>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                    <p className="text-xs text-orange-600 font-medium">Outside Zone</p>
+                    <p className="text-2xl font-bold text-orange-700">{outsideGeofence.length}</p>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                    <p className="text-xs text-purple-600 font-medium">Attendance %</p>
+                    <p className="text-2xl font-bold text-purple-700">
+                      {activeStudents.length > 0 ? Math.round((insideGeofence.length / activeStudents.length) * 100) : 0}%
+                    </p>
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-green-700">{insideGeofence.length}</p>
-                <p className="text-xs text-green-500 mt-1">Click to view details</p>
-              </div>
-
-              <div 
-                className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 cursor-pointer hover:bg-orange-100 transition-colors"
-                onClick={() => openModal(outsideGeofence, 'Students Outside Geo-Fence')}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertCircle className="w-4 h-4 text-orange-600" />
-                  <p className="text-sm text-orange-600 font-medium">Outside Zone</p>
+                
+                <LiveTrackingMap geoFence={geoFence} activeStudents={activeStudents} />
+                
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+                  <p className="font-semibold mb-1">📍 Map Legend:</p>
+                  <div className="space-y-1">
+                    <p>• <span className="text-blue-600 font-medium">Blue circle</span> = Classroom geo-fence boundary</p>
+                    <p>• <span className="text-green-600 font-medium">Green markers</span> = Students inside the geo-fence (eligible for attendance)</p>
+                    <p>• <span className="text-red-600 font-medium">Red markers</span> = Students outside the geo-fence (flagged)</p>
+                    <p>• Click on any marker to see student details</p>
+                  </div>
                 </div>
-                <p className="text-3xl font-bold text-orange-700">{outsideGeofence.length}</p>
-                <p className="text-xs text-orange-500 mt-1">Click to view details</p>
-              </div>
-
-              <div className="pt-3 border-t">
-                <p className="text-xs text-gray-500 text-center">
-                  🔄 Auto-refreshes every 5 seconds
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Student Details Modal */}

@@ -35,7 +35,7 @@ const facultyNavItems = [
   { name: "CreateSession", label: "Create Session", icon: PlusCircle },
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck, facultyOnly: true },
   { name: "AssignmentManagement", label: "Assignments", icon: FileText, facultyOnly: true },
-  { name: "TeachingNotes", label: "Teaching Notes", icon: FileText, facultyOnly: true },
+  { name: "Notes", label: "Notes", icon: Book, facultyOnly: true },
   { name: "Batches", label: "Manage Classes", icon: Users },
   { name: "TimeTable", label: "Timetable", icon: Calendar },
   { name: "Performance", label: "Performance", icon: TrendingUp },

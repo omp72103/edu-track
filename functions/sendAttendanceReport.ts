@@ -194,74 +194,150 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Email content
+    // Professional Academic Email Content
+    const attendanceRate = students.length > 0 ? Math.round((session.present_count || 0) / students.length * 100) : 0;
     const emailHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-          .stats { display: flex; justify-content: space-around; margin: 20px 0; }
-          .stat-box { background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; margin: 0 10px; }
-          .stat-box h3 { margin: 0; color: #667eea; font-size: 32px; }
-          .stat-box p { margin: 5px 0 0 0; color: #6b7280; font-size: 14px; }
-          .details { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; }
-          .details table { width: 100%; border-collapse: collapse; }
-          .details th { text-align: left; padding: 10px; background: #f3f4f6; border-bottom: 2px solid #e5e7eb; }
-          .details td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
-          .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.8; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 0; }
+          .email-wrapper { width: 100%; padding: 20px 0; }
+          .container { max-width: 650px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+          .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 35px 30px; text-align: center; }
+          .header h1 { margin: 0 0 8px 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }
+          .header p { margin: 0; font-size: 14px; opacity: 0.95; }
+          .content { padding: 35px 30px; }
+          .section-title { font-size: 18px; font-weight: 600; color: #1f2937; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+          .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; background: #f9fafb; border-radius: 8px; overflow: hidden; }
+          .info-table td { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+          .info-table td:first-child { font-weight: 600; color: #4b5563; width: 180px; }
+          .info-table tr:last-child td { border-bottom: none; }
+          .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 25px 0; }
+          .stat-card { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #d1d5db; }
+          .stat-card.present { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #6ee7b7; }
+          .stat-card.absent { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-color: #fca5a5; }
+          .stat-card.rate { background: linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 100%); border-color: #a78bfa; }
+          .stat-number { font-size: 32px; font-weight: 700; margin: 0 0 6px 0; color: #1f2937; }
+          .stat-label { font-size: 13px; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+          .notice-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 18px 20px; border-radius: 6px; margin: 25px 0; }
+          .notice-box strong { color: #1e40af; display: block; margin-bottom: 6px; font-size: 15px; }
+          .notice-box p { margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6; }
+          .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 18px 20px; border-radius: 6px; margin: 25px 0; }
+          .warning-box strong { color: #92400e; display: block; margin-bottom: 8px; font-size: 15px; }
+          .warning-box p { margin: 0 0 8px 0; color: #92400e; font-size: 14px; }
+          .warning-box ul { margin: 8px 0 0 20px; color: #92400e; font-size: 13px; }
+          .footer { background: #f9fafb; padding: 25px 30px; border-top: 1px solid #e5e7eb; text-align: center; }
+          .footer p { margin: 5px 0; color: #6b7280; font-size: 13px; }
+          .footer-logo { font-weight: 700; color: #1e40af; font-size: 15px; margin-bottom: 8px; }
         </style>
       </head>
       <body>
-        <div class="container">
-          <div class="header">
-            <h1>📊 Attendance Report Generated</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">EDU TRACK Education Management System</p>
-          </div>
-          <div class="content">
-            <h2>Session Details</h2>
-            <div class="details">
-              <table>
-                <tr><th>Session Name</th><td>${session.session_name}</td></tr>
-                <tr><th>Date</th><td>${new Date(session.session_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
-                <tr><th>Time</th><td>${session.session_time}</td></tr>
-                <tr><th>Topic</th><td>${session.topic_taught}</td></tr>
-                <tr><th>Faculty</th><td>${session.faculty_name}</td></tr>
-                <tr><th>College</th><td>${session.college_name}</td></tr>
-                <tr><th>Year</th><td>${session.year}</td></tr>
+        <div class="email-wrapper">
+          <div class="container">
+            <div class="header">
+              <h1>Attendance Report</h1>
+              <p>Academic Session Documentation</p>
+            </div>
+            
+            <div class="content">
+              <p style="margin: 0 0 25px 0; font-size: 15px; color: #4b5563;">Dear Administrator,</p>
+              
+              <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.7; color: #4b5563;">
+                This email contains the attendance report for the session conducted on 
+                <strong>${new Date(session.session_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>. 
+                Please find the detailed attendance records attached to this email.
+              </p>
+
+              <h2 class="section-title">Session Information</h2>
+              <table class="info-table">
+                <tr>
+                  <td>Session Name:</td>
+                  <td>${session.session_name}</td>
+                </tr>
+                <tr>
+                  <td>Date & Time:</td>
+                  <td>${new Date(session.session_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${session.session_time}</td>
+                </tr>
+                <tr>
+                  <td>Topic Covered:</td>
+                  <td>${session.topic_taught}</td>
+                </tr>
+                <tr>
+                  <td>Faculty:</td>
+                  <td>${session.faculty_name}</td>
+                </tr>
+                <tr>
+                  <td>Institution:</td>
+                  <td>${session.college_name}</td>
+                </tr>
+                <tr>
+                  <td>Academic Year:</td>
+                  <td>${session.year}</td>
+                </tr>
               </table>
-            </div>
 
-            <h2 style="margin-top: 30px;">Attendance Summary</h2>
-            <div class="stats">
-              <div class="stat-box">
-                <h3>${students.length}</h3>
-                <p>Total Students</p>
+              <h2 class="section-title">Attendance Statistics</h2>
+              <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="stat-number">${students.length}</div>
+                  <div class="stat-label">Total Students</div>
+                </div>
+                <div class="stat-card present">
+                  <div class="stat-number">${session.present_count || 0}</div>
+                  <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card absent">
+                  <div class="stat-number">${students.length - (session.present_count || 0)}</div>
+                  <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-card rate">
+                  <div class="stat-number">${attendanceRate}%</div>
+                  <div class="stat-label">Attendance Rate</div>
+                </div>
               </div>
-              <div class="stat-box">
-                <h3 style="color: #10b981;">${session.present_count || 0}</h3>
-                <p>Present</p>
-              </div>
-              <div class="stat-box">
-                <h3 style="color: #ef4444;">${students.length - (session.present_count || 0)}</h3>
-                <p>Absent</p>
-              </div>
-              <div class="stat-box">
-                <h3 style="color: #8b5cf6;">${students.length > 0 ? Math.round((session.present_count || 0) / students.length * 100) : 0}%</h3>
-                <p>Attendance Rate</p>
-              </div>
-            </div>
 
-            <p style="margin-top: 30px; padding: 15px; background: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 4px;">
-              <strong>📎 Attachment:</strong> Detailed attendance report is attached as an Excel file with color-coded attendance status (Green = Present, Red = Absent).
-            </p>
-          </div>
-          <div class="footer">
-            <p>This is an automated email from EDU TRACK Education Management System.</p>
-            <p>Generated on ${new Date().toLocaleString()}</p>
+              ${attendanceRate < 75 ? `
+              <div class="warning-box">
+                <strong>Attendance Alert</strong>
+                <p>The attendance rate for this session is below the recommended threshold of 75%. Please consider the following actions:</p>
+                <ul>
+                  <li>Review the list of absent students</li>
+                  <li>Contact students with repeated absences</li>
+                  <li>Schedule remedial sessions if necessary</li>
+                  <li>Update parents/guardians as per institutional policy</li>
+                </ul>
+              </div>
+              ` : `
+              <div class="notice-box">
+                <strong>Attendance Status: Satisfactory</strong>
+                <p>The attendance rate meets the institutional standards. The detailed attendance record is attached for your review and record-keeping purposes.</p>
+              </div>
+              `}
+
+              <div class="notice-box">
+                <strong>Attached Document</strong>
+                <p>A comprehensive Excel report is attached to this email. The report includes student-wise attendance records with color-coded indicators (Green: Present, Red: Absent) for easy reference.</p>
+              </div>
+
+              <p style="margin: 25px 0 0 0; font-size: 14px; color: #4b5563;">
+                Should you require any clarification or additional information, please do not hesitate to contact the faculty member or the academic administration office.
+              </p>
+
+              <p style="margin: 20px 0 0 0; font-size: 14px; color: #4b5563;">
+                Best regards,<br>
+                <strong>EDU TRACK Academic System</strong>
+              </p>
+            </div>
+            
+            <div class="footer">
+              <div class="footer-logo">EDU TRACK</div>
+              <p>Education Management System</p>
+              <p>This is an automated notification. Please do not reply to this email.</p>
+              <p style="margin-top: 12px; color: #9ca3af; font-size: 12px;">
+                Generated on ${new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}
+              </p>
+            </div>
           </div>
         </div>
       </body>
@@ -270,13 +346,13 @@ Deno.serve(async (req) => {
 
     // Send email
     const mailOptions = {
-      from: `"EDU TRACK System" <${Deno.env.get('EMAIL_USER')}>`,
+      from: `"EDU TRACK Academic System" <${Deno.env.get('EMAIL_USER')}>`,
       to: recipients.join(', '),
-      subject: `📊 Attendance Report - ${session.session_name} | ${new Date(session.session_date).toLocaleDateString()}`,
+      subject: `Attendance Report: ${session.session_name} - ${new Date(session.session_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
       html: emailHtml,
       attachments: [
         {
-          filename: `Attendance_${session.college_name}_${session.year}_${new Date(session.session_date).toISOString().split('T')[0]}.xlsx`.replace(/\s+/g, '_'),
+          filename: `Attendance_Report_${session.college_name}_${session.year}_${new Date(session.session_date).toISOString().split('T')[0]}.xlsx`.replace(/\s+/g, '_'),
           path: tempFilePath
         }
       ]

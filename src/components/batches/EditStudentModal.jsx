@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Edit } from "lucide-react";
 
 export default function EditStudentModal({ isOpen, onClose, student, onSave }) {
-  const [formData, setFormData] = useState({ name: "", prn: "", roll_no: "" });
+  const [formData, setFormData] = useState({ name: "", prn: "", roll_no: "", email: "" });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -22,6 +22,7 @@ export default function EditStudentModal({ isOpen, onClose, student, onSave }) {
         name: student.name || "",
         prn: student.prn || "",
         roll_no: student.roll_no || "",
+        email: student.email || "",
       });
     }
   }, [student]);
@@ -82,6 +83,16 @@ export default function EditStudentModal({ isOpen, onClose, student, onSave }) {
               value={formData.roll_no}
               onChange={(e) => setFormData({ ...formData, roll_no: e.target.value })}
               placeholder="Roll Number"
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">Student Email (Gmail for Login)</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="student@gmail.com"
             />
           </div>
         </div>

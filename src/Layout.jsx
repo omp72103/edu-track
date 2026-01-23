@@ -381,12 +381,9 @@ export default function Layout({ children, currentPageName }) {
                 {/* User Section with Glassmorphism */}
                 <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
             {user && !isSidebarCollapsed && (
-              <button 
-                onClick={() => setShowProfileModal(true)}
-                className="relative mb-3 group w-full text-left"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
+              <div className="relative mb-3 w-full">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20"></div>
+                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
@@ -400,20 +397,17 @@ export default function Layout({ children, currentPageName }) {
                     </p>
                   </div>
                 </div>
-              </button>
+              </div>
             )}
             {user && isSidebarCollapsed && (
-              <button 
-                onClick={() => setShowProfileModal(true)}
-                className="flex justify-center mb-3 group w-full"
-              >
+              <div className="flex justify-center mb-3 w-full">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30 group-hover:opacity-60 transition-opacity"></div>
-                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={user.full_name}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30"></div>
+                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white" title={user.full_name}>
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
                 </div>
-              </button>
+              </div>
             )}
             <button
               onClick={() => User.logout()}

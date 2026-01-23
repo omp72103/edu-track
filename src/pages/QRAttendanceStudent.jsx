@@ -215,7 +215,7 @@ export default function QRAttendanceStudent() {
     setMessage("");
 
     try {
-      // Call backend function to mark attendance with location data
+      // Call backend function to mark attendance with location data and PRN
       const response = await base44.functions.invoke('markQRAttendance', {
         session_id,
         timestamp,
@@ -224,7 +224,8 @@ export default function QRAttendanceStudent() {
         latitude: gpsLocation.latitude,
         longitude: gpsLocation.longitude,
         gps_accuracy: gpsLocation.accuracy,
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
+        prn: studentIdentifier.trim() // Pass PRN for active student tracking
       });
 
       if (response.data.success) {

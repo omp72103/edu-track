@@ -804,40 +804,42 @@ Be specific with dates and realistic with predictions.`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Brain className="w-8 h-8 text-purple-600" />
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+            <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-purple-600" />
             Predictive Attendance Insights
           </h1>
-          <p className="text-gray-600 mt-1">AI-powered predictions for attendance patterns and student risk assessment</p>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">AI-powered predictions for attendance patterns and student risk assessment</p>
         </div>
 
-        <Tabs defaultValue="events" className="space-y-6">
-          <TabsList className="bg-white shadow-md p-1 rounded-xl">
-            <TabsTrigger value="events" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
-              <Calendar className="w-4 h-4 mr-2" />
-              Event-Based Predictions
+        <Tabs defaultValue="events" className="space-y-4 sm:space-y-6">
+          <TabsList className="bg-white shadow-md p-1 rounded-xl w-full grid grid-cols-2">
+            <TabsTrigger value="events" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-3 sm:px-6 text-xs sm:text-sm">
+              <Calendar className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Event-Based Predictions</span>
+              <span className="sm:hidden">Events</span>
             </TabsTrigger>
-            <TabsTrigger value="students" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
-              <Users className="w-4 h-4 mr-2" />
-              Student Risk Analysis
+            <TabsTrigger value="students" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-3 sm:px-6 text-xs sm:text-sm">
+              <Users className="w-3 sm:w-4 h-3 sm:h-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Student Risk Analysis</span>
+              <span className="sm:hidden">Students</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Event-Based Predictions Tab */}
-          <TabsContent value="events" className="space-y-6">
+          <TabsContent value="events" className="space-y-4 sm:space-y-6">
             <Card className="shadow-xl border-2 border-purple-100">
               <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Sparkles className="w-4 sm:w-5 h-4 sm:h-5" />
                   Predict Attendance Based on Events & Festivals
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid md:grid-cols-3 gap-4">
+              <CardContent className="p-4 sm:p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label>Prediction Period</Label>
                     <Select value={predictionPeriod} onValueChange={setPredictionPeriod}>
@@ -864,7 +866,7 @@ Be specific with dates and realistic with predictions.`;
                 <Button 
                   onClick={generateEventPredictions}
                   disabled={isPredicting}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 py-2 sm:py-3"
                 >
                   {isPredicting ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Events...</>
@@ -940,13 +942,13 @@ Be specific with dates and realistic with predictions.`;
                 {eventPredictions.weekly_predictions && (
                   <Card className="shadow-lg">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                        <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5 text-purple-600" />
                         Weekly Attendance Forecast
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         {eventPredictions.weekly_predictions.map((week, idx) => (
                           <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border">
                             <div className="text-sm font-medium text-gray-600 mb-2">{week.week}</div>
@@ -988,7 +990,7 @@ Be specific with dates and realistic with predictions.`;
           </TabsContent>
 
           {/* Student Risk Analysis Tab */}
-          <TabsContent value="students" className="space-y-6">
+          <TabsContent value="students" className="space-y-4 sm:space-y-6">
             {message && (
               <Alert className={`${message.type === 'error' ? 'border-red-200 bg-red-50' : message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
                 <AlertDescription className={message.type === 'error' ? 'text-red-800' : message.type === 'success' ? 'text-green-800' : 'text-blue-800'}>
@@ -999,13 +1001,13 @@ Be specific with dates and realistic with predictions.`;
 
             <Card className="shadow-xl border-2 border-purple-100">
               <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Upload className="w-4 sm:w-5 h-4 sm:h-5" />
                   Student Risk Analysis - Upload & Configure
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
+              <CardContent className="p-4 sm:p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="font-semibold">Academic Year *</Label>
                     <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
@@ -1060,7 +1062,7 @@ Be specific with dates and realistic with predictions.`;
                 <Button 
                   onClick={handleAnalyze}
                   disabled={isProcessing || !selectedFile}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 py-6 text-lg"
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 py-4 sm:py-6 text-base sm:text-lg"
                 >
                   {isProcessing ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Data...</>
@@ -1084,76 +1086,76 @@ Be specific with dates and realistic with predictions.`;
 
             {analysisResult && (
               <>
-                <div className="grid md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                   <Card className="shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                    <CardContent className="p-6 text-center">
-                      <Users className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-3xl font-bold">{analysisResult.summary.totalStudents}</div>
-                      <div className="text-sm opacity-90">Total Students</div>
+                    <CardContent className="p-4 sm:p-6 text-center">
+                      <Users className="w-6 sm:w-8 h-6 sm:h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-2xl sm:text-3xl font-bold">{analysisResult.summary.totalStudents}</div>
+                      <div className="text-xs sm:text-sm opacity-90">Total Students</div>
                     </CardContent>
                   </Card>
                   <Card className="shadow-lg bg-gradient-to-br from-red-500 to-orange-500 text-white">
-                    <CardContent className="p-6 text-center">
-                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-3xl font-bold">{analysisResult.summary.highRisk}</div>
-                      <div className="text-sm opacity-90">High Risk (&lt;70%)</div>
+                    <CardContent className="p-4 sm:p-6 text-center">
+                      <AlertTriangle className="w-6 sm:w-8 h-6 sm:h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-2xl sm:text-3xl font-bold">{analysisResult.summary.highRisk}</div>
+                      <div className="text-xs sm:text-sm opacity-90">High Risk (&lt;70%)</div>
                     </CardContent>
                   </Card>
                   <Card className="shadow-lg bg-gradient-to-br from-yellow-500 to-amber-500 text-white">
-                    <CardContent className="p-6 text-center">
-                      <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-3xl font-bold">{analysisResult.summary.moderateRisk}</div>
-                      <div className="text-sm opacity-90">Moderate Risk (70-84%)</div>
+                    <CardContent className="p-4 sm:p-6 text-center">
+                      <TrendingUp className="w-6 sm:w-8 h-6 sm:h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-2xl sm:text-3xl font-bold">{analysisResult.summary.moderateRisk}</div>
+                      <div className="text-xs sm:text-sm opacity-90">Moderate Risk (70-84%)</div>
                     </CardContent>
                   </Card>
                   <Card className="shadow-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
-                    <CardContent className="p-6 text-center">
-                      <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-3xl font-bold">{analysisResult.summary.lowRisk}</div>
-                      <div className="text-sm opacity-90">Low Risk (≥85%)</div>
+                    <CardContent className="p-4 sm:p-6 text-center">
+                      <CheckCircle className="w-6 sm:w-8 h-6 sm:h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-2xl sm:text-3xl font-bold">{analysisResult.summary.lowRisk}</div>
+                      <div className="text-xs sm:text-sm opacity-90">Low Risk (≥85%)</div>
                     </CardContent>
                   </Card>
                 </div>
 
                 <Card className="shadow-lg">
                   <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
-                    <CardTitle className="flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <Users className="w-5 h-5 text-purple-600" />
+                    <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 text-base sm:text-lg">
+                        <Users className="w-4 sm:w-5 h-4 sm:h-5 text-purple-600" />
                         Student-wise Risk Analysis
                       </span>
                       <Button 
                         onClick={generateHTMLReport}
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 w-full sm:w-auto"
                       >
                         <Download className="w-4 h-4 mr-2" />
                         Download Full Report
                       </Button>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="space-y-3 sm:space-y-4">
                       {analysisResult.students.map((student, idx) => (
                         <div 
                           key={idx} 
-                          className={`border rounded-xl p-4 ${
+                          className={`border rounded-xl p-3 sm:p-4 ${
                             student.riskLevel === 'high' ? 'border-red-300 bg-red-50' :
                             student.riskLevel === 'moderate' ? 'border-yellow-300 bg-yellow-50' :
                             'border-green-300 bg-green-50'
                           }`}
                         >
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-bold text-lg text-gray-900">{student.name}</h4>
-                                <Badge variant="outline">{student.rollNo}</Badge>
-                                <Badge className={getRiskColor(student.riskLevel)}>{student.riskLevel.toUpperCase()}</Badge>
+                          <div className="flex flex-col sm:flex-row items-start justify-between gap-3 mb-3">
+                            <div className="w-full sm:flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="font-bold text-base sm:text-lg text-gray-900">{student.name}</h4>
+                                <Badge variant="outline" className="text-xs">{student.rollNo}</Badge>
+                                <Badge className={`${getRiskColor(student.riskLevel)} text-xs`}>{student.riskLevel.toUpperCase()}</Badge>
                                 {student.interventionPriority === 'immediate' && (
-                                  <Badge className="bg-red-600 text-white animate-pulse">⚠️ IMMEDIATE ACTION</Badge>
+                                  <Badge className="bg-red-600 text-white animate-pulse text-xs">⚠️ IMMEDIATE ACTION</Badge>
                                 )}
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex-shrink-0">
                               <div className="text-2xl font-bold" style={{
                                 color: student.riskScore > 70 ? '#ef4444' : 
                                        student.riskScore > 40 ? '#f59e0b' : '#22c55e'
@@ -1164,22 +1166,22 @@ Be specific with dates and realistic with predictions.`;
                             </div>
                           </div>
 
-                          <div className="grid md:grid-cols-4 gap-3 mb-3">
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Current Attendance</div>
-                              <div className="text-xl font-bold text-gray-900">{student.percentage}%</div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3">
+                            <div className="bg-white/60 rounded-lg p-2 sm:p-3">
+                              <div className="text-xs sm:text-sm text-gray-600">Current Attendance</div>
+                              <div className="text-lg sm:text-xl font-bold text-gray-900">{student.percentage}%</div>
                             </div>
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Predicted Final</div>
-                              <div className="text-lg font-semibold text-gray-900">{student.predictedFinalAttendance}%</div>
+                            <div className="bg-white/60 rounded-lg p-2 sm:p-3">
+                              <div className="text-xs sm:text-sm text-gray-600">Predicted Final</div>
+                              <div className="text-base sm:text-lg font-semibold text-gray-900">{student.predictedFinalAttendance}%</div>
                             </div>
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Academic Impact</div>
-                              <div className="text-sm font-semibold text-gray-900">{student.academicImpact.substring(0, 30)}...</div>
+                            <div className="bg-white/60 rounded-lg p-2 sm:p-3 col-span-2 md:col-span-1">
+                              <div className="text-xs sm:text-sm text-gray-600">Academic Impact</div>
+                              <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{student.academicImpact.substring(0, 30)}...</div>
                             </div>
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Grade Drop Risk</div>
-                              <div className="text-lg font-bold text-red-600">{student.predictedGradeDrop}</div>
+                            <div className="bg-white/60 rounded-lg p-2 sm:p-3 col-span-2 md:col-span-1">
+                              <div className="text-xs sm:text-sm text-gray-600">Grade Drop Risk</div>
+                              <div className="text-base sm:text-lg font-bold text-red-600">{student.predictedGradeDrop}</div>
                             </div>
                           </div>
 

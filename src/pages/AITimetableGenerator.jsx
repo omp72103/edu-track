@@ -462,14 +462,14 @@ export default function AITimetableGenerator() {
 
 
   return (
-    <div className="p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center justify-center gap-3">
-          <Sparkles className="w-10 h-10 text-purple-600" />
+    <div className="p-4 sm:p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center justify-center gap-2 sm:gap-3">
+          <Sparkles className="w-8 sm:w-10 h-8 sm:h-10 text-purple-600" />
           AI Timetable Generator
           </h1>
-          <p className="text-gray-600 mt-2">Configure batches, queue them, and generate a smart class schedule</p>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base px-4">Configure batches, queue them, and generate a smart class schedule</p>
         </div>
 
         {message && (
@@ -482,18 +482,18 @@ export default function AITimetableGenerator() {
         )}
 
         {/* Configuration Form */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
           <div className="md:col-span-2">
             <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
               <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
-                <CardTitle>📚 Configure Batch Timetable</CardTitle>
+                <CardTitle className="text-base sm:text-lg">📚 Configure Batch Timetable</CardTitle>
               </CardHeader>
-              <CardContent className="pt-6 space-y-4">
+              <CardContent className="pt-4 sm:pt-6 space-y-4">
                 {/* Batch Selection */}
                 <div>
-                  <Label className="text-lg font-semibold">Select Batch *</Label>
+                  <Label className="text-base sm:text-lg font-semibold">Select Batch *</Label>
                   <Select value={selectedBatch} onValueChange={setSelectedBatch}>
-                    <SelectTrigger className="h-12 text-base">
+                    <SelectTrigger className="h-10 sm:h-12 text-sm sm:text-base">
                       <SelectValue placeholder="Choose batch (SY, TY, etc.)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -508,8 +508,8 @@ export default function AITimetableGenerator() {
 
                 {/* Timetable Structure */}
                 <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-3">⏰ Timetable Structure</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <h3 className="font-semibold mb-3 text-sm sm:text-base">⏰ Timetable Structure</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label>Working Days</Label>
                       <Select value={timetableStructure.working_days} onValueChange={(v) => setTimetableStructure({ ...timetableStructure, working_days: v })}>
@@ -536,14 +536,14 @@ export default function AITimetableGenerator() {
 
                   {/* Breaks */}
                   <div className="mt-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <Label>Breaks (Recess, Lunch, etc.)</Label>
-                      <Button size="sm" variant="outline" onClick={addBreak}>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                      <Label className="text-sm sm:text-base">Breaks (Recess, Lunch, etc.)</Label>
+                      <Button size="sm" variant="outline" onClick={addBreak} className="w-full sm:w-auto">
                         <Plus className="w-3 h-3 mr-1" /> Add Break
                       </Button>
                     </div>
                     {timetableStructure.breaks.map((brk, idx) => (
-                      <div key={idx} className="grid grid-cols-4 gap-2 mb-2">
+                      <div key={idx} className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                         <Input placeholder="Name" value={brk.name} onChange={(e) => updateBreak(idx, 'name', e.target.value)} />
                         <Input type="time" value={brk.start_time} onChange={(e) => updateBreak(idx, 'start_time', e.target.value)} />
                         <Input type="number" placeholder="Duration (mins)" value={brk.duration} onChange={(e) => updateBreak(idx, 'duration', e.target.value)} />
@@ -557,15 +557,15 @@ export default function AITimetableGenerator() {
 
                 {/* Subjects */}
                 <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <Label className="text-lg font-semibold">📖 Subjects</Label>
-                    <Button size="sm" variant="outline" onClick={addSubject}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-3">
+                    <Label className="text-base sm:text-lg font-semibold">📖 Subjects</Label>
+                    <Button size="sm" variant="outline" onClick={addSubject} className="w-full sm:w-auto">
                       <Plus className="w-4 h-4 mr-1" /> Add Subject
                     </Button>
                   </div>
                   {subjectData.map((subject, index) => (
                     <div key={index} className="border rounded-lg p-3 bg-gray-50 mb-2">
-                      <div className="grid grid-cols-4 gap-2 mb-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
                         <Input placeholder="Subject Name" value={subject.name} onChange={(e) => updateSubject(index, 'name', e.target.value)} />
                         <Input type="number" placeholder="Lectures/Week" value={subject.lectures_per_week} onChange={(e) => updateSubject(index, 'lectures_per_week', e.target.value)} />
                         <Select value={subject.type} onValueChange={(v) => updateSubject(index, 'type', v)}>
@@ -590,7 +590,7 @@ export default function AITimetableGenerator() {
                   ))}
                 </div>
 
-                <Button onClick={addToCart} className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+                <Button onClick={addToCart} className="w-full h-10 sm:h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg text-sm sm:text-base">
                   <Calendar className="w-4 h-4 mr-2" />
                   Add to Queue
                 </Button>
@@ -599,11 +599,11 @@ export default function AITimetableGenerator() {
           </div>
 
           {/* Cart */}
-          <div>
-            <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl sticky top-6">
+          <div className="md:sticky md:top-6">
+            <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
               <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100">
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Calendar className="w-4 sm:w-5 h-4 sm:h-5" />
                   Queued Batches ({cart.length})
                 </CardTitle>
               </CardHeader>
@@ -634,7 +634,7 @@ export default function AITimetableGenerator() {
                   <Button
                     onClick={generateFinalTimetable}
                     disabled={isGenerating}
-                    className="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-lg font-semibold"
+                    className="w-full h-10 sm:h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-sm sm:text-lg font-semibold"
                   >
                     {isGenerating ? (
                       <>
@@ -658,36 +658,36 @@ export default function AITimetableGenerator() {
         {finalTimetable && finalTimetable.length > 0 && (
           <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-2xl">
             <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
                 <div>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <CheckCircle className="w-6 h-6" />
+                  <CardTitle className="text-lg sm:text-xl md:text-2xl flex items-center gap-2">
+                    <CheckCircle className="w-5 sm:w-6 h-5 sm:h-6" />
                     Generated Timetables
                   </CardTitle>
-                  <p className="text-blue-100 text-sm mt-1">Auto-saved to database • {finalTimetable.length} batch(es) processed</p>
+                  <p className="text-blue-100 text-xs sm:text-sm mt-1">Auto-saved to database • {finalTimetable.length} batch(es) processed</p>
                 </div>
-                <Button onClick={downloadPDF} className="bg-white text-purple-600 hover:bg-gray-100 shadow-lg">
+                <Button onClick={downloadPDF} className="bg-white text-purple-600 hover:bg-gray-100 shadow-lg w-full md:w-auto">
                   <Download className="w-4 h-4 mr-2" />
                   Download All PDF
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-10">
+            <CardContent className="p-4 sm:p-6 space-y-6 sm:space-y-10">
               {finalTimetable.map((batchData, idx) => {
                 const { batch, timeSlots, entries, workingDays } = batchData;
                 return (
-                  <div key={idx} className="mb-10">
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-t-xl">
-                      <h3 className="text-2xl font-bold">{batch.batch_name}</h3>
-                      <p className="text-sm text-indigo-100 mt-1">{batch.year} • {batch.branch}</p>
+                  <div key={idx} className="mb-6 sm:mb-10">
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-t-xl">
+                      <h3 className="text-lg sm:text-xl md:text-2xl font-bold">{batch.batch_name}</h3>
+                      <p className="text-xs sm:text-sm text-indigo-100 mt-1">{batch.year} • {batch.branch}</p>
                     </div>
-                    <div className="overflow-x-auto border-4 border-indigo-300 rounded-b-xl shadow-lg">
-                      <table className="w-full border-collapse">
+                    <div className="overflow-x-auto border-2 sm:border-4 border-indigo-300 rounded-b-xl shadow-lg -mx-4 sm:mx-0">
+                      <table className="w-full border-collapse min-w-[800px]">
                         <thead>
                           <tr className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                            <th className="border-2 border-white px-4 py-3 text-center font-bold sticky left-0 bg-indigo-600 z-10 min-w-[100px]">Day / Time</th>
+                            <th className="border-2 border-white px-2 sm:px-4 py-2 sm:py-3 text-center font-bold sticky left-0 bg-indigo-600 z-10 min-w-[80px] sm:min-w-[100px] text-xs sm:text-sm">Day / Time</th>
                             {timeSlots.map((slot, slotIdx) => (
-                              <th key={slotIdx} className={`border-2 border-white px-3 py-3 text-center font-semibold text-xs min-w-[120px] ${
+                              <th key={slotIdx} className={`border-2 border-white px-2 sm:px-3 py-2 sm:py-3 text-center font-semibold text-xs min-w-[100px] sm:min-w-[120px] ${
                                 slot.type === 'break' ? 'bg-amber-500' : ''
                               }`}>
                                 {slot.type === 'break' ? (
@@ -707,8 +707,9 @@ export default function AITimetableGenerator() {
                             const dayEntries = entries.filter(e => e.day_of_week === day);
                             return (
                               <tr key={day} className={`${dayIdx % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}>
-                                <td className="border-2 border-gray-300 px-4 py-4 font-bold text-center bg-gradient-to-r from-indigo-100 to-purple-100 sticky left-0 z-10">
-                                  {day}
+                                <td className="border-2 border-gray-300 px-2 sm:px-4 py-3 sm:py-4 font-bold text-center bg-gradient-to-r from-indigo-100 to-purple-100 sticky left-0 z-10 text-xs sm:text-sm">
+                                  <span className="hidden sm:inline">{day}</span>
+                                  <span className="sm:hidden">{day.substring(0, 3)}</span>
                                 </td>
                                 {timeSlots.map((slot, slotIdx) => {
                                   if (slot.type === 'break') {
@@ -730,10 +731,10 @@ export default function AITimetableGenerator() {
                                   }
                                   
                                   return (
-                                    <td key={slotIdx} className="border-2 border-gray-300 px-3 py-3 bg-gradient-to-br from-indigo-50 to-purple-50">
+                                    <td key={slotIdx} className="border-2 border-gray-300 px-2 sm:px-3 py-2 sm:py-3 bg-gradient-to-br from-indigo-50 to-purple-50">
                                       <div className="text-center space-y-1">
-                                        <div className="font-bold text-indigo-900 text-sm">{entry.subject}</div>
-                                        <div className="text-xs text-purple-700 font-medium">{entry.faculty_name}</div>
+                                        <div className="font-bold text-indigo-900 text-xs sm:text-sm leading-tight">{entry.subject}</div>
+                                        <div className="text-xs text-purple-700 font-medium truncate">{entry.faculty_name}</div>
                                         <Badge className="mt-1 text-xs bg-indigo-500 text-white">{entry.class_type}</Badge>
                                       </div>
                                     </td>

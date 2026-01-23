@@ -341,13 +341,11 @@ export default function Layout({ children, currentPageName }) {
                     );
                   })}
                 </div>
-                </div>
-                )}
+              </div>
+            )}
 
-
-
-                {/* User Section with Glassmorphism */}
-                <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
+            {/* User Section with Glassmorphism */}
+            <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
             {user && !isSidebarCollapsed && (
               <button 
                 onClick={() => window.location.href = createPageUrl("Profile")}

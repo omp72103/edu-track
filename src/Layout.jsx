@@ -206,27 +206,28 @@ export default function Layout({ children, currentPageName }) {
 
   // User is logged in - show full app (authorization happens automatically)
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'} w-64`}>
-        <div className="flex flex-col h-full">
-          {/* Logo Section */}
-          <div className="p-6 border-b relative">
+      <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72`}>
+        {/* Glassmorphism Sidebar */}
+        <div className="flex flex-col h-full bg-white/80 backdrop-blur-xl border-r border-white/20 shadow-2xl">
+          {/* Logo Section with Gradient */}
+          <div className="p-6 relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-white/30 hover:scale-105 transition-transform duration-300">
+                <GraduationCap className="w-7 h-7 text-white" />
               </div>
               {!isSidebarCollapsed && (
                 <div className="flex flex-col">
-                  <span className="font-bold text-lg text-gray-800">EDU TRACK</span>
-                  <span className="text-xs text-gray-500">Education Management</span>
+                  <span className="font-bold text-xl text-white tracking-tight">EDU TRACK</span>
+                  <span className="text-xs text-blue-100 font-medium">Smart Education Platform</span>
                 </div>
               )}
             </div>
             {/* Collapse Button - Desktop Only */}
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-1 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
+              className="hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-2 rounded-full shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 border-2 border-white"
               title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -234,52 +235,71 @@ export default function Layout({ children, currentPageName }) {
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 flex flex-col gap-4 p-4 overflow-y-auto">
-            <div>
-              {!isSidebarCollapsed && <span className="text-xs font-semibold text-gray-500 px-3">MAIN MENU</span>}
-              <div className="mt-2 space-y-1">
+          <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto custom-scrollbar">
+            {/* Main Menu Section */}
+            <div className="space-y-1">
+              {!isSidebarCollapsed && (
+                <div className="px-3 mb-2">
+                  <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Main Menu</span>
+                </div>
+              )}
+              <div className="space-y-1">
                 {mainNavItems.map((item) => {
                   const isActive = location.pathname.startsWith(createPageUrl(item.name));
                   return (
                     <Link
                       key={item.name}
                       to={createPageUrl(item.name)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
                         isActive 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
+                          : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md hover:scale-102'
                       } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                       onClick={() => setIsSidebarOpen(false)}
                       title={isSidebarCollapsed ? (item.label || item.name) : ''}
                     >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
+                      <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
                       {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
+                      {!isSidebarCollapsed && isActive && (
+                        <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                      )}
                     </Link>
                   );
                 })}
               </div>
             </div>
             
+            {/* Admin Section with Badge */}
             {user && user.role === 'admin' && (
-              <div>
-                {!isSidebarCollapsed && <span className="text-xs font-semibold text-gray-500 px-3">ADMIN</span>}
-                <div className="mt-2 space-y-1">
+              <div className="pt-3 space-y-1 border-t border-gray-200/50">
+                {!isSidebarCollapsed && (
+                  <div className="px-3 mb-2 flex items-center gap-2">
+                    <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Admin Panel</span>
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full font-bold shadow-md">
+                      Pro
+                    </span>
+                  </div>
+                )}
+                <div className="space-y-1">
                   {adminNavItems.map((item) => {
                     const isActive = location.pathname.startsWith(createPageUrl(item.name));
                     return (
                       <Link
                         key={item.name}
                         to={createPageUrl(item.name)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
                           isActive 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50 scale-105' 
+                            : 'text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:shadow-md hover:scale-102'
                         } ${isSidebarCollapsed ? 'justify-center' : ''}`}
                         onClick={() => setIsSidebarOpen(false)}
                         title={isSidebarCollapsed ? (item.label || item.name) : ''}
                       >
-                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
                         {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
+                        {!isSidebarCollapsed && isActive && (
+                          <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                        )}
                       </Link>
                     );
                   })}
@@ -288,32 +308,43 @@ export default function Layout({ children, currentPageName }) {
             )}
           </div>
 
-          {/* User Section */}
-          <div className="p-4 border-t">
+          {/* User Section with Glassmorphism */}
+          <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
             {user && !isSidebarCollapsed && (
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-100 mb-3">
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-                  {user.full_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-800 truncate">{user.full_name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+              <div className="relative mb-3 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-gray-800 truncate">{user.full_name}</p>
+                    <p className="text-xs text-indigo-600 capitalize font-semibold flex items-center gap-1">
+                      {user.role}
+                      {user.role === 'admin' && (
+                        <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full">✨</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
             {user && isSidebarCollapsed && (
-              <div className="flex justify-center mb-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold" title={user.full_name}>
-                  {user.full_name.charAt(0).toUpperCase()}
+              <div className="flex justify-center mb-3 group">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30 group-hover:opacity-60 transition-opacity"></div>
+                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform" title={user.full_name}>
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </div>
                 </div>
               </div>
             )}
             <button
               onClick={() => User.logout()}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors w-full ${isSidebarCollapsed ? 'justify-center' : ''}`}
+              className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:text-red-600 transition-all duration-300 w-full hover:shadow-md ${isSidebarCollapsed ? 'justify-center' : ''}`}
               title={isSidebarCollapsed ? 'Logout' : ''}
             >
-              <LogOut className="w-4 h-4 flex-shrink-0" />
+              <LogOut className="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
               {!isSidebarCollapsed && <span>Logout</span>}
             </button>
           </div>
@@ -322,15 +353,15 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
-        {/* Mobile Header */}
-        <header className="bg-white shadow-sm p-4 flex items-center justify-between lg:hidden">
+        {/* Mobile Header with Gradient */}
+        <header className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-xl p-4 flex items-center justify-between lg:hidden">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+            className="p-2 rounded-lg text-white hover:bg-white/20 backdrop-blur-md transition-all duration-300"
           >
             <Menu className="h-6 w-6" />
           </button>
-          <div className="font-bold text-lg">EDU TRACK</div>
+          <div className="font-bold text-lg text-white tracking-tight">EDU TRACK</div>
           <div className="w-10"></div>
         </header>
 

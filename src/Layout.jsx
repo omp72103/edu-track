@@ -23,7 +23,8 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  MapPin
+  MapPin,
+  X
 } from "lucide-react";
 
 // Faculty Nav Items (visible to both admin and faculty)
@@ -31,7 +32,7 @@ const facultyNavItems = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "CreateSession", label: "Create Session", icon: PlusCircle },
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck, facultyOnly: true },
-  { name: "AssignmentManagement", label: "Assignments", icon: FileText },
+  { name: "AssignmentManagement", label: "Assignments", icon: FileText, facultyOnly: true },
   { name: "TeachingNotes", label: "Teaching Notes", icon: FileText, facultyOnly: true },
   { name: "Batches", label: "Manage Classes", icon: Users },
   { name: "TimeTable", label: "Timetable", icon: Calendar },
@@ -54,6 +55,7 @@ export default function Layout({ children, currentPageName }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -301,14 +303,13 @@ export default function Layout({ children, currentPageName }) {
               </div>
             </div>
             
-            {/* Admin Section with Badge */}
+            {/* Admin Section */}
             {user && user.role === 'admin' && (
               <div className="pt-3 space-y-1 border-t border-gray-200/50">
                 {!isSidebarCollapsed && (
                   <div className="px-3 mb-2 flex items-center gap-2">
-                    <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Admin Panel</span>
                     <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full font-bold shadow-md">
-                      Pro
+                      Admin
                     </span>
                   </div>
                 )}
@@ -343,33 +344,39 @@ export default function Layout({ children, currentPageName }) {
           {/* User Section with Glassmorphism */}
           <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
             {user && !isSidebarCollapsed && (
-              <div className="relative mb-3 group">
+              <button 
+                onClick={() => setShowProfileModal(true)}
+                className="relative mb-3 group w-full text-left"
+              >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm text-gray-800 truncate">{user.full_name}</p>
                     <p className="text-xs text-indigo-600 capitalize font-semibold flex items-center gap-1">
-                      {user.role}
+                      {user.role === 'admin' ? 'Admin' : 'Faculty Login'}
                       {user.role === 'admin' && (
                         <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full">✨</span>
                       )}
                     </p>
                   </div>
                 </div>
-              </div>
+              </button>
             )}
             {user && isSidebarCollapsed && (
-              <div className="flex justify-center mb-3 group">
+              <button 
+                onClick={() => setShowProfileModal(true)}
+                className="flex justify-center mb-3 group w-full"
+              >
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30 group-hover:opacity-60 transition-opacity"></div>
-                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform" title={user.full_name}>
+                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={user.full_name}>
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
                 </div>
-              </div>
+              </button>
             )}
             <button
               onClick={() => User.logout()}
@@ -427,6 +434,58 @@ export default function Layout({ children, currentPageName }) {
           background: linear-gradient(to bottom, #2563eb, #4f46e5);
         }
       `}</style>
-    </div>
-  );
-}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setShowProfileModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setShowProfileModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-xl mx-auto mb-4 ring-4 ring-blue-100">
+                {user.full_name.charAt(0).toUpperCase()}
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">{user.full_name}</h2>
+              <p className="text-sm text-indigo-600 font-semibold capitalize">
+                {user.role === 'admin' ? 'Administrator' : 'Faculty Member'}
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
+                <p className="text-xs text-gray-600 mb-1">Email Address</p>
+                <p className="text-sm font-semibold text-gray-900">{user.email}</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4">
+                <p className="text-xs text-gray-600 mb-1">Role & Permissions</p>
+                <p className="text-sm font-semibold text-gray-900 capitalize">{user.role}</p>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
+                <p className="text-xs text-gray-600 mb-1">Account Status</p>
+                <p className="text-sm font-semibold text-green-700">✓ Active</p>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => {
+                setShowProfileModal(false);
+                User.logout();
+              }}
+              className="w-full bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      )}
+      </div>
+      );
+      }

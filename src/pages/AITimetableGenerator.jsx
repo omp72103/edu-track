@@ -110,6 +110,61 @@ export default function AITimetableGenerator() {
     setCart(cart.filter(item => item.id !== id));
   };
 
+  const generateTimeSlots = (structure) => {
+    const slots = [];
+    const [startHour, startMin] = structure.start_time.split(':').map(Number);
+    const [endHour, endMin] = structure.end_time.split(':').map(Number);
+    
+    let currentHour = startHour;
+    let currentMin = startMin;
+    const lectureDuration = parseInt(structure.lecture_duration);
+    
+    while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
+      const slotStart = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+      
+      // Check if this is a break time
+      let isBreak = false;
+      let breakName = '';
+      let breakDuration = 0;
+      
+      for (const brk of structure.breaks) {
+        const [brkHour, brkMin] = brk.start_time.split(':').map(Number);
+        if (currentHour === brkHour && currentMin === brkMin) {
+          isBreak = true;
+          breakName = brk.name;
+          breakDuration = parseInt(brk.duration);
+          break;
+        }
+      }
+      
+      if (isBreak) {
+        const endMin = currentMin + breakDuration;
+        const slotEnd = `${String(currentHour + Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+        slots.push({ 
+          time: `${slotStart}-${slotEnd}`, 
+          type: 'break', 
+          name: breakName 
+        });
+        currentMin += breakDuration;
+      } else {
+        const endMin = currentMin + lectureDuration;
+        const slotEnd = `${String(currentHour + Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+        slots.push({ 
+          time: `${slotStart}-${slotEnd}`, 
+          type: 'lecture' 
+        });
+        currentMin += lectureDuration;
+      }
+      
+      if (currentMin >= 60) {
+        currentHour += Math.floor(currentMin / 60);
+        currentMin = currentMin % 60;
+      }
+    }
+    
+    return slots;
+  };
+
   const generateFinalTimetable = async () => {
     if (cart.length === 0) {
       setMessage({ type: "error", text: "Queue is empty. Add batches first." });
@@ -120,84 +175,68 @@ export default function AITimetableGenerator() {
     setMessage({ type: "info", text: "Generating timetable... This may take a moment." });
 
     try {
-      const allEntries = [];
+      const allBatchTimetables = [];
 
       for (const item of cart) {
-        const facultyMapping = item.subjects
-          .filter(s => s.faculty_name)
-          .map(s => `${s.faculty_name} teaches ${s.name}`)
-          .join("\n");
+        const timeSlots = generateTimeSlots(item.structure);
+        const lectureSlots = timeSlots.filter(s => s.type === 'lecture');
+        const workingDays = item.structure.working_days === "5" ? 
+          ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] :
+          ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-        const subjectsList = item.subjects.map(s =>
-          `${s.name} (${s.lectures_per_week} lectures/week, ${s.type})`
-        ).join("\n");
-
-        const breaksInfo = item.structure.breaks.map(b =>
-          `${b.name}: ${b.start_time} for ${b.duration} minutes`
-        ).join("\n");
-
-        const prompt = `Generate a clean, optimized timetable for ${item.batch.batch_name}.
-
-STRUCTURE:
-- Working Days: ${item.structure.working_days} days (Monday to ${item.structure.working_days === "5" ? "Friday" : "Saturday"})
-- Start Time: ${item.structure.start_time}
-- End Time: ${item.structure.end_time}
-- Lecture Duration: ${item.structure.lecture_duration} minutes
-- Breaks: ${breaksInfo}
-
-SUBJECTS:
-${subjectsList}
-
-FACULTY ASSIGNMENT:
-${facultyMapping}
-
-CRITICAL RULES:
-1. EXACTLY ${item.subjects.reduce((sum, s) => sum + parseInt(s.lectures_per_week || 0), 0)} lectures total across the week
-2. Each subject gets EXACTLY the number of lectures specified (no more, no less)
-3. NO DUPLICATE time slots - each time slot can only have ONE class
-4. Generate proper sequential time slots (e.g., 09:00-10:00, 10:00-11:00, 11:15-12:15 after break)
-5. Time slots MUST be properly formatted: "HH:MM-HH:MM" (24-hour format)
-6. Distribute lectures evenly across ${item.structure.working_days} days
-7. Room assignment: Theory classes (301-320), Lab/Practical (Lab1-Lab5)
-8. NO faculty time conflicts
-
-Return ONLY valid, non-duplicate timetable entries:`;
-
-        const result = await base44.integrations.Core.InvokeLLM({
-          prompt: prompt,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              timetable: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    day_of_week: { type: "string" },
-                    time_slot: { type: "string" },
-                    subject: { type: "string" },
-                    faculty_name: { type: "string" },
-                    room_number: { type: "string" },
-                    class_type: { type: "string" }
-                  }
-                }
-              }
-            }
-          }
+        const entries = [];
+        const totalLecturesNeeded = item.subjects.reduce((sum, s) => sum + parseInt(s.lectures_per_week || 0), 0);
+        
+        // Distribute lectures across days
+        const lecturesPerDay = Math.ceil(totalLecturesNeeded / workingDays.length);
+        let subjectIndex = 0;
+        let lectureCount = {};
+        
+        item.subjects.forEach(s => {
+          lectureCount[s.name] = 0;
         });
 
-        const entries = (result.timetable || []).map(e => ({
-          ...e,
-          batch_id: item.batch.batch_id,
-          batch_name: item.batch.batch_name
-        }));
+        for (let dayIdx = 0; dayIdx < workingDays.length; dayIdx++) {
+          const day = workingDays[dayIdx];
+          let slotIdx = 0;
+          
+          while (slotIdx < lectureSlots.length && subjectIndex < item.subjects.length) {
+            const subject = item.subjects[subjectIndex];
+            const targetLectures = parseInt(subject.lectures_per_week || 0);
+            
+            if (lectureCount[subject.name] < targetLectures) {
+              entries.push({
+                day_of_week: day,
+                time_slot: lectureSlots[slotIdx].time,
+                subject: subject.name,
+                faculty_name: subject.faculty_name || 'TBD',
+                class_type: subject.type,
+                batch_id: item.batch.batch_id,
+                batch_name: item.batch.batch_name
+              });
+              
+              lectureCount[subject.name]++;
+              slotIdx++;
+            } else {
+              subjectIndex++;
+            }
+          }
+          
+          subjectIndex = 0;
+        }
 
-        allEntries.push(...entries);
+        allBatchTimetables.push({
+          batch: item.batch,
+          timeSlots: timeSlots,
+          entries: entries,
+          workingDays: workingDays
+        });
       }
 
-      setFinalTimetable(allEntries);
+      setFinalTimetable(allBatchTimetables);
       
       // Automatically save to database
+      const allEntries = allBatchTimetables.flatMap(bt => bt.entries);
       await saveToDatabaseAuto(allEntries);
       
       setMessage({ type: "success", text: "Timetable generated and saved successfully! View it in Timetable section." });
@@ -226,7 +265,7 @@ Return ONLY valid, non-duplicate timetable entries:`;
           subject: entry.subject,
           faculty_name: entry.faculty_name,
           faculty_email: faculty?.email || "",
-          room_number: entry.room_number,
+          room_number: "",
           class_type: entry.class_type,
           academic_year: "2025-26"
         });
@@ -241,86 +280,121 @@ Return ONLY valid, non-duplicate timetable entries:`;
 
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-    const groupedByBatch = finalTimetable.reduce((acc, entry) => {
-      if (!acc[entry.batch_name]) acc[entry.batch_name] = [];
-      acc[entry.batch_name].push(entry);
-      return acc;
-    }, {});
+    finalTimetable.forEach((batchData, batchIdx) => {
+      if (batchIdx > 0) doc.addPage();
 
-    let pageNum = 0;
+      const { batch, timeSlots, entries, workingDays } = batchData;
+      const lectureSlots = timeSlots.filter(s => s.type === 'lecture');
 
-    Object.entries(groupedByBatch).forEach(([batchName, entries]) => {
-      if (pageNum > 0) doc.addPage();
-      pageNum++;
-
-      // Header
-      doc.setFontSize(20);
-      doc.setTextColor(59, 130, 246);
-      doc.text(`Timetable - ${batchName}`, 148, 15, { align: 'center' });
+      // Modern Header with Gradient Effect
+      doc.setFillColor(79, 70, 229);
+      doc.rect(0, 0, 297, 35, 'F');
       
-      doc.setFontSize(8);
-      doc.setTextColor(0, 0, 0);
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, 297, 30, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.setFont(undefined, 'bold');
+      doc.text(batch.batch_name, 148, 12, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text(`Academic Timetable | ${batch.year || ''} ${batch.branch || ''}`, 148, 20, { align: 'center' });
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 148, 26, { align: 'center' });
 
-      // Group by day
-      const groupedByDay = {};
-      daysOfWeek.forEach(day => {
-        groupedByDay[day] = entries.filter(e => e.day_of_week === day).sort((a, b) => a.time_slot.localeCompare(b.time_slot));
-      });
-
-      // Draw table manually
-      let y = 25;
-      const colWidth = 30;
-      const rowHeight = 25;
+      // Table setup
+      let y = 45;
+      const dayColWidth = 30;
+      const slotColWidth = (297 - dayColWidth - 20) / lectureSlots.length;
+      const rowHeight = 22;
       const startX = 10;
 
-      // Header row
-      doc.setFillColor(220, 220, 255);
-      doc.rect(startX, y, 25, rowHeight, 'F');
+      // Header Row - Time Slots
+      doc.setFillColor(99, 102, 241);
+      doc.rect(startX, y, dayColWidth, rowHeight, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
       doc.setFont(undefined, 'bold');
-      doc.text('Day', startX + 12, y + 5, { align: 'center' });
-      
-      for (let i = 0; i < 8; i++) {
-        doc.rect(startX + 25 + i * colWidth, y, colWidth, rowHeight, 'F');
-        doc.text(`Slot ${i + 1}`, startX + 25 + i * colWidth + 15, y + 5, { align: 'center' });
-      }
+      doc.text('Day', startX + dayColWidth/2, y + 13, { align: 'center' });
+
+      timeSlots.forEach((slot, idx) => {
+        const xPos = startX + dayColWidth + idx * slotColWidth;
+        
+        if (slot.type === 'break') {
+          doc.setFillColor(251, 191, 36);
+          doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
+          doc.setTextColor(120, 53, 15);
+          doc.setFontSize(8);
+          doc.text(slot.name, xPos + slotColWidth/2, y + 8, { align: 'center' });
+          doc.setFontSize(7);
+          doc.text(slot.time, xPos + slotColWidth/2, y + 15, { align: 'center' });
+        } else {
+          doc.setFillColor(99, 102, 241);
+          doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text(slot.time, xPos + slotColWidth/2, y + 13, { align: 'center' });
+        }
+      });
       
       y += rowHeight;
 
-      // Data rows
-      doc.setFont(undefined, 'normal');
-      daysOfWeek.forEach(day => {
-        const dayEntries = groupedByDay[day] || [];
-        if (dayEntries.length > 0) {
-          doc.setFillColor(240, 240, 255);
-          doc.rect(startX, y, 25, rowHeight, 'FD');
-          doc.setFont(undefined, 'bold');
-          doc.text(day.substring(0, 3), startX + 12, y + 8, { align: 'center' });
-          doc.setFont(undefined, 'normal');
+      // Data Rows
+      workingDays.forEach((day, dayIdx) => {
+        const dayEntries = entries.filter(e => e.day_of_week === day);
+        
+        doc.setFillColor(dayIdx % 2 === 0 ? 243 : 249, dayIdx % 2 === 0 ? 244 : 250, dayIdx % 2 === 0 ? 246 : 251);
+        doc.rect(startX, y, dayColWidth, rowHeight, 'F');
+        doc.setTextColor(31, 41, 55);
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.text(day.substring(0, 3), startX + dayColWidth/2, y + 13, { align: 'center' });
 
-          for (let i = 0; i < 8; i++) {
-            const entry = dayEntries[i];
-            doc.rect(startX + 25 + i * colWidth, y, colWidth, rowHeight, 'D');
+        timeSlots.forEach((slot, idx) => {
+          const xPos = startX + dayColWidth + idx * slotColWidth;
+          
+          if (slot.type === 'break') {
+            doc.setFillColor(254, 243, 199);
+            doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
+            doc.setTextColor(146, 64, 14);
+            doc.setFontSize(7);
+            doc.text('---', xPos + slotColWidth/2, y + 13, { align: 'center' });
+          } else {
+            const entry = dayEntries.find(e => e.time_slot === slot.time);
             
             if (entry) {
-              doc.setFontSize(7);
-              doc.text(entry.subject.substring(0, 15), startX + 25 + i * colWidth + 2, y + 5);
-              doc.setFontSize(6);
-              doc.text(entry.faculty_name.substring(0, 12), startX + 25 + i * colWidth + 2, y + 10);
-              doc.text(entry.time_slot, startX + 25 + i * colWidth + 2, y + 14);
-              doc.text(entry.room_number, startX + 25 + i * colWidth + 2, y + 18);
+              doc.setFillColor(224, 231, 255);
+              doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
+              doc.setTextColor(67, 56, 202);
               doc.setFontSize(8);
+              doc.setFont(undefined, 'bold');
+              doc.text(entry.subject.substring(0, 12), xPos + slotColWidth/2, y + 8, { align: 'center' });
+              doc.setFontSize(6);
+              doc.setFont(undefined, 'normal');
+              doc.text(entry.faculty_name.substring(0, 15), xPos + slotColWidth/2, y + 14, { align: 'center' });
+              doc.setFontSize(5);
+              doc.text(entry.class_type, xPos + slotColWidth/2, y + 18, { align: 'center' });
+            } else {
+              doc.setFillColor(dayIdx % 2 === 0 ? 249 : 255, dayIdx % 2 === 0 ? 250 : 255, dayIdx % 2 === 0 ? 251 : 255);
+              doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
             }
           }
-          y += rowHeight;
-        }
+          
+          doc.setDrawColor(209, 213, 219);
+          doc.rect(xPos, y, slotColWidth, rowHeight, 'S');
+        });
+        
+        y += rowHeight;
       });
 
+      // Footer
       doc.setFontSize(8);
-      doc.setTextColor(128, 128, 128);
-      doc.text('Generated by EDU TRACK', 148, 200, { align: 'center' });
+      doc.setTextColor(107, 114, 128);
+      doc.text('EDU TRACK Education Management System', 148, 200, { align: 'center' });
     });
 
-    doc.save('Final_Timetable.pdf');
+    doc.save(`Timetable_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const saveToDatabaseAll = async () => {
@@ -357,17 +431,7 @@ Return ONLY valid, non-duplicate timetable entries:`;
     }
   };
 
-  const groupByDayAndBatch = (entries) => {
-    const grouped = {};
-    entries.forEach(entry => {
-      if (!grouped[entry.batch_name]) grouped[entry.batch_name] = {};
-      if (!grouped[entry.batch_name][entry.day_of_week]) {
-        grouped[entry.batch_name][entry.day_of_week] = [];
-      }
-      grouped[entry.batch_name][entry.day_of_week].push(entry);
-    });
-    return grouped;
-  };
+
 
   return (
     <div className="p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 min-h-screen">
@@ -570,65 +634,92 @@ Return ONLY valid, non-duplicate timetable entries:`;
                 <div>
                   <CardTitle className="text-2xl flex items-center gap-2">
                     <CheckCircle className="w-6 h-6" />
-                    Generated Timetable (Rectangular View)
+                    Generated Timetables
                   </CardTitle>
-                  <p className="text-blue-100 text-sm mt-1">Auto-saved to database • View in Timetable section</p>
+                  <p className="text-blue-100 text-sm mt-1">Auto-saved to database • {finalTimetable.length} batch(es) processed</p>
                 </div>
                 <Button onClick={downloadPDF} className="bg-white text-purple-600 hover:bg-gray-100 shadow-lg">
                   <Download className="w-4 h-4 mr-2" />
-                  Download PDF
+                  Download All PDF
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              {Object.entries(groupByDayAndBatch(finalTimetable)).map(([batchName, days]) => (
-                <div key={batchName} className="mb-10">
-                  <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-t-xl">
-                    <h3 className="text-2xl font-bold">{batchName}</h3>
+            <CardContent className="p-6 space-y-10">
+              {finalTimetable.map((batchData, idx) => {
+                const { batch, timeSlots, entries, workingDays } = batchData;
+                return (
+                  <div key={idx} className="mb-10">
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-t-xl">
+                      <h3 className="text-2xl font-bold">{batch.batch_name}</h3>
+                      <p className="text-sm text-indigo-100 mt-1">{batch.year} • {batch.branch}</p>
+                    </div>
+                    <div className="overflow-x-auto border-4 border-indigo-300 rounded-b-xl shadow-lg">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                            <th className="border-2 border-white px-4 py-3 text-center font-bold sticky left-0 bg-indigo-600 z-10 min-w-[100px]">Day / Time</th>
+                            {timeSlots.map((slot, slotIdx) => (
+                              <th key={slotIdx} className={`border-2 border-white px-3 py-3 text-center font-semibold text-xs min-w-[120px] ${
+                                slot.type === 'break' ? 'bg-amber-500' : ''
+                              }`}>
+                                {slot.type === 'break' ? (
+                                  <div>
+                                    <div className="font-bold">{slot.name}</div>
+                                    <div className="text-xs opacity-90">{slot.time}</div>
+                                  </div>
+                                ) : (
+                                  <div>{slot.time}</div>
+                                )}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white">
+                          {workingDays.map((day, dayIdx) => {
+                            const dayEntries = entries.filter(e => e.day_of_week === day);
+                            return (
+                              <tr key={day} className={`${dayIdx % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-indigo-50 transition-colors`}>
+                                <td className="border-2 border-gray-300 px-4 py-4 font-bold text-center bg-gradient-to-r from-indigo-100 to-purple-100 sticky left-0 z-10">
+                                  {day}
+                                </td>
+                                {timeSlots.map((slot, slotIdx) => {
+                                  if (slot.type === 'break') {
+                                    return (
+                                      <td key={slotIdx} className="border-2 border-gray-300 px-3 py-4 text-center bg-amber-50">
+                                        <div className="text-amber-700 text-xs font-semibold">—</div>
+                                      </td>
+                                    );
+                                  }
+                                  
+                                  const entry = dayEntries.find(e => e.time_slot === slot.time);
+                                  
+                                  if (!entry) {
+                                    return (
+                                      <td key={slotIdx} className="border-2 border-gray-300 px-3 py-4 text-center text-gray-400">
+                                        —
+                                      </td>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <td key={slotIdx} className="border-2 border-gray-300 px-3 py-3 bg-gradient-to-br from-indigo-50 to-purple-50">
+                                      <div className="text-center space-y-1">
+                                        <div className="font-bold text-indigo-900 text-sm">{entry.subject}</div>
+                                        <div className="text-xs text-purple-700 font-medium">{entry.faculty_name}</div>
+                                        <Badge className="mt-1 text-xs bg-indigo-500 text-white">{entry.class_type}</Badge>
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <div className="overflow-x-auto border-4 border-purple-300 rounded-b-xl shadow-lg">
-                    <table className="w-full border-collapse min-w-[1200px]">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
-                          <th className="border-2 border-white px-6 py-4 text-left font-bold text-lg sticky left-0 bg-blue-500 z-10 min-w-[140px]">Day / Time</th>
-                          {Array.from({ length: 8 }, (_, i) => (
-                            <th key={i} className="border-2 border-white px-4 py-4 text-center font-bold min-w-[160px]">
-                              <div className="text-sm">Slot {i + 1}</div>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white">
-                        {daysOfWeek.map(day => {
-                          const dayEntries = days[day] || [];
-                          if (dayEntries.length === 0) return null;
-                          const sorted = dayEntries.sort((a, b) => a.time_slot.localeCompare(b.time_slot));
-                          return (
-                            <tr key={day} className="hover:bg-blue-50 transition-colors">
-                              <td className="border-2 border-gray-300 px-6 py-6 font-bold text-lg bg-gradient-to-r from-purple-100 to-blue-100 sticky left-0 z-10">{day}</td>
-                              {Array.from({ length: 8 }, (_, i) => {
-                                const entry = sorted[i];
-                                if (!entry) return <td key={i} className="border-2 border-gray-300 px-4 py-6 text-center text-gray-400 text-lg">—</td>;
-                                return (
-                                  <td key={i} className="border-2 border-gray-300 px-4 py-4 bg-gradient-to-br from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 transition-all">
-                                    <div className="text-center space-y-1">
-                                      <div className="font-bold text-purple-900 text-sm leading-tight">{entry.subject}</div>
-                                      <div className="text-xs text-indigo-600 font-semibold">{entry.time_slot}</div>
-                                      <div className="text-xs text-gray-700 font-medium">{entry.faculty_name}</div>
-                                      <div className="text-xs text-gray-500">{entry.room_number}</div>
-                                      <Badge className="mt-1 text-xs bg-blue-500 text-white px-2 py-0.5 font-medium">{entry.class_type}</Badge>
-                                    </div>
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}

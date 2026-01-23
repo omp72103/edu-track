@@ -32,6 +32,7 @@ import StudentAnalysis from "../components/student/StudentAnalysis";
 import StudentFeedback from "../components/student/StudentFeedback";
 import StudentComplaints from "../components/student/StudentComplaints";
 import StudentNotifications from "../components/student/StudentNotifications";
+import StudentExcalidrawNotes from "../components/student/StudentExcalidrawNotes";
 
 const studentMenuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -39,6 +40,7 @@ const studentMenuItems = [
   { id: 'timetable', label: 'Timetable', icon: ClipboardList },
   { id: 'assignments', label: 'Assignments', icon: FileText },
   { id: 'notes', label: 'Notes', icon: BookOpen },
+  { id: 'excalidraw-notes', label: 'Teaching Notes', icon: FileText },
   { id: 'analysis', label: 'Analysis & Performance', icon: TrendingUp },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },
   { id: 'complaints', label: 'Complaints', icon: AlertCircle },
@@ -100,6 +102,8 @@ export default function StudentPortal() {
         return <StudentAssignments {...pageProps} />;
       case 'notes':
         return <StudentNotes {...pageProps} />;
+      case 'excalidraw-notes':
+        return <StudentExcalidrawNotes {...pageProps} />;
       case 'analysis':
         return <StudentAnalysis {...pageProps} />;
       case 'feedback':

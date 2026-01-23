@@ -32,6 +32,7 @@ const mainNavItems = [
   { name: "CreateSession", label: "Create Session", icon: PlusCircle },
   { name: "Upload", label: "Upload Students", icon: Upload },
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck },
+  { name: "ExcalidrawTeacher", label: "Teaching Notes", icon: FileText },
   { name: "Batches", label: "Manage Batches", icon: Users },
   { name: "TimeTable", label: "Timetable", icon: Calendar },
   { name: "Performance", label: "Performance", icon: TrendingUp },

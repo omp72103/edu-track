@@ -23,6 +23,9 @@ import StudentPerformance from './pages/StudentPerformance';
 import StudentPortal from './pages/StudentPortal';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
+import ExcalidrawTeacher from './pages/ExcalidrawTeacher';
+import ExcalidrawNotesList from './pages/ExcalidrawNotesList';
+import ExcalidrawViewer from './pages/ExcalidrawViewer';
 import __Layout from './Layout.jsx';
 
 
@@ -52,6 +55,9 @@ export const PAGES = {
     "StudentPortal": StudentPortal,
     "TimeTable": TimeTable,
     "Upload": Upload,
+    "ExcalidrawTeacher": ExcalidrawTeacher,
+    "ExcalidrawNotesList": ExcalidrawNotesList,
+    "ExcalidrawViewer": ExcalidrawViewer,
 }
 
 export const pagesConfig = {

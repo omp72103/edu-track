@@ -20,6 +20,7 @@ export default function AnnouncementsPage() {
   const [batches, setBatches] = useState([]);
   const [user, setUser] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -211,7 +212,8 @@ export default function AnnouncementsPage() {
               </CardContent>
             </Card>
           ) : (
-            announcements.map(announcement => (
+            <>
+            {announcements.slice(0, showAll ? announcements.length : 3).map(announcement => (
               <div key={announcement.id} className="backdrop-blur-xl bg-white/70 rounded-2xl border border-white/50 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
@@ -238,7 +240,19 @@ export default function AnnouncementsPage() {
                   )}
                 </CardContent>
               </div>
-            ))
+            ))}
+            {announcements.length > 3 && (
+              <div className="text-center pt-4">
+                <Button 
+                  onClick={() => setShowAll(!showAll)} 
+                  variant="outline"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 border-0"
+                >
+                  {showAll ? "Show Less" : `Show More (${announcements.length - 3} more)`}
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>

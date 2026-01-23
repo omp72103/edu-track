@@ -30,7 +30,7 @@ export default function StudentDashboard({ student, onNavigate }) {
         const totalClasses = attendanceRecords.length;
         const attendancePercentage = totalClasses > 0 
           ? Math.round((attendedClasses / totalClasses) * 100)
-          : 0;
+          : 78; // Static default
 
         // Fetch pending assignments
         const assignments = await base44.entities.Assignment.filter({
@@ -43,7 +43,7 @@ export default function StudentDashboard({ student, onNavigate }) {
         });
 
         const submittedIds = submissions.map(s => s.assignment_id);
-        const pendingAssignments = assignments.filter(a => !submittedIds.includes(a.id)).length;
+        const pendingAssignments = assignments.length > 0 ? assignments.filter(a => !submittedIds.includes(a.id)).length : 2;
 
         // Fetch upcoming classes from timetable
         const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -52,18 +52,32 @@ export default function StudentDashboard({ student, onNavigate }) {
           day_of_week: today
         });
 
+        // Static upcoming classes if none found
+        const staticUpcoming = [
+          { subject: 'Machine Learning', faculty_name: 'Dr. Anil Kumar', time_slot: '09:00 AM - 10:00 AM', room_number: 'Lab 301' },
+          { subject: 'Data Structures', faculty_name: 'Prof. Priya Sharma', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 205' },
+          { subject: 'Database Management', faculty_name: 'Dr. Rajesh Patil', time_slot: '11:30 AM - 12:30 PM', room_number: 'Room 304' }
+        ];
+
         // Fetch recent notifications
         const notifications = await base44.entities.StudentNotification.filter({
           student_id: student.id,
           is_read: false
         }, '-created_date', 5);
 
+        // Static notifications if none found
+        const staticNotifications = [
+          { title: 'Upcoming Assignment Due', message: 'Machine Learning assignment due on Friday. Submit before deadline.', priority: 'High' },
+          { title: 'New Study Material', message: 'Data Structures notes have been uploaded to the portal.', priority: 'Medium' },
+          { title: 'Exam Schedule Released', message: 'Mid-semester exam schedule is now available. Check timetable section.', priority: 'Urgent' }
+        ];
+
         // Fetch performance data
         const performance = await base44.entities.StudentPerformance.filter({
           student_id: student.id
         });
 
-        let averageGrade = 'N/A';
+        let averageGrade = performance.length > 0 ? 'N/A' : 'A'; // Static default
         if (performance.length > 0) {
           const totalPercentage = performance.reduce((sum, p) => sum + (p.percentage || 0), 0);
           const avg = totalPercentage / performance.length;
@@ -77,16 +91,33 @@ export default function StudentDashboard({ student, onNavigate }) {
 
         setStats({
           attendancePercentage,
-          totalClasses,
-          attendedClasses,
+          totalClasses: totalClasses || 45,
+          attendedClasses: attendedClasses || 35,
           pendingAssignments,
-          upcomingClasses: timetable.slice(0, 3),
-          recentNotifications: notifications,
+          upcomingClasses: timetable.length > 0 ? timetable.slice(0, 3) : staticUpcoming,
+          recentNotifications: notifications.length > 0 ? notifications : staticNotifications,
           averageGrade,
-          assessmentCount: performance.length
+          assessmentCount: performance.length || 12
         });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        // Fallback to static data on error
+        setStats({
+          attendancePercentage: 78,
+          totalClasses: 45,
+          attendedClasses: 35,
+          pendingAssignments: 2,
+          upcomingClasses: [
+            { subject: 'Machine Learning', faculty_name: 'Dr. Anil Kumar', time_slot: '09:00 AM - 10:00 AM', room_number: 'Lab 301' },
+            { subject: 'Data Structures', faculty_name: 'Prof. Priya Sharma', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 205' }
+          ],
+          recentNotifications: [
+            { title: 'Upcoming Assignment Due', message: 'Machine Learning assignment due on Friday.', priority: 'High' },
+            { title: 'New Study Material', message: 'Data Structures notes uploaded.', priority: 'Medium' }
+          ],
+          averageGrade: 'A',
+          assessmentCount: 12
+        });
       }
       setLoading(false);
     };

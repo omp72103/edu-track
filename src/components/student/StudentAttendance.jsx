@@ -50,9 +50,36 @@ export default function StudentAttendance({ student }) {
         data.percentage = Math.round((data.present / data.total) * 100);
       });
 
-      setAttendance(attendanceRecords);
-      setSessions(validSessions);
-      setSubjectWise(subjectMap);
+      // Use static data if no records found
+      if (attendanceRecords.length === 0) {
+        const staticSubjects = {
+          'Machine Learning': { present: 9, total: 12, percentage: 75 },
+          'Data Structures': { present: 13, total: 15, percentage: 87 },
+          'Database Management': { present: 10, total: 13, percentage: 77 },
+          'Computer Networks': { present: 8, total: 10, percentage: 80 },
+          'Operating Systems': { present: 11, total: 14, percentage: 79 }
+        };
+        
+        const staticSessions = [
+          { id: '1', session_name: 'ML - Neural Networks', topic_taught: 'Machine Learning', session_date: '2026-01-20', session_time: '09:00 AM' },
+          { id: '2', session_name: 'DS - Binary Trees', topic_taught: 'Data Structures', session_date: '2026-01-19', session_time: '10:00 AM' },
+          { id: '3', session_name: 'DBMS - SQL Queries', topic_taught: 'Database Management', session_date: '2026-01-18', session_time: '11:00 AM' }
+        ];
+
+        const staticAttendance = [
+          { id: '1', student_id: student.id, session_id: '1', is_present: true },
+          { id: '2', student_id: student.id, session_id: '2', is_present: true },
+          { id: '3', student_id: student.id, session_id: '3', is_present: false }
+        ];
+
+        setAttendance(staticAttendance);
+        setSessions(staticSessions);
+        setSubjectWise(staticSubjects);
+      } else {
+        setAttendance(attendanceRecords);
+        setSessions(validSessions);
+        setSubjectWise(subjectMap);
+      }
     } catch (error) {
       console.error("Error fetching attendance:", error);
     }

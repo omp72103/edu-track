@@ -33,7 +33,42 @@ export default function StudentTimetable({ student }) {
           });
       });
 
-      setTimetable(grouped);
+      // Use static timetable if no data
+      if (allSchedules.length === 0) {
+        const staticTimetable = {
+          Monday: [
+            { subject: 'Machine Learning', faculty_name: 'Dr. Anil Kumar', time_slot: '09:00 AM - 10:00 AM', room_number: 'Lab 301', class_type: 'Lecture' },
+            { subject: 'Data Structures', faculty_name: 'Prof. Priya Sharma', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 205', class_type: 'Lecture' },
+            { subject: 'Database Management', faculty_name: 'Dr. Rajesh Patil', time_slot: '11:30 AM - 12:30 PM', room_number: 'Room 304', class_type: 'Lecture' }
+          ],
+          Tuesday: [
+            { subject: 'Computer Networks', faculty_name: 'Prof. Sneha Desai', time_slot: '09:00 AM - 10:00 AM', room_number: 'Room 202', class_type: 'Lecture' },
+            { subject: 'Operating Systems', faculty_name: 'Dr. Amit Joshi', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 203', class_type: 'Lecture' },
+            { subject: 'ML Lab', faculty_name: 'Dr. Anil Kumar', time_slot: '02:00 PM - 04:00 PM', room_number: 'Lab 301', class_type: 'Lab' }
+          ],
+          Wednesday: [
+            { subject: 'Data Structures', faculty_name: 'Prof. Priya Sharma', time_slot: '09:00 AM - 10:00 AM', room_number: 'Room 205', class_type: 'Tutorial' },
+            { subject: 'Database Management', faculty_name: 'Dr. Rajesh Patil', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 304', class_type: 'Lecture' },
+            { subject: 'Software Engineering', faculty_name: 'Prof. Vikram Mehta', time_slot: '11:30 AM - 12:30 PM', room_number: 'Room 401', class_type: 'Lecture' }
+          ],
+          Thursday: [
+            { subject: 'Machine Learning', faculty_name: 'Dr. Anil Kumar', time_slot: '09:00 AM - 10:00 AM', room_number: 'Lab 301', class_type: 'Practical' },
+            { subject: 'Computer Networks', faculty_name: 'Prof. Sneha Desai', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 202', class_type: 'Lecture' },
+            { subject: 'DS Lab', faculty_name: 'Prof. Priya Sharma', time_slot: '02:00 PM - 04:00 PM', room_number: 'Lab 201', class_type: 'Lab' }
+          ],
+          Friday: [
+            { subject: 'Operating Systems', faculty_name: 'Dr. Amit Joshi', time_slot: '09:00 AM - 10:00 AM', room_number: 'Room 203', class_type: 'Lecture' },
+            { subject: 'Software Engineering', faculty_name: 'Prof. Vikram Mehta', time_slot: '10:15 AM - 11:15 AM', room_number: 'Room 401', class_type: 'Lecture' },
+            { subject: 'Database Lab', faculty_name: 'Dr. Rajesh Patil', time_slot: '02:00 PM - 04:00 PM', room_number: 'Lab 304', class_type: 'Lab' }
+          ],
+          Saturday: [
+            { subject: 'Seminar', faculty_name: 'Various Faculty', time_slot: '09:00 AM - 11:00 AM', room_number: 'Auditorium', class_type: 'Tutorial' }
+          ]
+        };
+        setTimetable(staticTimetable);
+      } else {
+        setTimetable(grouped);
+      }
     } catch (error) {
       console.error("Error fetching timetable:", error);
     }

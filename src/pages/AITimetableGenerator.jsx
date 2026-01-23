@@ -184,45 +184,56 @@ export default function AITimetableGenerator() {
           ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] :
           ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-        const entries = [];
-        const totalLecturesNeeded = item.subjects.reduce((sum, s) => sum + parseInt(s.lectures_per_week || 0), 0);
-        
-        // Distribute lectures across days
-        const lecturesPerDay = Math.ceil(totalLecturesNeeded / workingDays.length);
-        let subjectIndex = 0;
-        let lectureCount = {};
-        
-        item.subjects.forEach(s => {
-          lectureCount[s.name] = 0;
+        // Create all available day-slot combinations
+        const availableSlots = [];
+        workingDays.forEach(day => {
+          lectureSlots.forEach(slot => {
+            availableSlots.push({ day, slot: slot.time });
+          });
         });
 
-        for (let dayIdx = 0; dayIdx < workingDays.length; dayIdx++) {
-          const day = workingDays[dayIdx];
-          let slotIdx = 0;
-          
-          while (slotIdx < lectureSlots.length && subjectIndex < item.subjects.length) {
-            const subject = item.subjects[subjectIndex];
-            const targetLectures = parseInt(subject.lectures_per_week || 0);
-            
-            if (lectureCount[subject.name] < targetLectures) {
-              entries.push({
-                day_of_week: day,
-                time_slot: lectureSlots[slotIdx].time,
-                subject: subject.name,
-                faculty_name: subject.faculty_name || 'TBD',
-                class_type: subject.type,
-                batch_id: item.batch.batch_id,
-                batch_name: item.batch.batch_name
-              });
-              
-              lectureCount[subject.name]++;
-              slotIdx++;
-            } else {
-              subjectIndex++;
-            }
+        // Shuffle available slots for random distribution
+        const shuffleArray = (array) => {
+          const shuffled = [...array];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
           }
-          
-          subjectIndex = 0;
+          return shuffled;
+        };
+
+        const shuffledSlots = shuffleArray(availableSlots);
+        
+        // Create lecture assignments for each subject
+        const lectureAssignments = [];
+        item.subjects.forEach(subject => {
+          const lecturesNeeded = parseInt(subject.lectures_per_week || 0);
+          for (let i = 0; i < lecturesNeeded; i++) {
+            lectureAssignments.push({
+              subject: subject.name,
+              faculty_name: subject.faculty_name || 'TBD',
+              class_type: subject.type
+            });
+          }
+        });
+
+        // Shuffle lecture assignments to ensure random distribution of subjects
+        const shuffledLectures = shuffleArray(lectureAssignments);
+
+        // Assign lectures to random slots
+        const entries = [];
+        const usedSlots = Math.min(shuffledSlots.length, shuffledLectures.length);
+        
+        for (let i = 0; i < usedSlots; i++) {
+          entries.push({
+            day_of_week: shuffledSlots[i].day,
+            time_slot: shuffledSlots[i].slot,
+            subject: shuffledLectures[i].subject,
+            faculty_name: shuffledLectures[i].faculty_name,
+            class_type: shuffledLectures[i].class_type,
+            batch_id: item.batch.batch_id,
+            batch_name: item.batch.batch_name
+          });
         }
 
         allBatchTimetables.push({
@@ -240,6 +251,7 @@ export default function AITimetableGenerator() {
       await saveToDatabaseAuto(allEntries);
       
       setMessage({ type: "success", text: "Timetable generated and saved successfully! View it in Timetable section." });
+      setCart([]); // Clear cart after successful generation
     } catch (error) {
       console.error("Error generating timetable:", error);
       setMessage({ type: "error", text: "Failed to generate timetable" });

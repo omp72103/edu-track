@@ -40,7 +40,7 @@ export default function ProfilePage() {
         const facultyRecords = await Faculty.filter({ email: currentUser.email });
         if (facultyRecords.length > 0) {
           setUserRole("faculty");
-          setFaculyData(facultyRecords[0]);
+          setFacultyData(facultyRecords[0]);
           await loadFacultyStats(currentUser.email);
         } else {
           setUserRole("admin");

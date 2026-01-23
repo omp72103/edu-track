@@ -101,7 +101,7 @@ export default function ManageFaculty() {
     f.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const displayedFaculty = showAll ? filteredFaculty : filteredFaculty.slice(0, 3);
+  const displayedFaculty = showAll ? filteredFaculty : filteredFaculty.slice(0, 5);
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -266,14 +266,14 @@ export default function ManageFaculty() {
             ))}
             
             {/* Show More/Less Button */}
-            {filteredFaculty.length > 3 && (
+            {filteredFaculty.length > 5 && (
               <div className="text-center pt-4">
                 <Button
                   onClick={() => setShowAll(!showAll)}
                   variant="outline"
                   className="w-full md:w-auto px-8"
                 >
-                  {showAll ? `Show Less` : `Show More (${filteredFaculty.length - 3} more)`}
+                  {showAll ? `Show Less` : `Show More (${filteredFaculty.length - 5} more)`}
                 </Button>
               </div>
             )}

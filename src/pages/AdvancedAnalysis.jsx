@@ -642,7 +642,11 @@ export default function AdvancedAnalysis() {
     ).join(',');
     const pieChartData = `['Excellent (≥90%)', ${excellent}], ['Good (75-89%)', ${good}], ['Average (60-74%)', ${average}], ['Poor (<60%)', ${poor}]`;
     
-    // Distribution by attendance range
+    // Distribution by attendance range (accurate student counts)
+    const below75 = studentAttendance.filter(s => parseFloat(s.percentage) < 75).length;
+    const between75_89 = studentAttendance.filter(s => parseFloat(s.percentage) >= 75 && parseFloat(s.percentage) < 90).length;
+    const above90 = studentAttendance.filter(s => parseFloat(s.percentage) >= 90).length;
+    
     const attendanceRanges = [
       { range: '90-100%', count: studentAttendance.filter(s => parseFloat(s.percentage) >= 90).length },
       { range: '80-89%', count: studentAttendance.filter(s => parseFloat(s.percentage) >= 80 && parseFloat(s.percentage) < 90).length },
@@ -958,25 +962,29 @@ export default function AdvancedAnalysis() {
                     </div>
 
                     <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 15px;">📈 Performance Distribution</h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                            <div style="padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 10px; color: white;">
-                                <div style="font-size: 28px; font-weight: bold;">${excellent}</div>
-                                <div style="font-size: 13px; opacity: 0.9;">Excellent (≥90%)</div>
-                            </div>
-                            <div style="padding: 15px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; color: white;">
-                                <div style="font-size: 28px; font-weight: bold;">${good}</div>
-                                <div style="font-size: 13px; opacity: 0.9;">Good (75-89%)</div>
-                            </div>
-                            <div style="padding: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px; color: white;">
-                                <div style="font-size: 28px; font-weight: bold;">${average}</div>
-                                <div style="font-size: 13px; opacity: 0.9;">Average (60-74%)</div>
-                            </div>
-                            <div style="padding: 15px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px; color: white;">
-                                <div style="font-size: 28px; font-weight: bold;">${poor}</div>
-                                <div style="font-size: 13px; opacity: 0.9;">Poor (<60%)</div>
-                            </div>
-                        </div>
+                       <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 15px;">📈 Performance Distribution</h3>
+                       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                           <div style="padding: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 10px; color: white;">
+                               <div style="font-size: 28px; font-weight: bold;">${excellent}</div>
+                               <div style="font-size: 13px; opacity: 0.9;">Excellent (≥90%)</div>
+                               <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">${studentAttendance.length > 0 ? ((excellent / studentAttendance.length) * 100).toFixed(1) : 0}% of students</div>
+                           </div>
+                           <div style="padding: 15px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-radius: 10px; color: white;">
+                               <div style="font-size: 28px; font-weight: bold;">${good}</div>
+                               <div style="font-size: 13px; opacity: 0.9;">Good (75-89%)</div>
+                               <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">${studentAttendance.length > 0 ? ((good / studentAttendance.length) * 100).toFixed(1) : 0}% of students</div>
+                           </div>
+                           <div style="padding: 15px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 10px; color: white;">
+                               <div style="font-size: 28px; font-weight: bold;">${average}</div>
+                               <div style="font-size: 13px; opacity: 0.9;">Average (60-74%)</div>
+                               <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">${studentAttendance.length > 0 ? ((average / studentAttendance.length) * 100).toFixed(1) : 0}% of students</div>
+                           </div>
+                           <div style="padding: 15px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 10px; color: white;">
+                               <div style="font-size: 28px; font-weight: bold;">${poor}</div>
+                               <div style="font-size: 13px; opacity: 0.9;">Poor (<60%)</div>
+                               <div style="font-size: 11px; opacity: 0.7; margin-top: 5px;">${studentAttendance.length > 0 ? ((poor / studentAttendance.length) * 100).toFixed(1) : 0}% of students</div>
+                           </div>
+                       </div>
                     </div>
                 </div>
             </div>
@@ -1161,7 +1169,7 @@ export default function AdvancedAnalysis() {
 
             var distOptions = {
                 title: 'Students by Attendance Range',
-                colors: ['${theme.secondary}'],
+                colors: ['#10b981', '#3b82f6', '#f59e0b', '#f59e0b', '#ef4444'],
                 animation: {
                     startup: true,
                     duration: 1000,
@@ -1169,7 +1177,8 @@ export default function AdvancedAnalysis() {
                 },
                 vAxis: { 
                     title: 'Number of Students',
-                    gridlines: { color: '#f0f0f0' }
+                    gridlines: { color: '#f0f0f0' },
+                    minValue: 0
                 },
                 hAxis: { 
                     title: 'Attendance Range'
@@ -1178,7 +1187,7 @@ export default function AdvancedAnalysis() {
             };
 
             var distChart = new google.visualization.ColumnChart(document.getElementById('distribution_chart'));
-            distChart.draw(distData, distOptions);
+            if (distChart) distChart.draw(distData, distOptions);
 
             // Bar Chart
             var barData = google.visualization.arrayToDataTable([

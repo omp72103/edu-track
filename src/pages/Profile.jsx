@@ -211,31 +211,36 @@ export default function ProfilePage() {
           <TabsContent value="overview" className="space-y-6">
             {/* Student Overview */}
             {userRole === "student" && studentData && (
-              <div className="grid md:grid-cols-3 gap-6">
-                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.attendancePercent}%</div>
-                    <div className="text-blue-100">Attendance</div>
-                    <p className="text-xs text-blue-200 mt-2">{stats.presentCount}/{stats.totalSessions} sessions</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.attendancePercent || 0}%</div>
+                    <div className="text-blue-100 text-sm">Attendance</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <Award className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.submittedAssignments}</div>
-                    <div className="text-green-100">Completed</div>
-                    <p className="text-xs text-green-200 mt-2">{stats.totalAssignments} total assignments</p>
+                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.avgPercentage || 0}%</div>
+                    <div className="text-green-100 text-sm">Avg Score</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.pendingAssignments}</div>
-                    <div className="text-orange-100">Pending</div>
-                    <p className="text-xs text-orange-200 mt-2">Assignments due</p>
+                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <Award className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.totalPerformances || 0}</div>
+                    <div className="text-purple-100 text-sm">Assessments</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <CheckCircle className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.submittedAssignments || 0}</div>
+                    <div className="text-orange-100 text-sm">Completed</div>
                   </CardContent>
                 </Card>
               </div>
@@ -243,28 +248,36 @@ export default function ProfilePage() {
 
             {/* Faculty Overview */}
             {userRole === "faculty" && (
-              <div className="grid md:grid-cols-3 gap-6">
-                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.totalSessions}</div>
-                    <div className="text-purple-100">Total Sessions</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.totalSessions || 0}</div>
+                    <div className="text-purple-100 text-sm">Total Sessions</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.todaySessions}</div>
-                    <div className="text-blue-100">Today's Classes</div>
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <Calendar className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.todaySessions || 0}</div>
+                    <div className="text-blue-100 text-sm">Today's Classes</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.activeBatches}</div>
-                    <div className="text-green-100">Active Batches</div>
+                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <Users className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.activeBatches || 0}</div>
+                    <div className="text-green-100 text-sm">Active Batches</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.totalStudents || 0}</div>
+                    <div className="text-orange-100 text-sm">Students</div>
                   </CardContent>
                 </Card>
               </div>
@@ -272,28 +285,36 @@ export default function ProfilePage() {
 
             {/* Admin Overview */}
             {userRole === "admin" && (
-              <div className="grid md:grid-cols-3 gap-6">
-                <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <UserIcon className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.totalStudents}</div>
-                    <div className="text-indigo-100">Total Students</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <Users className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.totalStudents || 0}</div>
+                    <div className="text-indigo-100 text-sm">Students</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">{stats.totalSessions}</div>
-                    <div className="text-purple-100">Total Sessions</div>
+                <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.totalFaculty || 0}</div>
+                    <div className="text-green-100 text-sm">Faculty</div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <Shield className="w-12 h-12 mx-auto mb-3 opacity-80" />
-                    <div className="text-3xl font-bold">Admin</div>
-                    <div className="text-pink-100">Full Access</div>
+                <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <Building className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.totalBatches || 0}</div>
+                    <div className="text-purple-100 text-sm">Batches</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white border-0 shadow-xl hover:scale-105 transition-transform">
+                  <CardContent className="p-5 text-center">
+                    <Shield className="w-10 h-10 mx-auto mb-2 opacity-80" />
+                    <div className="text-3xl font-bold">{stats.activeFaculty || 0}</div>
+                    <div className="text-pink-100 text-sm">Active Faculty</div>
                   </CardContent>
                 </Card>
               </div>

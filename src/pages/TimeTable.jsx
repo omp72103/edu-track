@@ -356,50 +356,81 @@ export default function TimeTablePage() {
           <CardContent className="p-6">
             {isLoading ? (
               <p>Loading timetable...</p>
+            ) : getFilteredEntries().length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p>No timetable entries found</p>
+              </div>
             ) : (
-              <div className="space-y-6">
-                {daysOfWeek.map(day => {
-                  const dayEntries = groupedEntries[day];
-                  if (dayEntries.length === 0 && filterDay && filterDay !== day) return null;
-                  
-                  return (
-                    <div key={day} className="border rounded-lg overflow-hidden">
-                      <div className="bg-blue-600 text-white px-4 py-3 font-semibold">
-                        {day}
-                      </div>
-                      <div className="divide-y">
-                        {dayEntries.length === 0 ? (
-                          <div className="p-4 text-gray-500 text-center">No classes scheduled</div>
-                        ) : (
-                          dayEntries.map(entry => (
-                            <div key={entry.id} className="p-4 hover:bg-gray-50 flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className="font-semibold text-gray-900">{entry.time_slot}</span>
-                                  <Badge className="bg-purple-100 text-purple-800">{entry.class_type}</Badge>
+              <div className="overflow-x-auto border-2 border-blue-300 rounded-xl shadow-lg">
+                <table className="w-full border-collapse min-w-[1000px]">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                      <th className="border-2 border-white px-4 py-3 text-left font-bold sticky left-0 bg-blue-600 z-10 min-w-[140px]">Time / Day</th>
+                      {daysOfWeek.filter(day => !filterDay || filterDay === day).map(day => (
+                        <th key={day} className="border-2 border-white px-3 py-3 text-center font-bold min-w-[160px]">
+                          {day.substring(0, 3)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {/* Get unique time slots */}
+                    {Array.from(new Set(getFilteredEntries().map(e => e.time_slot))).sort().map(timeSlot => {
+                      const displayDays = daysOfWeek.filter(day => !filterDay || filterDay === day);
+                      
+                      return (
+                        <tr key={timeSlot} className="hover:bg-blue-50 transition-colors">
+                          <td className="border-2 border-gray-300 px-4 py-4 font-semibold text-sm bg-gradient-to-r from-blue-100 to-indigo-100 sticky left-0 z-10">
+                            {timeSlot}
+                          </td>
+                          {displayDays.map(day => {
+                            const entry = groupedEntries[day]?.find(e => e.time_slot === timeSlot);
+                            
+                            if (!entry) {
+                              return (
+                                <td key={day} className="border-2 border-gray-300 px-3 py-4 text-center text-gray-400">
+                                  —
+                                </td>
+                              );
+                            }
+                            
+                            return (
+                              <td key={day} className="border-2 border-gray-300 px-3 py-3 bg-gradient-to-br from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 transition-all relative group">
+                                <div className="text-center space-y-1">
+                                  <div className="font-bold text-purple-900 text-sm">{entry.subject}</div>
+                                  <div className="text-xs text-indigo-700 font-semibold">{entry.faculty_name}</div>
+                                  <div className="text-xs text-gray-600">{entry.room_number}</div>
+                                  <Badge className="mt-1 text-xs bg-blue-500 text-white">{entry.class_type}</Badge>
+                                  
+                                  {/* Edit/Delete buttons on hover */}
+                                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 bg-white/80 hover:bg-white"
+                                      onClick={() => handleEdit(entry)}
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 bg-white/80 hover:bg-white text-red-600"
+                                      onClick={() => handleDelete(entry.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
-                                <h3 className="font-semibold text-lg text-blue-700">{entry.subject}</h3>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Faculty: {entry.faculty_name} • 
-                                  {entry.room_number && ` Room: ${entry.room_number} •`}
-                                  Batch: {batches.find(b => b.batch_id === entry.batch_id)?.batch_name || entry.batch_id}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button variant="outline" size="icon" onClick={() => handleEdit(entry)}>
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button variant="outline" size="icon" onClick={() => handleDelete(entry.id)}>
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>

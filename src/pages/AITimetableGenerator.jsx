@@ -136,10 +136,10 @@ export default function AITimetableGenerator() {
           `${b.name}: ${b.start_time} for ${b.duration} minutes`
         ).join("\n");
 
-        const prompt = `Generate an optimized timetable for ${item.batch.batch_name}.
+        const prompt = `Generate a clean, optimized timetable for ${item.batch.batch_name}.
 
 STRUCTURE:
-- Working Days: ${item.structure.working_days} days (Mon-${item.structure.working_days === "5" ? "Fri" : "Sat"})
+- Working Days: ${item.structure.working_days} days (Monday to ${item.structure.working_days === "5" ? "Friday" : "Saturday"})
 - Start Time: ${item.structure.start_time}
 - End Time: ${item.structure.end_time}
 - Lecture Duration: ${item.structure.lecture_duration} minutes
@@ -148,17 +148,20 @@ STRUCTURE:
 SUBJECTS:
 ${subjectsList}
 
-FACULTY:
+FACULTY ASSIGNMENT:
 ${facultyMapping}
 
-RULES:
-1. No faculty conflicts across ALL batches
-2. Exact weekly lecture allocation
-3. Balance workload
-4. No heavy subjects after breaks
-5. Rooms: Theory (301-320), Lab (Lab1-Lab5)
+CRITICAL RULES:
+1. EXACTLY ${item.subjects.reduce((sum, s) => sum + parseInt(s.lectures_per_week || 0), 0)} lectures total across the week
+2. Each subject gets EXACTLY the number of lectures specified (no more, no less)
+3. NO DUPLICATE time slots - each time slot can only have ONE class
+4. Generate proper sequential time slots (e.g., 09:00-10:00, 10:00-11:00, 11:15-12:15 after break)
+5. Time slots MUST be properly formatted: "HH:MM-HH:MM" (24-hour format)
+6. Distribute lectures evenly across ${item.structure.working_days} days
+7. Room assignment: Theory classes (301-320), Lab/Practical (Lab1-Lab5)
+8. NO faculty time conflicts
 
-Generate valid JSON for ALL lectures:`;
+Return ONLY valid, non-duplicate timetable entries:`;
 
         const result = await base44.integrations.Core.InvokeLLM({
           prompt: prompt,

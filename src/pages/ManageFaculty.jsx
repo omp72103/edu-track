@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Faculty } from "@/entities/all";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, Trash2, UserCog, Mail, Building, DollarSign } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit, Trash2, UserCog, Mail, Building, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FacultyFormModal from "../components/faculty/FacultyFormModal";
@@ -31,6 +32,8 @@ export default function ManageFaculty() {
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [selectedFaculty, setSelectedFaculty] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAll, setShowAll] = useState(false);
 
   const fetchFaculty = useCallback(async () => {
     setIsLoading(true);
@@ -93,6 +96,13 @@ export default function ManageFaculty() {
     setIsDetailsModalOpen(true);
   };
 
+  const filteredFaculty = faculty.filter(f => 
+    f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    f.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const displayedFaculty = showAll ? filteredFaculty : filteredFaculty.slice(0, 3);
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -108,6 +118,20 @@ export default function ManageFaculty() {
             <Plus className="w-4 h-4 mr-2" /> 
             Add New Faculty
           </Button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              type="text"
+              placeholder="Search faculty by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 text-base"
+            />
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -143,7 +167,8 @@ export default function ManageFaculty() {
               </Button>
             </div>
           ) : (
-            faculty.map((facultyMember) => (
+            <>
+            {displayedFaculty.map((facultyMember) => (
               <Card 
                 key={facultyMember.id} 
                 className="bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
@@ -238,7 +263,21 @@ export default function ManageFaculty() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+            ))}
+            
+            {/* Show More/Less Button */}
+            {filteredFaculty.length > 3 && (
+              <div className="text-center pt-4">
+                <Button
+                  onClick={() => setShowAll(!showAll)}
+                  variant="outline"
+                  className="w-full md:w-auto px-8"
+                >
+                  {showAll ? `Show Less` : `Show More (${filteredFaculty.length - 3} more)`}
+                </Button>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>

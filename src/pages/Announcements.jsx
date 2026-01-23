@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Announcement, Batch, User } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { sendAnnouncementNotifications } from "@/functions/sendAnnouncementNotifications";
 
 const priorities = ["Low", "Medium", "High", "Urgent"];
 const categories = ["General", "Assessment", "Timetable", "Event", "Holiday", "Other"];
@@ -53,12 +55,20 @@ export default function AnnouncementsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await Announcement.create({
+      const announcement = await Announcement.create({
         ...formData,
         sender_name: user.full_name,
         sender_email: user.email,
         announcement_date: new Date().toISOString()
       });
+      
+      // Send notifications to students
+      try {
+        await sendAnnouncementNotifications({ announcementId: announcement.id });
+      } catch (notifError) {
+        console.error("Error sending notifications:", notifError);
+      }
+      
       setMessage({ type: "success", text: "Announcement sent successfully!" });
       await loadData();
       resetForm();

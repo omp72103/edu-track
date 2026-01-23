@@ -12,12 +12,27 @@ export default function StudentComplaints({ student }) {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [faculties, setFaculties] = useState([]);
   const [formData, setFormData] = useState({
-    category: 'Academic',
+    category: 'Faculty',
+    faculty_email: '',
+    faculty_name: '',
     title: '',
     description: '',
     priority: 'Medium'
   });
+
+  useEffect(() => {
+    const loadFaculties = async () => {
+      try {
+        const facultyList = await base44.entities.Faculty.filter({ status: 'active' });
+        setFaculties(facultyList);
+      } catch (error) {
+        console.error("Error loading faculties:", error);
+      }
+    };
+    loadFaculties();
+  }, []);
 
   useEffect(() => {
     fetchComplaints();
@@ -65,7 +80,7 @@ export default function StudentComplaints({ student }) {
 
   const handleSubmit = async () => {
     try {
-      await base44.entities.Complaint.create({
+      const complaintData = {
         student_id: student.id,
         student_name: student.name,
         student_email: student.email,
@@ -73,12 +88,22 @@ export default function StudentComplaints({ student }) {
         batch_id: student.batch_id,
         college_name: student.college_name,
         year: student.year,
-        ...formData
-      });
+        category: formData.category,
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority
+      };
+
+      if (formData.category === 'Faculty' && formData.faculty_email) {
+        complaintData.faculty_email = formData.faculty_email;
+        complaintData.faculty_name = formData.faculty_name;
+      }
+
+      await base44.entities.Complaint.create(complaintData);
       
       await fetchComplaints();
       setShowForm(false);
-      setFormData({ category: 'Academic', title: '', description: '', priority: 'Medium' });
+      setFormData({ category: 'Faculty', faculty_email: '', faculty_name: '', title: '', description: '', priority: 'Medium' });
     } catch (error) {
       console.error("Error submitting complaint:", error);
     }
@@ -211,17 +236,33 @@ export default function StudentComplaints({ student }) {
               <label className="block text-sm font-semibold mb-2">Category</label>
               <select
                 value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                onChange={(e) => setFormData({...formData, category: e.target.value, faculty_email: '', faculty_name: ''})}
                 className="w-full px-3 py-2 border rounded-lg"
               >
-                <option value="Academic">Academic</option>
-                <option value="Infrastructure">Infrastructure</option>
                 <option value="Faculty">Faculty</option>
-                <option value="Administration">Administration</option>
-                <option value="Technical">Technical</option>
-                <option value="Other">Other</option>
+                <option value="General">General</option>
               </select>
             </div>
+
+            {formData.category === 'Faculty' && (
+              <div>
+                <label className="block text-sm font-semibold mb-2">Select Faculty</label>
+                <select
+                  value={formData.faculty_email}
+                  onChange={(e) => {
+                    const faculty = faculties.find(f => f.email === e.target.value);
+                    setFormData({...formData, faculty_email: e.target.value, faculty_name: faculty?.name || ''});
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  required
+                >
+                  <option value="">Select a faculty...</option>
+                  {faculties.map(f => (
+                    <option key={f.id} value={f.email}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold mb-2">Priority</label>

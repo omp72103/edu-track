@@ -10,12 +10,27 @@ export default function StudentFeedback({ student }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [faculties, setFaculties] = useState([]);
   const [formData, setFormData] = useState({
     type: 'Faculty',
+    faculty_email: '',
+    faculty_name: '',
     rating: 5,
     comments: '',
     isAnonymous: false
   });
+
+  useEffect(() => {
+    const loadFaculties = async () => {
+      try {
+        const facultyList = await base44.entities.Faculty.filter({ status: 'active' });
+        setFaculties(facultyList);
+      } catch (error) {
+        console.error("Error loading faculties:", error);
+      }
+    };
+    loadFaculties();
+  }, []);
 
   useEffect(() => {
     fetchFeedbacks();
@@ -59,7 +74,7 @@ export default function StudentFeedback({ student }) {
 
   const handleSubmit = async () => {
     try {
-      await base44.entities.Feedback.create({
+      const feedbackData = {
         student_id: student.id,
         student_name: formData.isAnonymous ? 'Anonymous' : student.name,
         student_email: student.email,
@@ -71,11 +86,18 @@ export default function StudentFeedback({ student }) {
         college_name: student.college_name,
         year: student.year,
         branch: student.branch
-      });
+      };
+
+      if (formData.type === 'Faculty' && formData.faculty_email) {
+        feedbackData.faculty_email = formData.faculty_email;
+        feedbackData.faculty_name = formData.faculty_name;
+      }
+
+      await base44.entities.Feedback.create(feedbackData);
       
       await fetchFeedbacks();
       setShowForm(false);
-      setFormData({ type: 'Faculty', rating: 5, comments: '', isAnonymous: false });
+      setFormData({ type: 'Faculty', faculty_email: '', faculty_name: '', rating: 5, comments: '', isAnonymous: false });
     } catch (error) {
       console.error("Error submitting feedback:", error);
     }
@@ -153,15 +175,33 @@ export default function StudentFeedback({ student }) {
               <label className="block text-sm font-semibold mb-2">Feedback Type</label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({...formData, type: e.target.value})}
+                onChange={(e) => setFormData({...formData, type: e.target.value, faculty_email: '', faculty_name: ''})}
                 className="w-full px-3 py-2 border rounded-lg"
               >
                 <option value="Faculty">Faculty</option>
-                <option value="Subject">Subject</option>
-                <option value="Infrastructure">Infrastructure</option>
                 <option value="General">General</option>
               </select>
             </div>
+
+            {formData.type === 'Faculty' && (
+              <div>
+                <label className="block text-sm font-semibold mb-2">Select Faculty</label>
+                <select
+                  value={formData.faculty_email}
+                  onChange={(e) => {
+                    const faculty = faculties.find(f => f.email === e.target.value);
+                    setFormData({...formData, faculty_email: e.target.value, faculty_name: faculty?.name || ''});
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  required
+                >
+                  <option value="">Select a faculty...</option>
+                  {faculties.map(f => (
+                    <option key={f.id} value={f.email}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-semibold mb-2">Rating</label>

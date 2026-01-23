@@ -11,25 +11,12 @@ import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
-// Expanded branch list
-const branches = [
-    "Computer Science Engineering",
-    "Artificial Intelligence & Machine Learning",
-    "Data Science",
-    "Computer Science & Business Systems",
-    "Electronics & Telecommunication",
-    "Information Technology",
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Textile Engineering",
-    "Bio-Technology Engineering",
-    "Chemical Engineering",
-    "Environmental Engineering",
-    "Electrical Engineering",
-    "Production Engineering"
-];
-const divisions = ["A", "B", "C", "D", "Not Applicable"];
+// SCOPE LOCKED TO KIT KOLHAPUR - AIML ONLY
+const COLLEGE_NAME = "KIT's College of Engineering, Kolhapur";
+const BRANCH_NAME = "Artificial Intelligence & Machine Learning";
+
+const years = ["FY", "SY", "TY", "BTech"];
+const divisions = ["AIML-A", "AIML-B", "AIML-C"];
 const durations = ["1 Hour", "1.5 Hours", "2 Hours", "2.5 Hours", "3 Hours"];
 // Custom batches are now fetched from database
 
@@ -46,55 +33,46 @@ export default function CreateSession() {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     session_name: "",
-    college_name: "",
     year: "",
-    branch: "",
     division: "",
-    custom_batch_id: "",
-    private_batch_id: "",
     faculty_name: "",
     faculty_email: "",
     topic_taught: "",
     session_date: format(new Date(), 'yyyy-MM-dd'),
     session_time: "",
-    duration: "1 Hour",
-    tpo_email: ""
+    duration: "1 Hour"
   });
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
         const currentUser = await User.me();
         setUser(currentUser);
+        setIsAdmin(currentUser.role === 'admin');
 
-        const [collegeData, studentData, facultyData, batchData] = await Promise.all([
-            College.list(),
-            Student.list(),
-            Faculty.list(),
-            Batch.list()
-        ]);
-
-        setColleges(collegeData);
+        const facultyData = await base44.entities.Faculty.list();
         setFaculties(facultyData);
-        setPrivateBatches(batchData.filter(b => b.batch_type === 'private'));
-        setCustomBatches(batchData.filter(b => b.batch_type === 'custom'));
 
-        const userAsFaculty = facultyData.find(f => f.email === currentUser.email);
-        if(userAsFaculty) {
+        // Auto-fill faculty info for non-admin users
+        if (currentUser.role !== 'admin') {
+          const userAsFaculty = facultyData.find(f => f.email === currentUser.email);
+          if (userAsFaculty) {
             setFormData(prev => ({
-                ...prev,
-                faculty_name: userAsFaculty.name,
-                faculty_email: userAsFaculty.email
+              ...prev,
+              faculty_name: userAsFaculty.name,
+              faculty_email: userAsFaculty.email
             }));
-        } else {
-            setFormData(prev => ({...prev, faculty_name: currentUser.full_name || ''}));
+          } else {
+            setFormData(prev => ({
+              ...prev,
+              faculty_name: currentUser.full_name || '',
+              faculty_email: currentUser.email
+            }));
+          }
         }
 
-        setStats({
-            batches: batchData.length,
-            students: studentData.length,
-            faculty: facultyData.length
-        });
+
 
       } catch (e) {
         console.error("Failed to fetch initial data", e);
@@ -137,29 +115,24 @@ export default function CreateSession() {
       let sessionDivision;
 
       // CORE validation for session details
-      if (!formData.session_name || !formData.topic_taught || !formData.faculty_email || !formData.session_date || !formData.session_time) {
-        setError("Please fill in required session details: Session Name, Topic, Faculty, Date, and Time.");
+      if (!formData.session_name || !formData.topic_taught || !formData.faculty_email || !formData.session_date || !formData.session_time || !formData.year || !formData.division) {
+        setError("Please fill in all required fields.");
         setIsLoading(false);
         return;
       }
 
-      if (batchType === "standard") {
-        if (!formData.college_name || !formData.year || !formData.branch || !formData.division) {
-          setError("For a Standard Batch, please select College, Year, Branch, and Division.");
-          setIsLoading(false);
-          return;
-        }
+      // SCOPE LOCKED TO KIT KOLHAPUR - AIML
+      const collegeShortName = "KIT_KOLHAPUR";
+      batchId = `${collegeShortName}_${formData.year}_AIML_${formData.division}`.toLowerCase().replace(/[^\w-]+/g, '-');
+      batchName = `AIML - ${formData.division}`;
+      batchDescription = `${formData.year} - AIML - ${formData.division}`;
+      sessionCollege = COLLEGE_NAME;
+      sessionYear = formData.year;
+      sessionBranch = BRANCH_NAME;
+      sessionDivision = formData.division;
 
-        const selectedCollege = colleges.find(c => c.college_name === formData.college_name);
-        const collegeShortName = selectedCollege ? selectedCollege.short_name : formData.college_name;
-        batchId = `${collegeShortName}_${formData.year}_${formData.branch}_${formData.division}`.toLowerCase().replace(/[^\w-]+/g, '-');
-        batchName = `${formData.branch} - Div ${formData.division}`;
-        batchDescription = `${formData.year} - ${formData.branch} - Div ${formData.division}`;
-        sessionCollege = formData.college_name;
-        sessionYear = formData.year;
-        sessionBranch = formData.branch;
-        sessionDivision = formData.division;
-      } else if (batchType === "custom") {
+      if (false) { // Disabled batch selection - all sessions are standard KIT AIML batches
+        if (batchType === "custom") {
         if (!formData.custom_batch_id) {
           setError("Please select a Custom Batch.");
           setIsLoading(false);
@@ -205,23 +178,21 @@ export default function CreateSession() {
         sessionDivision = undefined;
       }
 
-      // Only create batch if it's a standard batch (private and custom batches already exist)
-      if (batchType === 'standard') {
-        const existingBatches = await Batch.filter({ batch_id: batchId });
-        if (existingBatches.length === 0) {
-          await Batch.create({
-            batch_id: batchId,
-            batch_name: batchName,
-            batch_description: batchDescription,
-            batch_type: batchType,
-            college_name: formData.college_name,
-            year: formData.year,
-            branch: formData.branch,
-            division: formData.division,
-            student_count: 0,
-            created_by: user.email
-          });
-        }
+      // Create batch if it doesn't exist
+      const existingBatches = await base44.entities.Batch.filter({ batch_id: batchId });
+      if (existingBatches.length === 0) {
+        await base44.entities.Batch.create({
+          batch_id: batchId,
+          batch_name: batchName,
+          batch_description: batchDescription,
+          batch_type: 'standard',
+          college_name: COLLEGE_NAME,
+          year: formData.year,
+          branch: BRANCH_NAME,
+          division: formData.division,
+          student_count: 0,
+          created_by: user.email
+        });
       }
 
       const sessionData = {
@@ -238,15 +209,12 @@ export default function CreateSession() {
         session_time: formData.session_time,
         duration: formData.duration || "1 Hour", // Default duration if not set
         batch_id: batchId,
-        tpo_email: formData.tpo_email,
         status: "scheduled",
         total_students: 0,
         present_count: 0
       };
 
-      console.log("Creating session with data:", sessionData); // Debug log
-
-      await Session.create(sessionData);
+      await base44.entities.Session.create(sessionData);
       navigate(createPageUrl("Dashboard"));
     } catch (err) {
       console.error("Error creating session:", err);
@@ -283,8 +251,7 @@ export default function CreateSession() {
             <Alert className="mb-6 backdrop-blur-xl bg-blue-50/80 border-blue-200/50">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
-                    Logged in as: <strong>{user.full_name || user.email}</strong>.
-                    Database contains: <strong>{stats.batches}</strong> batches, <strong>{stats.students}</strong> students, <strong>{stats.faculty}</strong> faculty members.
+                    Creating session for: <strong>KIT College, Kolhapur - AIML Department</strong>
                 </AlertDescription>
             </Alert>
         )}
@@ -323,158 +290,54 @@ export default function CreateSession() {
 
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-slate-700 pb-2 border-b">Class Information</h3>
-                <div className="space-y-2">
-                    <Label className="font-semibold text-slate-700">Batch Type</Label>
-                    <Select value={batchType} onValueChange={(value) => {
-                        setBatchType(value);
-                        // Reset relevant formData fields when batch type changes
-                        setFormData(prev => ({
-                            ...prev,
-                            college_name: "",
-                            year: "",
-                            branch: "",
-                            division: "",
-                            custom_batch_id: "",
-                            private_batch_id: ""
-                        }));
-                    }}>
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="standard">Standard Batch</SelectItem>
-                            <SelectItem value="custom">Custom Batch</SelectItem>
-                            <SelectItem value="private">Private Batch</SelectItem>
-                        </SelectContent>
-                    </Select>
+                
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm font-semibold text-blue-900">🏛️ College: KIT's College of Engineering, Kolhapur</p>
+                  <p className="text-sm font-semibold text-blue-900">🔬 Department: Artificial Intelligence & Machine Learning (AIML)</p>
                 </div>
 
-                {batchType === 'standard' && (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <Label htmlFor="college_name" className="font-semibold text-slate-700">College Name *</Label>
-                        <Select value={formData.college_name} onValueChange={(value) => setFormData({...formData, college_name: value})} required>
-                            <SelectTrigger className="mt-2"><SelectValue placeholder="Select college" /></SelectTrigger>
-                            <SelectContent>
-                                {colleges.map((c) => (
-                                    <SelectItem key={c.id} value={c.college_name}>
-                                      <div className="flex flex-col">
-                                        <span className="font-semibold">{c.short_name}</span>
-                                        <span className="text-xs text-slate-500">{c.college_name}</span>
-                                      </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label htmlFor="year" className="font-semibold text-slate-700">Academic Year *</Label>
-                        <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})} required>
-                            <SelectTrigger className="mt-2"><SelectValue placeholder="Select year" /></SelectTrigger>
-                            <SelectContent>{years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                  </div>
-                )}
-
-                {batchType === 'standard' && (
-                    <div className="grid md:grid-cols-2 gap-6 pt-4">
-                        <div>
-                            <Label htmlFor="branch" className="font-semibold text-slate-700">Branch/Department *</Label>
-                            <Select value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value})} required={batchType === 'standard'}>
-                                <SelectTrigger className="mt-2"><SelectValue placeholder="Select branch" /></SelectTrigger>
-                                <SelectContent>{branches.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label htmlFor="division" className="font-semibold text-slate-700">Division *</Label>
-                            <Select value={formData.division} onValueChange={(value) => setFormData({...formData, division: value})} required={batchType === 'standard'}>
-                                <SelectTrigger className="mt-2"><SelectValue placeholder="Select division" /></SelectTrigger>
-                                <SelectContent>{divisions.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                )}
-                {batchType === 'custom' && (
-                    <div className="pt-4 space-y-4">
-                        <div>
-                          <Label className="font-semibold text-slate-700">Year Filter</Label>
-                          <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value, custom_batch_id: ""})}>
-                            <SelectTrigger className="mt-2"><SelectValue placeholder="All years" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={null}>All Years</SelectItem>
-                              <SelectItem value="Second Year">Second Year</SelectItem>
-                              <SelectItem value="Third Year">Third Year</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="custom_batch" className="font-semibold text-slate-700">Custom Batch *</Label>
-                          <Select value={formData.custom_batch_id} onValueChange={(value) => setFormData({...formData, custom_batch_id: value})} required>
-                              <SelectTrigger className="mt-2"><SelectValue placeholder="Select custom batch" /></SelectTrigger>
-                              <SelectContent>
-                                  {customBatches.filter(b => !formData.year || b.year === formData.year).length === 0 ? (
-                                    <SelectItem value={null} disabled>No custom batches found</SelectItem>
-                                  ) : (
-                                    customBatches.filter(b => !formData.year || b.year === formData.year).map((b) => (
-                                      <SelectItem key={b.id} value={b.id}>
-                                        {b.batch_name} - {b.college_name}
-                                      </SelectItem>
-                                    ))
-                                  )}
-                              </SelectContent>
-                          </Select>
-                          {customBatches.length === 0 && (
-                            <p className="text-sm text-gray-500 mt-2">
-                              No custom batches found. Contact admin to create custom batches.
-                            </p>
-                          )}
-                        </div>
-                    </div>
-                )}
-                {batchType === 'private' && (
-                  <div className="pt-4">
-                    <Label htmlFor="private_batch" className="font-semibold text-slate-700">Private Batch *</Label>
-                    <Select value={formData.private_batch_id} onValueChange={(value) => setFormData({...formData, private_batch_id: value})} required={batchType === 'private'}>
-                        <SelectTrigger className="mt-2"><SelectValue placeholder="Select private batch" /></SelectTrigger>
-                        <SelectContent>
-                            {privateBatches.length === 0 ? (
-                              <SelectItem value={null} disabled>No private batches found</SelectItem>
-                            ) : (
-                              privateBatches.map((b) => (
-                                <SelectItem key={b.id} value={b.id}>
-                                  {b.batch_name}
-                                </SelectItem>
-                              ))
-                            )}
-                        </SelectContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="year" className="font-semibold text-slate-700">Academic Year *</Label>
+                    <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})} required>
+                      <SelectTrigger className="mt-2"><SelectValue placeholder="Select year" /></SelectTrigger>
+                      <SelectContent>
+                        {years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                      </SelectContent>
                     </Select>
-                    {privateBatches.length === 0 && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        No private batches found. Please create one from the <strong>Manage Batches</strong> page first.
-                      </p>
-                    )}
                   </div>
-                )}
+                  <div>
+                    <Label htmlFor="division" className="font-semibold text-slate-700">Division *</Label>
+                    <Select value={formData.division} onValueChange={(value) => setFormData({...formData, division: value})} required>
+                      <SelectTrigger className="mt-2"><SelectValue placeholder="Select division" /></SelectTrigger>
+                      <SelectContent>
+                        {divisions.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-slate-700 pb-2 border-b">Faculty & Schedule</h3>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-1 gap-6">
                   <div>
-                    <Label htmlFor="faculty_name" className="font-semibold text-slate-700">Faculty Name *</Label>
-                    <Select value={formData.faculty_email} onValueChange={handleFacultyChange} required>
+                    <Label htmlFor="faculty_name" className="font-semibold text-slate-700">Faculty *</Label>
+                    {isAdmin ? (
+                      <Select value={formData.faculty_email} onValueChange={handleFacultyChange} required>
                         <SelectTrigger className="mt-2"><SelectValue placeholder="Select faculty" /></SelectTrigger>
                         <SelectContent>
-                            {faculties.map((f) => (
-                                <SelectItem key={f.id} value={f.email}>
-                                    {f.name}
-                                </SelectItem>
-                            ))}
+                          {faculties.map((f) => (
+                            <SelectItem key={f.id} value={f.email}>{f.name}</SelectItem>
+                          ))}
                         </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="tpo_email" className="font-semibold text-slate-700">TPO Email (Optional)</Label>
-                    <Input id="tpo_email" type="email" placeholder="tpo@college.edu" value={formData.tpo_email} onChange={(e) => setFormData({...formData, tpo_email: e.target.value})} className="mt-2" />
+                      </Select>
+                    ) : (
+                      <div className="mt-2 p-3 bg-gray-100 rounded-lg border">
+                        <p className="font-semibold text-gray-900">{formData.faculty_name}</p>
+                        <p className="text-sm text-gray-600">{formData.faculty_email}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                  <div className="grid md:grid-cols-3 gap-6">

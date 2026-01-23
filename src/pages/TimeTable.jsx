@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Plus, Edit, Trash2, Download, Filter } from "lucide-react";
+import { createPageUrl } from "@/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -207,6 +208,10 @@ export default function TimeTablePage() {
             <p className="text-gray-600">Manage and view class schedules</p>
           </div>
           <div className="flex gap-3">
+            <Button onClick={() => window.location.href = createPageUrl("AITimetableGenerator")} variant="outline" className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600">
+              <Calendar className="w-4 h-4" />
+              AI Timetable
+            </Button>
             <Button onClick={exportToCSV} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
               Export CSV

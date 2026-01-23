@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Removed ShadCN Table components as per new UI outline using native table elements
 // import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Download, Filter, Clock, Eye, Trash2, PlusCircle } from "lucide-react"; // Added PlusCircle
+import { Users, Download, Filter, Clock, Eye, Trash2, PlusCircle, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, parseISO } from "date-fns";
@@ -202,14 +202,20 @@ export default function BatchesPage() {
           {/* Back button removed as per new UI */}
           <div>
             <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
-              📚 Manage Batches
+              📚 Manage Classes
             </h1>
-            <p className="text-gray-700 mt-1">View, export, and manage all student batches</p>
+            <p className="text-gray-700 mt-1">View, export, and manage AIML classes</p>
           </div>
-          <Button onClick={() => setCreateModalOpen(true)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Create Private Batch
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={() => navigate(createPageUrl("Upload"))} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg">
+              <Upload className="w-4 h-4 mr-2" />
+              Bulk Upload Students
+            </Button>
+            <Button onClick={() => setCreateModalOpen(true)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Create Private Batch
+            </Button>
+          </div>
         </div>
 
         {/* Enhanced Filter Card */}
@@ -217,49 +223,42 @@ export default function BatchesPage() {
           <CardHeader className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-b border-white/30">
             <CardTitle className="flex items-center gap-2 text-gray-900">
               <Filter className="w-5 h-5" />
-              🔍 Search & Filter Batches
+              🔍 Filter Classes
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2">
-                <Input
-                  placeholder="🔍 Search batches, colleges, branches..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-12 text-base border-2 hover:border-purple-400 focus:border-purple-500"
-                />
-              </div>
-              <Select value={filters.college} onValueChange={(value) => setFilters({...filters, college: value})}>
-                <SelectTrigger className="h-12 text-base border-2 hover:border-purple-400 focus:border-purple-500">
-                  <SelectValue placeholder="🏛️ All Colleges" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">🏛️ All Colleges</SelectItem>
-                  {colleges.map((c) => (
-                    <SelectItem key={c} value={c}>🎓 {c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Select value={filters.year} onValueChange={(value) => setFilters({...filters, year: value})}>
                 <SelectTrigger className="h-12 text-base border-2 hover:border-purple-400 focus:border-purple-500">
                   <SelectValue placeholder="📅 All Years" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">📅 All Years</SelectItem>
-                  {years.map((y) => (
-                    <SelectItem key={y} value={y}>📚 {y}</SelectItem>
-                  ))}
+                  <SelectItem value="FY">FY</SelectItem>
+                  <SelectItem value="SY">SY</SelectItem>
+                  <SelectItem value="TY">TY</SelectItem>
+                  <SelectItem value="BTech">BTech</SelectItem>
                 </SelectContent>
               </Select>
-              {/* Branch filter component removed from UI as per outline, but logic remains */}
+              
+              <Select value={filters.branch} onValueChange={(value) => setFilters({...filters, branch: value})}>
+                <SelectTrigger className="h-12 text-base border-2 hover:border-purple-400 focus:border-purple-500">
+                  <SelectValue placeholder="📂 All Divisions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">📂 All Divisions</SelectItem>
+                  <SelectItem value="AIML-A">AIML-A</SelectItem>
+                  <SelectItem value="AIML-B">AIML-B</SelectItem>
+                  <SelectItem value="AIML-C">AIML-C</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <Button variant="outline" onClick={clearFilters} className="h-10 font-semibold">
                 🗑️ Clear Filters
               </Button>
               <span className="text-sm text-slate-500 bg-slate-100 px-3 py-2 rounded-full">
-                📊 Showing {filteredBatches.length} of {batches.length} batches
+                📊 Showing {filteredBatches.length} of {batches.length} classes
               </span>
             </div>
           </CardContent>
@@ -336,8 +335,9 @@ export default function BatchesPage() {
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => navigate(createPageUrl(`BatchDetails?batch_id=${batch.id}`))}
+                              onClick={() => navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`))}
                               className="hover:bg-blue-100"
+                              title="View Advanced Analytics"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -437,10 +437,10 @@ export default function BatchesPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(createPageUrl(`BatchDetails?batch_id=${batch.id}`))}
+                            onClick={() => navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`))}
                             className="flex-1"
                           >
-                            <Eye className="w-4 h-4 mr-1" /> 👁️ View
+                            <Eye className="w-4 h-4 mr-1" /> 👁️ Analytics
                           </Button>
                           <Button
                             variant="outline"

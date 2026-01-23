@@ -98,8 +98,8 @@ export default function ManageFaculty() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Faculty Management & Billing Portal</h1>
-            <p className="text-gray-600 mt-1">Manage faculty, track hours, expenses, and generate invoices</p>
+            <h1 className="text-3xl font-bold text-gray-900">Faculty Management</h1>
+            <p className="text-gray-600 mt-1">Manage AIML department faculty members</p>
           </div>
           <Button 
             onClick={() => { setEditingFaculty(null); setIsModalOpen(true); }}
@@ -175,17 +175,9 @@ export default function ManageFaculty() {
                             <Mail className="w-4 h-4" />
                             <span>{facultyMember.email}</span>
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                              <Building className="w-4 h-4" />
-                              <span>{facultyMember.department || 'Not specified'}</span>
-                            </div>
-                            {facultyMember.rate_per_hour && (
-                              <div className="flex items-center gap-2 text-green-600 font-semibold">
-                                <DollarSign className="w-4 h-4" />
-                                <span>₹{facultyMember.rate_per_hour}/hour</span>
-                              </div>
-                            )}
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Building className="w-4 h-4" />
+                            <span>AIML Department</span>
                           </div>
                         </div>
                       </div>
@@ -267,30 +259,11 @@ export default function ManageFaculty() {
           </DialogHeader>
 
           {selectedFaculty && (
-            <Tabs defaultValue="summary" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="summary">Summary</TabsTrigger>
-                <TabsTrigger value="sessions">Sessions</TabsTrigger>
-                <TabsTrigger value="expenses">Expenses</TabsTrigger>
-                <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            <Tabs defaultValue="profile" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="sessions">Sessions</TabsTrigger>
               </TabsList>
-
-              <TabsContent value="summary" className="mt-6">
-                <FacultySummaryTab faculty={selectedFaculty} />
-              </TabsContent>
-
-              <TabsContent value="sessions" className="mt-6">
-                <FacultySessionsTab faculty={selectedFaculty} />
-              </TabsContent>
-
-              <TabsContent value="expenses" className="mt-6">
-                <FacultyExpensesTab faculty={selectedFaculty} />
-              </TabsContent>
-
-              <TabsContent value="invoices" className="mt-6">
-                <FacultyInvoicesTab faculty={selectedFaculty} />
-              </TabsContent>
 
               <TabsContent value="profile" className="mt-6">
                 <Card>
@@ -309,11 +282,7 @@ export default function ManageFaculty() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Department</p>
-                        <p className="font-semibold">{selectedFaculty.department || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Rate per Hour</p>
-                        <p className="font-semibold text-green-600">₹{selectedFaculty.rate_per_hour || 0}</p>
+                        <p className="font-semibold">AIML</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Status</p>
@@ -343,6 +312,10 @@ export default function ManageFaculty() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="sessions" className="mt-6">
+                <FacultySessionsTab faculty={selectedFaculty} />
               </TabsContent>
             </Tabs>
           )}

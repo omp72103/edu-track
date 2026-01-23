@@ -29,6 +29,7 @@ import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
 import AssignmentManagement from './pages/AssignmentManagement';
+import BatchAnalytics from './pages/BatchAnalytics';
 import __Layout from './Layout.jsx';
 
 
@@ -64,6 +65,7 @@ export const PAGES = {
     "TimeTable": TimeTable,
     "Upload": Upload,
     "AssignmentManagement": AssignmentManagement,
+    "BatchAnalytics": BatchAnalytics,
 }
 
 export const pagesConfig = {

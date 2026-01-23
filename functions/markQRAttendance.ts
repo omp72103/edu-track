@@ -469,14 +469,18 @@ Deno.serve(async (req) => {
             message,
             already_marked,
             student_name: student.name,
+            student_prn: student.prn || student_identifier,
             location_verified: geoFenceZones.length > 0,
             location_name: geoFenceLocation,
+            inside_geofence: insideGeoFence,
             session: {
+                id: sessionData.id,
                 name: sessionData.session_name,
                 topic: sessionData.topic_taught,
                 date: sessionData.session_date,
                 time: sessionData.session_time,
                 faculty: sessionData.faculty_name,
+                faculty_email: sessionData.faculty_email,
                 college: sessionData.college_name
             }
         });

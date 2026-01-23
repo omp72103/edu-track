@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import LiveTrackingMap from "@/components/attendance/LiveTrackingMap";
+import FacultyAlerts from "@/components/attendance/FacultyAlerts";
 
 const QR_EXPIRY_SECONDS = 120;
 

@@ -33,6 +33,7 @@ import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
 import Performance from './pages/Performance';
 import FeedbackComplaintsAdmin from './pages/FeedbackComplaintsAdmin';
+import PredictiveAnalysis from './pages/PredictiveAnalysis';
 import __Layout from './Layout.jsx';
 
 
@@ -72,6 +73,7 @@ export const PAGES = {
     "Upload": Upload,
     "Performance": Performance,
     "FeedbackComplaintsAdmin": FeedbackComplaintsAdmin,
+    "PredictiveAnalysis": PredictiveAnalysis,
 }
 
 export const pagesConfig = {

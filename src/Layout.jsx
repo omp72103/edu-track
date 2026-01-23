@@ -48,6 +48,7 @@ const adminNavItems = [
   { name: "ManageFaculty", label: "Manage Faculty", icon: UserCog },
   { name: "FeedbackComplaintsAdmin", label: "Feedback & Complaints", icon: MessageSquare },
   { name: "AdvancedAnalysis", label: "Advanced Analysis", icon: TrendingUp },
+  { name: "PredictiveAnalysis", label: "Predictive Analysis", icon: Sparkles },
 ];
 
 const commonNavItems = [];

@@ -38,9 +38,6 @@ export default function AdvancedAnalysis() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
-    college_name: "",
-    year: "",
-    branch: "",
     division: ""
   });
   const [reportConfig, setReportConfig] = useState({
@@ -557,8 +554,7 @@ export default function AdvancedAnalysis() {
     const { attendanceByDate, studentAttendance } = analysis;
     
     const csvRows = [];
-    csvRows.push([`Attendance Report - ${batchInfo.college_name}`]);
-    csvRows.push([`Branch: ${batchInfo.branch}`, `Year: ${batchInfo.year}`, `Division: ${batchInfo.division || 'All'}`]);
+    csvRows.push([`Attendance Report - Division ${batchInfo.division}`]);
     csvRows.push([]);
     
     // Student attendance data
@@ -579,7 +575,7 @@ export default function AdvancedAnalysis() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Attendance_Report_${batchInfo.college_name.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
+    link.download = `Attendance_Report_Div_${batchInfo.division}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -661,7 +657,7 @@ export default function AdvancedAnalysis() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Analysis - ${batchInfo.college_name}</title>
+    <title>Attendance Analysis - Division ${batchInfo.division}</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -910,20 +906,8 @@ export default function AdvancedAnalysis() {
             <h1>📊 Advanced Attendance Analysis Report</h1>
             <div class="batch-info">
                 <div class="info-item">
-                    <div class="info-label">College</div>
-                    <div class="info-value">${batchInfo.college_name}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Branch</div>
-                    <div class="info-value">${batchInfo.branch}</div>
-                </div>
-                <div class="info-item">
-                    <div class="info-label">Year</div>
-                    <div class="info-value">${batchInfo.year}</div>
-                </div>
-                <div class="info-item">
                     <div class="info-label">Division</div>
-                    <div class="info-value">${batchInfo.division || 'All'}</div>
+                    <div class="info-value">${batchInfo.division}</div>
                 </div>
             </div>
             </div>
@@ -1270,8 +1254,8 @@ export default function AdvancedAnalysis() {
       return;
     }
 
-    if (!formData.college_name || !formData.year || !formData.branch) {
-      setMessage({ type: "error", text: "Please fill in all batch details" });
+    if (!formData.division || formData.division.trim() === "") {
+      setMessage({ type: "error", text: "Please enter division" });
       return;
     }
 
@@ -1520,7 +1504,7 @@ export default function AdvancedAnalysis() {
       try {
         const insightsPrompt = `Analyze this attendance data and provide detailed insights and recommendations:
 
-      Batch: ${formData.college_name} - ${formData.branch} (${formData.year})
+      Division: ${formData.division}
       Total Students: ${studentAttendance.length}
       Total Days/Sessions: ${analysis.totalSessions}
       Overall Average Attendance: ${overallAttendance}%
@@ -1576,7 +1560,7 @@ export default function AdvancedAnalysis() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Attendance_Analysis_${formData.college_name.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'dd-MM-yyyy')}.html`;
+    link.download = `Attendance_Analysis_Div_${formData.division}_${format(new Date(), 'dd-MM-yyyy')}.html`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1641,50 +1625,9 @@ export default function AdvancedAnalysis() {
                 <FileSpreadsheet className="w-5 h-5" />
                 Step 1: Enter Batch Details
               </h3>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid gap-4">
                 <div>
-                  <Label className="font-semibold">College Name *</Label>
-                  <Select value={formData.college_name} onValueChange={(value) => setFormData({...formData, college_name: value})}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select college" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colleges.map((college) => (
-                        <SelectItem key={college.id} value={college.college_name}>
-                          {college.short_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="font-semibold">Academic Year *</Label>
-                  <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {years.map((year) => (
-                        <SelectItem key={year} value={year}>{year}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="font-semibold">Branch *</Label>
-                  <Select value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value})}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select branch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch} value={branch}>{branch}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="font-semibold">Division (Optional)</Label>
+                  <Label className="font-semibold">Division *</Label>
                   <Input
                     placeholder="e.g., A, B, C"
                     value={formData.division}

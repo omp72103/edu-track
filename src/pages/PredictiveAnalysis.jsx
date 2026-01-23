@@ -21,7 +21,10 @@ import {
   Target,
   BookOpen,
   Clock,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  Upload,
+  Download
 } from "lucide-react";
 import { format, addDays, addMonths } from "date-fns";
 
@@ -35,6 +38,8 @@ export default function PredictiveAnalysis() {
   const [studentRisks, setStudentRisks] = useState([]);
   const [customEvent, setCustomEvent] = useState("");
   const [predictionPeriod, setPredictionPeriod] = useState("1month");
+  const [attendanceFile, setAttendanceFile] = useState(null);
+  const [advancedAnalysisData, setAdvancedAnalysisData] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -302,6 +307,10 @@ Provide actionable insights for each student.`;
             <TabsTrigger value="students" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
               <Users className="w-4 h-4 mr-2" />
               Student Risk Analysis
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Advanced Analysis
             </TabsTrigger>
           </TabsList>
 
@@ -656,6 +665,68 @@ Provide actionable insights for each student.`;
                 )}
               </>
             )}
+          </TabsContent>
+
+          {/* Advanced Analysis Tab */}
+          <TabsContent value="advanced" className="space-y-6">
+            <Card className="shadow-xl border-2 border-purple-100">
+              <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5" />
+                  Upload Attendance File for Advanced Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <p className="text-gray-600">Upload a CSV file with student attendance data to generate comprehensive analysis reports with charts and insights.</p>
+                <div
+                  onClick={() => document.getElementById('attendance-file-upload')?.click()}
+                  className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50"
+                >
+                  <input
+                    id="attendance-file-upload"
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => setAttendanceFile(e.target.files[0])}
+                    className="hidden"
+                  />
+                  <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {attendanceFile ? attendanceFile.name : "Drop your attendance CSV here"}
+                  </h3>
+                  <p className="text-gray-600 text-sm">Supports CSV files with columns: Roll No, Student Name, Total Days, Days Present, Days Absent, Attendance %</p>
+                  <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Browse Files
+                  </Button>
+                </div>
+                
+                <Button 
+                  onClick={() => window.open('/AdvancedAnalysis', '_blank')}
+                  disabled={!attendanceFile}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Advanced Analysis Report
+                </Button>
+                
+                <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-purple-200">
+                  <h4 className="font-bold text-purple-900 mb-3 text-lg flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    📊 Advanced Analysis Features:
+                  </h4>
+                  <ul className="text-sm text-purple-800 space-y-2">
+                    <li className="flex items-center gap-2">✨ <strong>Stunning animated HTML reports</strong></li>
+                    <li className="flex items-center gap-2">📈 <strong>Interactive Google Charts</strong> - attendance trends, distributions</li>
+                    <li className="flex items-center gap-2">👥 <strong>Student-wise performance</strong> analysis with rankings</li>
+                    <li className="flex items-center gap-2">🏆 <strong>Top performers showcase</strong> with animations</li>
+                    <li className="flex items-center gap-2">⚠️ <strong>At-risk students identification</strong> (below 75%)</li>
+                    <li className="flex items-center gap-2">🤖 <strong>AI-powered insights</strong> and recommendations</li>
+                    <li className="flex items-center gap-2">📊 <strong>Comprehensive statistics</strong> and metrics</li>
+                    <li className="flex items-center gap-2">🎨 <strong>Professional design</strong> ready to share</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

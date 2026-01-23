@@ -30,9 +30,55 @@ export default function BatchAnalytics() {
       ]);
 
       setBatch(batchData);
-      setStudents(studentsData);
-      setSessions(sessionsData);
-      setAttendanceRecords(attendanceData);
+      
+      // Add static data if no real data exists
+      if (studentsData.length === 0) {
+        const staticStudents = Array.from({ length: 67 }, (_, i) => ({
+          id: `static-student-${i}`,
+          name: `Student ${i + 1}`,
+          roll_no: `${i + 1}`,
+          batch_id: batchData.batch_id
+        }));
+        setStudents(staticStudents);
+      } else {
+        setStudents(studentsData);
+      }
+      
+      if (sessionsData.length === 0) {
+        const staticSessions = Array.from({ length: 10 }, (_, i) => ({
+          id: `static-session-${i}`,
+          session_name: `Session ${i + 1}`,
+          session_date: new Date(2026, 0, i + 1).toISOString(),
+          faculty_name: `Faculty ${(i % 3) + 1}`,
+          batch_id: batchData.batch_id,
+          present_count: Math.floor(Math.random() * 20) + 40,
+          total_students: 67
+        }));
+        setSessions(staticSessions);
+      } else {
+        setSessions(sessionsData);
+      }
+      
+      if (attendanceData.length === 0) {
+        const staticAttendance = [];
+        const studentCount = studentsData.length || 67;
+        const sessionCount = sessionsData.length || 10;
+        
+        for (let s = 0; s < sessionCount; s++) {
+          for (let st = 0; st < studentCount; st++) {
+            staticAttendance.push({
+              id: `static-att-${s}-${st}`,
+              student_id: `static-student-${st}`,
+              session_id: `static-session-${s}`,
+              batch_id: batchData.batch_id,
+              is_present: Math.random() > 0.2
+            });
+          }
+        }
+        setAttendanceRecords(staticAttendance);
+      } else {
+        setAttendanceRecords(attendanceData);
+      }
     } catch (error) {
       console.error("Error loading batch data:", error);
     }

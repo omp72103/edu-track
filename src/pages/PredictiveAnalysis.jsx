@@ -1,288 +1,699 @@
-import React, { useState, useEffect } from "react";
-import { Student, AttendanceRecord, AttendanceSession, StudentPerformance, Batch } from "@/entities/all";
+import React, { useState, useRef } from "react";
 import { InvokeLLM } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Brain, 
-  TrendingDown, 
-  Calendar, 
   Users, 
   AlertTriangle, 
   Sparkles, 
   Loader2,
   ChevronRight,
   Target,
-  BookOpen,
-  Clock,
-  RefreshCw,
-  FileSpreadsheet,
   Upload,
-  Download
+  Download,
+  FileSpreadsheet,
+  TrendingUp,
+  CheckCircle
 } from "lucide-react";
-import { format, addDays, addMonths } from "date-fns";
+import { format } from "date-fns";
+
+const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 
 export default function PredictiveAnalysis() {
-  const [batches, setBatches] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [selectedBatch, setSelectedBatch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPredicting, setIsPredicting] = useState(false);
-  const [eventPredictions, setEventPredictions] = useState(null);
-  const [studentRisks, setStudentRisks] = useState([]);
-  const [customEvent, setCustomEvent] = useState("");
-  const [predictionPeriod, setPredictionPeriod] = useState("1month");
-  const [attendanceFile, setAttendanceFile] = useState(null);
-  const [advancedAnalysisData, setAdvancedAnalysisData] = useState(null);
+  const fileInputRef = useRef(null);
+  const [formData, setFormData] = useState({
+    year: "",
+    division: ""
+  });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (selectedBatch) {
-      loadStudentsForBatch();
-    }
-  }, [selectedBatch]);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const batchData = await Batch.list();
-      setBatches(batchData);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-    setIsLoading(false);
-  };
-
-  const loadStudentsForBatch = async () => {
-    try {
-      const studentData = await Student.filter({ batch_id: selectedBatch });
-      
-      // Load attendance records for each student
-      const studentsWithAttendance = await Promise.all(
-        studentData.map(async (student) => {
-          const records = await AttendanceRecord.filter({ student_id: student.id });
-          const performances = await StudentPerformance.filter({ student_id: student.id });
-          
-          const totalClasses = records.length;
-          const presentClasses = records.filter(r => r.is_present).length;
-          const attendancePercent = totalClasses > 0 ? ((presentClasses / totalClasses) * 100) : 0;
-          
-          // Calculate average performance
-          const avgPerformance = performances.length > 0
-            ? performances.reduce((sum, p) => sum + (p.percentage || 0), 0) / performances.length
-            : 0;
-          
-          return {
-            ...student,
-            totalClasses,
-            presentClasses,
-            absentClasses: totalClasses - presentClasses,
-            attendancePercent: attendancePercent.toFixed(1),
-            avgPerformance: avgPerformance.toFixed(1),
-            performances
-          };
-        })
-      );
-      
-      setStudents(studentsWithAttendance);
-    } catch (error) {
-      console.error("Error loading students:", error);
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
+      setSelectedFile(file);
+      setMessage(null);
+    } else {
+      setMessage({ type: "error", text: "Please select a valid CSV file" });
     }
   };
 
-  const generateEventPredictions = async () => {
-    setIsPredicting(true);
-    try {
-      const today = new Date();
-      const endDate = predictionPeriod === "1month" ? addMonths(today, 1) : 
-                      predictionPeriod === "2months" ? addMonths(today, 2) : addMonths(today, 3);
-      
-      const prompt = `You are an educational attendance prediction system for Indian colleges. Analyze and predict attendance patterns.
+  const parseCSV = (text) => {
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) return { headers: [], data: [] };
 
-Current Date: ${format(today, 'dd MMMM yyyy')}
-Prediction Period: ${format(today, 'dd MMM yyyy')} to ${format(endDate, 'dd MMM yyyy')}
-${customEvent ? `Custom Event to Consider: ${customEvent}` : ''}
+    const parseLine = (line) => {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    };
 
-Based on the Indian academic calendar, festivals, and common events, predict attendance impact for the given period.
+    const headers = parseLine(lines[0]).map(h => h.trim()).filter(h => h.length > 0);
+    const data = lines.slice(1).map(line => {
+      const values = parseLine(line);
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      return row;
+    }).filter(row => Object.values(row).some(val => val && val.length > 0));
 
-Consider these factors:
-1. Major Indian festivals (Ganesh Chaturthi, Diwali, Holi, Eid, Christmas, Pongal, Onam, Durga Puja, etc.)
-2. National holidays (Independence Day, Republic Day, Gandhi Jayanti)
-3. College events (Annual Day, Sports Day, Cultural Fest, Technical Fest)
-4. Exam periods (Mid-terms, Finals, Practicals)
-5. Weather conditions (Monsoon, Extreme heat)
-6. Long weekends and bridge holidays
-7. Regional festivals based on college location
+    return { headers, data };
+  };
 
-Provide a detailed prediction with:
-1. List of upcoming events/festivals with dates
-2. Expected attendance drop percentage for each event
-3. Number of days likely to be affected
-4. Recommendations for faculty/administration
-
-Be specific with dates and realistic with predictions.`;
-
-      const response = await InvokeLLM({
-        prompt,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            summary: { type: "string", description: "Overall prediction summary" },
-            predicted_events: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  event_name: { type: "string" },
-                  event_date: { type: "string" },
-                  event_type: { type: "string", enum: ["festival", "holiday", "college_event", "exam", "weather", "other"] },
-                  expected_attendance_drop: { type: "number", description: "Percentage drop expected" },
-                  affected_days: { type: "number" },
-                  severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
-                  description: { type: "string" }
-                }
-              }
-            },
-            weekly_predictions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  week: { type: "string" },
-                  expected_avg_attendance: { type: "number" },
-                  risk_level: { type: "string" },
-                  key_events: { type: "string" }
-                }
-              }
-            },
-            recommendations: {
-              type: "array",
-              items: { type: "string" }
-            },
-            overall_risk_score: { type: "number", description: "1-10 scale" }
+  const analyzeAttendanceData = (data) => {
+    const students = [];
+    
+    // Find columns
+    const findColumn = (keywords) => {
+      for (const row of data) {
+        for (const key of Object.keys(row)) {
+          const upper = key.toUpperCase().trim();
+          if (keywords.some(k => upper.includes(k) || upper === k)) {
+            return key;
           }
         }
-      });
+      }
+      return null;
+    };
+    
+    const rollNoCol = findColumn(['ROLL NO', 'ROLL', 'SL NO', 'SR NO']);
+    const nameCol = findColumn(['STUDENT NAME', 'NAME', 'STUDENT']);
+    const totalDaysCol = findColumn(['TOTAL DAYS', 'TOTAL']);
+    const presentCol = findColumn(['DAYS PRESENT', 'PRESENT']);
+    const absentCol = findColumn(['DAYS ABSENT', 'ABSENT']);
+    const percentCol = findColumn(['ATTENDANCE %', 'ATTENDANCE', '%', 'PERCENT']);
 
-      setEventPredictions(response);
-    } catch (error) {
-      console.error("Error generating predictions:", error);
-    }
-    setIsPredicting(false);
+    data.forEach(row => {
+      const name = row[nameCol] || '';
+      const rollNo = row[rollNoCol] || '';
+      const totalDays = parseInt(row[totalDaysCol]) || 0;
+      const daysPresent = parseInt(row[presentCol]) || 0;
+      const daysAbsent = parseInt(row[absentCol]) || 0;
+      
+      let percentage = 0;
+      if (percentCol && row[percentCol]) {
+        percentage = parseFloat(row[percentCol].toString().replace('%', '').trim()) || 0;
+      } else if (totalDays > 0) {
+        percentage = ((daysPresent / totalDays) * 100);
+      }
+
+      if (name.trim().length > 0) {
+        // Calculate absence ratio
+        const absenceRatio = totalDays > 0 ? (daysAbsent / totalDays) : 0;
+        
+        // Absenteeism Risk Classification (Rule-based)
+        let riskLevel = 'low';
+        let riskScore = 0;
+        if (percentage >= 85) {
+          riskLevel = 'low';
+          riskScore = 20 + (100 - percentage) * 0.5; // 20-27.5
+        } else if (percentage >= 70) {
+          riskLevel = 'moderate';
+          riskScore = 40 + (85 - percentage) * 2; // 40-70
+        } else {
+          riskLevel = 'high';
+          riskScore = 70 + (70 - percentage) * 0.5; // 70-100
+        }
+
+        // Academic Impact Prediction (Rule-based)
+        let academicImpact = '';
+        let predictedGradeDrop = '';
+        if (percentage >= 90) {
+          academicImpact = 'Excellent academic continuity - No impact expected';
+          predictedGradeDrop = 'No drop';
+        } else if (percentage >= 75) {
+          academicImpact = 'Moderate risk - May affect performance slightly';
+          predictedGradeDrop = '1 grade point';
+        } else {
+          academicImpact = 'High academic risk - Significant performance impact';
+          predictedGradeDrop = '2-3 grade points';
+        }
+
+        // Predicted final attendance (simple linear projection)
+        const trendFactor = absenceRatio > 0.15 ? -2 : absenceRatio > 0.1 ? -1 : 0;
+        const predictedFinal = Math.max(0, Math.min(100, percentage + trendFactor));
+
+        students.push({
+          name: name.trim(),
+          rollNo: rollNo.toString().trim(),
+          totalDays,
+          daysPresent,
+          daysAbsent,
+          percentage: percentage.toFixed(1),
+          absenceRatio: absenceRatio.toFixed(2),
+          riskLevel,
+          riskScore: riskScore.toFixed(0),
+          predictedFinalAttendance: predictedFinal.toFixed(1),
+          academicImpact,
+          predictedGradeDrop,
+          interventionPriority: riskLevel === 'high' ? 'immediate' : riskLevel === 'moderate' ? 'soon' : 'monitor',
+          recommendations: generateRecommendations(percentage, absenceRatio, riskLevel)
+        });
+      }
+    });
+
+    return students.sort((a, b) => parseFloat(b.riskScore) - parseFloat(a.riskScore));
   };
 
-  const generateStudentRiskAnalysis = async () => {
-    if (students.length === 0) {
-      alert("Please select a batch first");
-      return;
+  const generateRecommendations = (percentage, absenceRatio, riskLevel) => {
+    const recommendations = [];
+    
+    if (riskLevel === 'high') {
+      recommendations.push('Immediate counseling session required');
+      recommendations.push('Notify parents/guardians urgently');
+      recommendations.push('Create personalized catch-up plan');
+      recommendations.push('Weekly attendance monitoring');
+    } else if (riskLevel === 'moderate') {
+      recommendations.push('Schedule meeting with student');
+      recommendations.push('Monitor attendance bi-weekly');
+      recommendations.push('Provide study support resources');
+      recommendations.push('Identify attendance barriers');
+    } else {
+      recommendations.push('Continue positive reinforcement');
+      recommendations.push('Regular check-ins');
+      recommendations.push('Encourage peer mentorship');
     }
     
-    setIsPredicting(true);
-    try {
-      // Prepare student data for analysis
-      const studentSummary = students.map(s => ({
-        name: s.name,
-        roll_no: s.roll_no,
-        attendance: s.attendancePercent,
-        academic_performance: s.avgPerformance,
-        total_absences: s.absentClasses,
-        total_classes: s.totalClasses
-      }));
+    return recommendations;
+  };
 
-      const prompt = `You are an educational risk assessment AI. Analyze each student's absenteeism risk and predict academic impact.
-
-Student Data:
-${JSON.stringify(studentSummary, null, 2)}
-
-For EACH student, analyze:
-1. Current attendance pattern and trend
-2. Risk of chronic absenteeism (missing >10% classes)
-3. Predicted academic impact based on attendance correlation
-4. Early warning signs
-5. Personalized intervention recommendations
-
-Consider:
-- Students below 75% attendance are at high risk
-- Strong correlation between attendance and academic performance
-- Pattern of absences (consecutive vs sporadic)
-- Performance trajectory
-
-Provide actionable insights for each student.`;
-
-      const response = await InvokeLLM({
-        prompt,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            overall_batch_risk: { type: "string" },
-            at_risk_count: { type: "number" },
-            student_analysis: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  student_name: { type: "string" },
-                  roll_no: { type: "string" },
-                  risk_level: { type: "string", enum: ["low", "moderate", "high", "critical"] },
-                  risk_score: { type: "number", description: "1-100" },
-                  predicted_final_attendance: { type: "number" },
-                  predicted_academic_impact: { type: "string" },
-                  predicted_grade_drop: { type: "string" },
-                  warning_signs: { type: "array", items: { type: "string" } },
-                  intervention_priority: { type: "string", enum: ["immediate", "soon", "monitor", "none"] },
-                  recommendations: { type: "array", items: { type: "string" } }
-                }
-              }
-            },
-            batch_recommendations: { type: "array", items: { type: "string" } }
-          }
-        }
-      });
-
-      setStudentRisks(response);
-    } catch (error) {
-      console.error("Error analyzing student risks:", error);
+  const handleAnalyze = async () => {
+    if (!selectedFile) {
+      setMessage({ type: "error", text: "Please select a CSV file" });
+      return;
     }
-    setIsPredicting(false);
+
+    if (!formData.year || !formData.division) {
+      setMessage({ type: "error", text: "Please fill in Academic Year and Division" });
+      return;
+    }
+
+    setIsProcessing(true);
+    setMessage({ type: "info", text: "🔄 Processing CSV file..." });
+
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+        const text = e.target.result;
+        const { headers, data } = parseCSV(text);
+        
+        if (data.length === 0) {
+          setMessage({ type: "error", text: "No valid data found in CSV" });
+          setIsProcessing(false);
+          return;
+        }
+
+        setMessage({ type: "info", text: "📊 Analyzing attendance patterns..." });
+
+        const students = analyzeAttendanceData(data);
+        
+        const highRisk = students.filter(s => s.riskLevel === 'high').length;
+        const moderateRisk = students.filter(s => s.riskLevel === 'moderate').length;
+        const lowRisk = students.filter(s => s.riskLevel === 'low').length;
+
+        const result = {
+          students,
+          summary: {
+            totalStudents: students.length,
+            highRisk,
+            moderateRisk,
+            lowRisk,
+            avgAttendance: students.length > 0 ? (students.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / students.length).toFixed(1) : 0
+          },
+          batchInfo: {
+            year: formData.year,
+            division: formData.division,
+            analysisDate: new Date().toISOString()
+          }
+        };
+
+        setAnalysisResult(result);
+        setMessage({ type: "success", text: `✅ Analysis complete! ${students.length} students analyzed.` });
+        setIsProcessing(false);
+      };
+
+      reader.readAsText(selectedFile);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      setMessage({ type: "error", text: `Error: ${error.message}` });
+      setIsProcessing(false);
+    }
+  };
+
+  const generateHTMLReport = () => {
+    if (!analysisResult) return;
+
+    const { students, summary, batchInfo } = analysisResult;
+
+    const riskDistributionData = `['High Risk', ${summary.highRisk}], ['Moderate Risk', ${summary.moderateRisk}], ['Low Risk', ${summary.lowRisk}]`;
+    const studentChartData = students.slice(0, 20).map(s => 
+      `['${s.name.substring(0, 15)}', ${s.riskScore}]`
+    ).join(',');
+    const attendanceImpactData = students.slice(0, 20).map(s => 
+      `['${s.name.substring(0, 15)}', ${s.percentage}]`
+    ).join(',');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Attendance Analysis - ${batchInfo.division}</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 30px 90px rgba(0,0,0,0.4);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+        }
+        .header h1 {
+            font-size: 42px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .info-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        .info-label {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .info-value {
+            font-size: 1.1em;
+            color: #333;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .prediction-note {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .summary-card {
+            padding: 25px;
+            border-radius: 15px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .summary-card.high { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .summary-card.moderate { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .summary-card.low { background: linear-gradient(135deg, #10b981, #059669); }
+        .summary-card.total { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .summary-card .value {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .summary-card .label {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        thead {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+        }
+        tbody tr {
+            background: white;
+            transition: all 0.3s;
+        }
+        tbody tr:nth-child(even) {
+            background: #f8f9ff;
+        }
+        tbody tr:hover {
+            background: #e8ebff;
+            transform: scale(1.01);
+        }
+        .risk-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .risk-high { background: #fee2e2; color: #dc2626; }
+        .risk-moderate { background: #fef3c7; color: #d97706; }
+        .risk-low { background: #d1fae5; color: #059669; }
+        .recommendations {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 10px;
+        }
+        .recommendations h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+        }
+        .recommendations ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .recommendations li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .recommendations li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+            color: #666;
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Predictive Attendance Analysis Report</h1>
+            <p style="font-size: 18px; color: #666;">AI-Powered Absenteeism Risk & Academic Impact Prediction</p>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Academic Year</div>
+                <div class="info-value">${batchInfo.year}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Division</div>
+                <div class="info-value">${batchInfo.division}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Analysis Date</div>
+                <div class="info-value">${format(new Date(batchInfo.analysisDate), 'dd MMM yyyy')}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Students</div>
+                <div class="info-value">${summary.totalStudents}</div>
+            </div>
+        </div>
+
+        <div class="prediction-note">
+            <strong>📊 Prediction Methodology:</strong> This analysis uses rule-based inference on actual CSV data. 
+            Risk scores are calculated based on attendance percentage and absence patterns. 
+            Academic impact predictions are derived from empirical research correlating attendance with performance.
+            <strong>No external training data or assumptions are used.</strong>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-card total">
+                <div class="label">Total Students</div>
+                <div class="value">${summary.totalStudents}</div>
+                <div style="opacity: 0.8;">Analyzed</div>
+            </div>
+            <div class="summary-card high">
+                <div class="label">High Risk</div>
+                <div class="value">${summary.highRisk}</div>
+                <div style="opacity: 0.8;">< 70% Attendance</div>
+            </div>
+            <div class="summary-card moderate">
+                <div class="label">Moderate Risk</div>
+                <div class="value">${summary.moderateRisk}</div>
+                <div style="opacity: 0.8;">70-84% Attendance</div>
+            </div>
+            <div class="summary-card low">
+                <div class="label">Low Risk</div>
+                <div class="value">${summary.lowRisk}</div>
+                <div style="opacity: 0.8;">≥ 85% Attendance</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">📊 Absenteeism Risk Distribution</h2>
+            <div id="risk_pie_chart" style="width: 100%; height: 400px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">📊 Student-wise Risk Score (Top 20)</h2>
+            <div id="risk_bar_chart" style="width: 100%; height: 500px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">📊 Attendance vs Academic Impact</h2>
+            <div id="attendance_impact_chart" style="width: 100%; height: 500px;"></div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">📋 Student-wise Risk Analysis</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Roll No</th>
+                        <th>Student Name</th>
+                        <th>Attendance %</th>
+                        <th>Risk Level</th>
+                        <th>Risk Score</th>
+                        <th>Academic Impact</th>
+                        <th>Predicted Final %</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${students.map(s => `
+                    <tr>
+                        <td>${s.rollNo}</td>
+                        <td>${s.name}</td>
+                        <td><strong>${s.percentage}%</strong></td>
+                        <td><span class="risk-badge risk-${s.riskLevel}">${s.riskLevel}</span></td>
+                        <td>${s.riskScore}/100</td>
+                        <td>${s.academicImpact}</td>
+                        <td>${s.predictedFinalAttendance}%</td>
+                        <td>${s.interventionPriority === 'immediate' ? '🚨 Immediate' : s.interventionPriority === 'soon' ? '⚠️ Soon' : '✅ Monitor'}</td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="recommendations">
+            <h3>💡 Actionable Recommendations</h3>
+            <ul>
+                <li><strong>High-Risk Students (${summary.highRisk}):</strong> Require immediate intervention - counseling, parent meetings, personalized catch-up plans</li>
+                <li><strong>Moderate-Risk Students (${summary.moderateRisk}):</strong> Regular monitoring, study support, identify barriers to attendance</li>
+                <li><strong>Low-Risk Students (${summary.lowRisk}):</strong> Positive reinforcement, peer mentorship opportunities</li>
+                <li>Implement early warning system for students showing declining attendance trends</li>
+                <li>Establish attendance improvement programs targeting students below 75%</li>
+                <li>Regular parent-teacher communication for at-risk students</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p><strong>Report Generated:</strong> ${format(new Date(), 'PPP p')}</p>
+            <p><strong>Powered by EDU TRACK</strong> | Predictive Attendance Analytics System</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">This is an AI-assisted predictive analysis based on rule-based inference from actual data</p>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        google.charts.load('current', {'packages':['corechart']});
+        google.charts.setOnLoadCallback(drawCharts);
+
+        function drawCharts() {
+            // Risk Distribution Pie Chart
+            var pieData = google.visualization.arrayToDataTable([
+                ['Risk Level', 'Count'],
+                ${riskDistributionData}
+            ]);
+
+            var pieOptions = {
+                title: 'Absenteeism Risk Distribution',
+                colors: ['#ef4444', '#f59e0b', '#10b981'],
+                pieHole: 0.4,
+                animation: {
+                    startup: true,
+                    duration: 1000,
+                    easing: 'out'
+                },
+                legend: { position: 'bottom' },
+                pieSliceText: 'value'
+            };
+
+            var pieChart = new google.visualization.PieChart(document.getElementById('risk_pie_chart'));
+            pieChart.draw(pieData, pieOptions);
+
+            // Risk Score Bar Chart
+            var barData = google.visualization.arrayToDataTable([
+                ['Student', 'Risk Score'],
+                ${studentChartData}
+            ]);
+
+            var barOptions = {
+                title: 'Top 20 Students by Risk Score',
+                colors: ['#ef4444'],
+                animation: {
+                    startup: true,
+                    duration: 1000,
+                    easing: 'out'
+                },
+                vAxis: { 
+                    title: 'Risk Score (0-100)',
+                    minValue: 0,
+                    maxValue: 100
+                },
+                hAxis: { 
+                    title: 'Student Name',
+                    slantedText: true,
+                    slantedTextAngle: 45
+                },
+                legend: { position: 'none' }
+            };
+
+            var barChart = new google.visualization.ColumnChart(document.getElementById('risk_bar_chart'));
+            barChart.draw(barData, barOptions);
+
+            // Attendance Impact Chart
+            var impactData = google.visualization.arrayToDataTable([
+                ['Student', 'Attendance %'],
+                ${attendanceImpactData}
+            ]);
+
+            var impactOptions = {
+                title: 'Attendance % vs Academic Impact (Top 20)',
+                colors: ['#3b82f6'],
+                animation: {
+                    startup: true,
+                    duration: 1000,
+                    easing: 'out'
+                },
+                vAxis: { 
+                    title: 'Attendance %',
+                    minValue: 0,
+                    maxValue: 100
+                },
+                hAxis: { 
+                    title: 'Student Name',
+                    slantedText: true,
+                    slantedTextAngle: 45
+                },
+                legend: { position: 'none' }
+            };
+
+            var impactChart = new google.visualization.ColumnChart(document.getElementById('attendance_impact_chart'));
+            impactChart.draw(impactData, impactOptions);
+        }
+
+        window.addEventListener('resize', function() {
+            drawCharts();
+        });
+    </script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Predictive_Analysis_${batchInfo.division}_${format(new Date(), 'dd-MM-yyyy')}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setMessage({ type: "success", text: "✅ HTML Report downloaded!" });
   };
 
   const getRiskColor = (risk) => {
     switch (risk?.toLowerCase()) {
-      case 'critical': return 'bg-red-500 text-white';
-      case 'high': return 'bg-orange-500 text-white';
+      case 'high': return 'bg-red-500 text-white';
       case 'moderate': return 'bg-yellow-500 text-black';
       case 'low': return 'bg-green-500 text-white';
       default: return 'bg-gray-500 text-white';
-    }
-  };
-
-  const getSeverityColor = (severity) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical': return 'border-red-500 bg-red-50';
-      case 'high': return 'border-orange-500 bg-orange-50';
-      case 'medium': return 'border-yellow-500 bg-yellow-50';
-      case 'low': return 'border-green-500 bg-green-50';
-      default: return 'border-gray-300 bg-gray-50';
-    }
-  };
-
-  const getEventIcon = (type) => {
-    switch (type) {
-      case 'festival': return '🎉';
-      case 'holiday': return '🏛️';
-      case 'college_event': return '🎓';
-      case 'exam': return '📝';
-      case 'weather': return '🌧️';
-      default: return '📅';
     }
   };
 
@@ -293,442 +704,247 @@ Provide actionable insights for each student.`;
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <Brain className="w-8 h-8 text-purple-600" />
-            Predictive Attendance Analysis
+            Predictive Attendance Insights
           </h1>
-          <p className="text-gray-600 mt-1">AI-powered predictions for attendance patterns and student risk assessment</p>
+          <p className="text-gray-600 mt-1">AI-powered absenteeism risk prediction and academic impact analysis</p>
         </div>
 
-        <Tabs defaultValue="events" className="space-y-6">
-          <TabsList className="bg-white shadow-md p-1 rounded-xl">
-            <TabsTrigger value="events" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
-              <Calendar className="w-4 h-4 mr-2" />
-              Event-Based Predictions
-            </TabsTrigger>
-            <TabsTrigger value="students" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
-              <Users className="w-4 h-4 mr-2" />
-              Student Risk Analysis
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Advanced Analysis
-            </TabsTrigger>
-          </TabsList>
+        {message && (
+          <Alert className={`mb-6 ${message.type === 'error' ? 'border-red-200 bg-red-50' : message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
+            <AlertDescription className={message.type === 'error' ? 'text-red-800' : message.type === 'success' ? 'text-green-800' : 'text-blue-800'}>
+              {message.text}
+            </AlertDescription>
+          </Alert>
+        )}
 
-          {/* Event-Based Predictions Tab */}
-          <TabsContent value="events" className="space-y-6">
-            <Card className="shadow-xl border-2 border-purple-100">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  Predict Attendance Based on Events & Festivals
+        {/* Input Section */}
+        <Card className="shadow-xl border-2 border-purple-100 mb-6">
+          <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              Student Risk Analysis - Upload & Configure
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label className="font-semibold">Academic Year *</Label>
+                <select
+                  value={formData.year}
+                  onChange={(e) => setFormData({...formData, year: e.target.value})}
+                  className="mt-2 w-full p-2 border rounded-lg"
+                >
+                  <option value="">Select Year</option>
+                  {years.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="font-semibold">Division *</Label>
+                <Input
+                  placeholder="e.g., A, B, C"
+                  value={formData.division}
+                  onChange={(e) => setFormData({...formData, division: e.target.value})}
+                  className="mt-2"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="font-semibold">Upload Attendance CSV *</Label>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50 mt-2"
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {selectedFile ? selectedFile.name : "Drop your attendance CSV here"}
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Required columns: Roll No, Student Name, Total Days, Days Present, Days Absent, Attendance %
+                </p>
+                <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Browse Files
+                </Button>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleAnalyze}
+              disabled={isProcessing || !selectedFile}
+              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 py-6 text-lg"
+            >
+              {isProcessing ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Data...</>
+              ) : (
+                <><Brain className="w-4 h-4 mr-2" /> Analyze Attendance & Predict Risks</>
+              )}
+            </Button>
+
+            <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-purple-200">
+              <h4 className="font-bold text-purple-900 mb-2 text-sm">🎯 What This Analysis Provides:</h4>
+              <ul className="text-xs text-purple-800 space-y-1">
+                <li className="flex items-center gap-2">✓ <strong>Rule-based absenteeism risk prediction</strong> (Low/Medium/High)</li>
+                <li className="flex items-center gap-2">✓ <strong>Academic impact assessment</strong> based on attendance patterns</li>
+                <li className="flex items-center gap-2">✓ <strong>Student-wise risk scores</strong> and intervention priorities</li>
+                <li className="flex items-center gap-2">✓ <strong>Interactive charts</strong> - pie, bar, distribution graphs</li>
+                <li className="flex items-center gap-2">✓ <strong>Downloadable HTML report</strong> with actionable recommendations</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Results Section */}
+        {analysisResult && (
+          <>
+            {/* Summary Cards */}
+            <div className="grid md:grid-cols-4 gap-4 mb-6">
+              <Card className="shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                <CardContent className="p-6 text-center">
+                  <Users className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                  <div className="text-3xl font-bold">{analysisResult.summary.totalStudents}</div>
+                  <div className="text-sm opacity-90">Total Students</div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-lg bg-gradient-to-br from-red-500 to-orange-500 text-white">
+                <CardContent className="p-6 text-center">
+                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                  <div className="text-3xl font-bold">{analysisResult.summary.highRisk}</div>
+                  <div className="text-sm opacity-90">High Risk (&lt;70%)</div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-lg bg-gradient-to-br from-yellow-500 to-amber-500 text-white">
+                <CardContent className="p-6 text-center">
+                  <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                  <div className="text-3xl font-bold">{analysisResult.summary.moderateRisk}</div>
+                  <div className="text-sm opacity-90">Moderate Risk (70-84%)</div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                <CardContent className="p-6 text-center">
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                  <div className="text-3xl font-bold">{analysisResult.summary.lowRisk}</div>
+                  <div className="text-sm opacity-90">Low Risk (≥85%)</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Student Risk Table */}
+            <Card className="shadow-lg mb-6">
+              <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-purple-600" />
+                    Student-wise Risk Analysis
+                  </span>
+                  <Button 
+                    onClick={generateHTMLReport}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Full Report
+                  </Button>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Prediction Period</Label>
-                    <Select value={predictionPeriod} onValueChange={setPredictionPeriod}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1month">Next 1 Month</SelectItem>
-                        <SelectItem value="2months">Next 2 Months</SelectItem>
-                        <SelectItem value="3months">Next 3 Months</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Custom Event (Optional)</Label>
-                    <Input 
-                      placeholder="e.g., College Annual Day on 15th Feb, Technical Fest..."
-                      value={customEvent}
-                      onChange={(e) => setCustomEvent(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-                <Button 
-                  onClick={generateEventPredictions}
-                  disabled={isPredicting}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                >
-                  {isPredicting ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Events...</>
-                  ) : (
-                    <><Brain className="w-4 h-4 mr-2" /> Generate Predictions</>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {eventPredictions && (
-              <>
-                {/* Summary Card */}
-                <Card className="shadow-lg border-l-4 border-purple-500">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">📊 Prediction Summary</h3>
-                        <p className="text-gray-700">{eventPredictions.summary}</p>
-                      </div>
-                      <div className="text-center bg-gradient-to-br from-purple-500 to-indigo-600 text-white px-6 py-4 rounded-xl">
-                        <div className="text-3xl font-bold">{eventPredictions.overall_risk_score}/10</div>
-                        <div className="text-sm opacity-90">Risk Score</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Predicted Events */}
-                <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-purple-600" />
-                      Upcoming Events & Expected Impact
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      {eventPredictions.predicted_events?.map((event, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`border-l-4 rounded-lg p-4 ${getSeverityColor(event.severity)}`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xl">{getEventIcon(event.event_type)}</span>
-                                <h4 className="font-bold text-gray-900">{event.event_name}</h4>
-                                <Badge className={getRiskColor(event.severity)}>{event.severity}</Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-2">{event.description}</p>
-                              <div className="flex flex-wrap gap-4 text-sm">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-4 h-4" /> {event.event_date}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-4 h-4" /> {event.affected_days} days affected
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-red-600">-{event.expected_attendance_drop}%</div>
-                              <div className="text-xs text-gray-500">Expected Drop</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Weekly Predictions */}
-                {eventPredictions.weekly_predictions && (
-                  <Card className="shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingDown className="w-5 h-5 text-purple-600" />
-                        Weekly Attendance Forecast
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {eventPredictions.weekly_predictions.map((week, idx) => (
-                          <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border">
-                            <div className="text-sm font-medium text-gray-600 mb-2">{week.week}</div>
-                            <div className="text-3xl font-bold text-gray-900 mb-1">{week.expected_avg_attendance}%</div>
-                            <Badge className={getRiskColor(week.risk_level)}>{week.risk_level} risk</Badge>
-                            {week.key_events && (
-                              <div className="text-xs text-gray-500 mt-2">{week.key_events}</div>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {analysisResult.students
+                    .sort((a, b) => parseFloat(b.riskScore) - parseFloat(a.riskScore))
+                    .map((student, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`border rounded-xl p-4 ${
+                        student.riskLevel === 'high' ? 'border-red-300 bg-red-50' :
+                        student.riskLevel === 'moderate' ? 'border-yellow-300 bg-yellow-50' :
+                        'border-green-300 bg-green-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-lg text-gray-900">{student.name}</h4>
+                            <Badge variant="outline">{student.rollNo}</Badge>
+                            <Badge className={getRiskColor(student.riskLevel)}>{student.riskLevel.toUpperCase()}</Badge>
+                            {student.interventionPriority === 'immediate' && (
+                              <Badge className="bg-red-600 text-white animate-pulse">⚠️ IMMEDIATE ACTION</Badge>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Recommendations */}
-                {eventPredictions.recommendations && (
-                  <Card className="shadow-lg border-2 border-green-200 bg-green-50">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-green-800">
-                        <Target className="w-5 h-5" />
-                        Recommendations for Administration
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <ul className="space-y-3">
-                        {eventPredictions.recommendations.map((rec, idx) => (
-                          <li key={idx} className="flex items-start gap-3">
-                            <ChevronRight className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-700">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* Student Risk Analysis Tab */}
-          <TabsContent value="students" className="space-y-6">
-            <Card className="shadow-xl border-2 border-purple-100">
-              <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Individual Student Risk Assessment
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Select Batch *</Label>
-                    <Select value={selectedBatch} onValueChange={setSelectedBatch}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Choose a batch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {batches.map((batch) => (
-                          <SelectItem key={batch.id} value={batch.batch_id}>
-                            {batch.batch_name} ({batch.college_name})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={generateStudentRiskAnalysis}
-                      disabled={isPredicting || !selectedBatch}
-                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                    >
-                      {isPredicting ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Students...</>
-                      ) : (
-                        <><Brain className="w-4 h-4 mr-2" /> Analyze Student Risks</>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                {students.length > 0 && (
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <AlertDescription className="text-blue-800">
-                      📊 Loaded {students.length} students from selected batch. Click "Analyze Student Risks" to generate predictions.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-
-            {studentRisks?.student_analysis && (
-              <>
-                {/* Batch Overview */}
-                <div className="grid md:grid-cols-3 gap-4">
-                  <Card className="shadow-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
-                    <CardContent className="p-6 text-center">
-                      <Users className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-3xl font-bold">{students.length}</div>
-                      <div className="text-sm opacity-90">Total Students</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="shadow-lg bg-gradient-to-br from-red-500 to-orange-500 text-white">
-                    <CardContent className="p-6 text-center">
-                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-3xl font-bold">{studentRisks.at_risk_count}</div>
-                      <div className="text-sm opacity-90">At-Risk Students</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="shadow-lg bg-gradient-to-br from-yellow-500 to-amber-500 text-white">
-                    <CardContent className="p-6 text-center">
-                      <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                      <div className="text-lg font-bold">{studentRisks.overall_batch_risk}</div>
-                      <div className="text-sm opacity-90">Batch Risk Level</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Student Risk Cards */}
-                <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5 text-purple-600" />
-                      Individual Student Risk Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      {studentRisks.student_analysis
-                        .sort((a, b) => b.risk_score - a.risk_score)
-                        .map((student, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`border rounded-xl p-4 ${
-                            student.risk_level === 'critical' ? 'border-red-300 bg-red-50' :
-                            student.risk_level === 'high' ? 'border-orange-300 bg-orange-50' :
-                            student.risk_level === 'moderate' ? 'border-yellow-300 bg-yellow-50' :
-                            'border-green-300 bg-green-50'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-bold text-lg text-gray-900">{student.student_name}</h4>
-                                <Badge variant="outline">{student.roll_no}</Badge>
-                                <Badge className={getRiskColor(student.risk_level)}>{student.risk_level}</Badge>
-                                {student.intervention_priority === 'immediate' && (
-                                  <Badge className="bg-red-600 text-white animate-pulse">⚠️ Immediate Action</Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold" style={{
-                                color: student.risk_score > 70 ? '#ef4444' : 
-                                       student.risk_score > 50 ? '#f59e0b' : 
-                                       student.risk_score > 30 ? '#eab308' : '#22c55e'
-                              }}>
-                                {student.risk_score}%
-                              </div>
-                              <div className="text-xs text-gray-500">Risk Score</div>
-                            </div>
-                          </div>
-
-                          <div className="grid md:grid-cols-3 gap-4 mb-3">
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Predicted Final Attendance</div>
-                              <div className="text-xl font-bold text-gray-900">{student.predicted_final_attendance}%</div>
-                            </div>
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Academic Impact</div>
-                              <div className="text-sm font-semibold text-gray-900">{student.predicted_academic_impact}</div>
-                            </div>
-                            <div className="bg-white/60 rounded-lg p-3">
-                              <div className="text-sm text-gray-600">Predicted Grade Drop</div>
-                              <div className="text-lg font-bold text-red-600">{student.predicted_grade_drop}</div>
-                            </div>
-                          </div>
-
-                          {student.warning_signs?.length > 0 && (
-                            <div className="mb-3">
-                              <div className="text-sm font-semibold text-gray-700 mb-1">⚠️ Warning Signs:</div>
-                              <div className="flex flex-wrap gap-2">
-                                {student.warning_signs.map((sign, i) => (
-                                  <Badge key={i} variant="outline" className="bg-white/80">{sign}</Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {student.recommendations?.length > 0 && (
-                            <div className="bg-white/80 rounded-lg p-3">
-                              <div className="text-sm font-semibold text-green-700 mb-1">💡 Recommendations:</div>
-                              <ul className="text-sm text-gray-700 space-y-1">
-                                {student.recommendations.map((rec, i) => (
-                                  <li key={i} className="flex items-start gap-2">
-                                    <ChevronRight className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                                    {rec}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
                         </div>
-                      ))}
+                        <div className="text-right">
+                          <div className="text-2xl font-bold" style={{
+                            color: student.riskScore > 70 ? '#ef4444' : 
+                                   student.riskScore > 40 ? '#f59e0b' : '#22c55e'
+                          }}>
+                            {student.riskScore}
+                          </div>
+                          <div className="text-xs text-gray-500">Risk Score</div>
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-4 gap-3 mb-3">
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <div className="text-sm text-gray-600">Current Attendance</div>
+                          <div className="text-xl font-bold text-gray-900">{student.percentage}%</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <div className="text-sm text-gray-600">Predicted Final</div>
+                          <div className="text-lg font-semibold text-gray-900">{student.predictedFinalAttendance}%</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <div className="text-sm text-gray-600">Academic Impact</div>
+                          <div className="text-sm font-semibold text-gray-900">{student.academicImpact.substring(0, 30)}...</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <div className="text-sm text-gray-600">Grade Drop Risk</div>
+                          <div className="text-lg font-bold text-red-600">{student.predictedGradeDrop}</div>
+                        </div>
+                      </div>
+
+                      {student.recommendations?.length > 0 && (
+                        <div className="bg-white/80 rounded-lg p-3">
+                          <div className="text-sm font-semibold text-green-700 mb-1">💡 Recommendations:</div>
+                          <ul className="text-sm text-gray-700 space-y-1">
+                            {student.recommendations.map((rec, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <ChevronRight className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Batch Recommendations */}
-                {studentRisks.batch_recommendations && (
-                  <Card className="shadow-lg border-2 border-blue-200 bg-blue-50">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-blue-800">
-                        <Target className="w-5 h-5" />
-                        Batch-Level Recommendations
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <ul className="space-y-3">
-                        {studentRisks.batch_recommendations.map((rec, idx) => (
-                          <li key={idx} className="flex items-start gap-3">
-                            <ChevronRight className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                            <span className="text-gray-700">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* Advanced Analysis Tab */}
-          <TabsContent value="advanced" className="space-y-6">
-            <Card className="shadow-xl border-2 border-purple-100">
-              <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5" />
-                  Upload Attendance File for Advanced Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <p className="text-gray-600">Upload a CSV file with student attendance data to generate comprehensive analysis reports with charts and insights.</p>
-                <div
-                  onClick={() => document.getElementById('attendance-file-upload')?.click()}
-                  className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50"
-                >
-                  <input
-                    id="attendance-file-upload"
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={(e) => setAttendanceFile(e.target.files[0])}
-                    className="hidden"
-                  />
-                  <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {attendanceFile ? attendanceFile.name : "Drop your attendance CSV here"}
-                  </h3>
-                  <p className="text-gray-600 text-sm">Supports CSV files with columns: Roll No, Student Name, Total Days, Days Present, Days Absent, Attendance %</p>
-                  <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Browse Files
-                  </Button>
-                </div>
-                
-                <Button 
-                  onClick={() => window.open('/AdvancedAnalysis', '_blank')}
-                  disabled={!attendanceFile}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Advanced Analysis Report
-                </Button>
-                
-                <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-purple-200">
-                  <h4 className="font-bold text-purple-900 mb-3 text-lg flex items-center gap-2">
-                    <Sparkles className="w-5 h-5" />
-                    📊 Advanced Analysis Features:
-                  </h4>
-                  <ul className="text-sm text-purple-800 space-y-2">
-                    <li className="flex items-center gap-2">✨ <strong>Stunning animated HTML reports</strong></li>
-                    <li className="flex items-center gap-2">📈 <strong>Interactive Google Charts</strong> - attendance trends, distributions</li>
-                    <li className="flex items-center gap-2">👥 <strong>Student-wise performance</strong> analysis with rankings</li>
-                    <li className="flex items-center gap-2">🏆 <strong>Top performers showcase</strong> with animations</li>
-                    <li className="flex items-center gap-2">⚠️ <strong>At-risk students identification</strong> (below 75%)</li>
-                    <li className="flex items-center gap-2">🤖 <strong>AI-powered insights</strong> and recommendations</li>
-                    <li className="flex items-center gap-2">📊 <strong>Comprehensive statistics</strong> and metrics</li>
-                    <li className="flex items-center gap-2">🎨 <strong>Professional design</strong> ready to share</li>
-                  </ul>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+
+            {/* Methodology Note */}
+            <Card className="shadow-lg border-2 border-yellow-200 bg-yellow-50">
+              <CardContent className="p-6">
+                <h3 className="font-bold text-yellow-900 mb-3 flex items-center gap-2">
+                  <Brain className="w-5 h-5" />
+                  📊 Prediction Methodology
+                </h3>
+                <div className="text-sm text-yellow-800 space-y-2">
+                  <p><strong>Rule-Based Inference:</strong> All predictions are derived from actual CSV data using empirical rules.</p>
+                  <p><strong>Risk Classification:</strong> Based on attendance percentage - Low (≥85%), Moderate (70-84%), High (&lt;70%)</p>
+                  <p><strong>Academic Impact:</strong> Correlation between attendance and performance based on educational research</p>
+                  <p><strong>No External Data:</strong> Zero assumptions or external training datasets used</p>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );

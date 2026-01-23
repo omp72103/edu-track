@@ -106,19 +106,37 @@ export default function Layout({ children, currentPageName }) {
             const facultyRecords = await Faculty.filter({ email: currentUser.email });
             
             if (facultyRecords.length === 0) {
-              // User is not in Faculty table - add them automatically!
-              console.log("🔧 Adding user to Faculty table automatically...");
+              // User is not in Faculty table - add them automatically with INACTIVE status
+              console.log("🔧 Adding user to Faculty table automatically (inactive by default)...");
               
               await Faculty.create({
                 name: currentUser.full_name || currentUser.email.split('@')[0],
                 email: currentUser.email,
                 department: "General",
-                status: "active"
+                status: "inactive" // Default to INACTIVE - admin must activate
               });
               
-              console.log("✅ User added to Faculty table successfully");
+              console.log("⚠️ User added to Faculty table as INACTIVE - Admin must activate");
+              
+              // Block access for inactive faculty
+              setAuthError("Your faculty account is pending admin activation. Please contact your administrator.");
+              setUser(null);
+              setUserLoading(false);
+              return;
             } else {
               console.log("✅ User already exists in Faculty table");
+              
+              // CHECK IF FACULTY IS ACTIVE
+              const facultyMember = facultyRecords[0];
+              if (facultyMember.status === "inactive") {
+                console.log("⚠️ Faculty account is INACTIVE");
+                setAuthError("Your faculty account is inactive. Please contact your administrator to activate your account.");
+                setUser(null);
+                setUserLoading(false);
+                return;
+              }
+              
+              console.log("✅ Faculty is ACTIVE - Access granted");
             }
           } catch (checkError) {
             console.error("❌ Error checking student/faculty records:", checkError);
@@ -180,25 +198,41 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  // Not logged in - show login prompt
+  // Not logged in or auth error - show login prompt or error
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl p-8 text-center border border-white/20">
           <div className="mb-6">
-            <div className="bg-blue-600 p-3 rounded-lg inline-block mb-4">
-              <GraduationCap className="w-8 h-8 text-white" />
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-4 rounded-2xl inline-block mb-4 shadow-lg">
+              <GraduationCap className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">EDU TRACK</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">EDU TRACK</h1>
             <p className="text-gray-600">Education Management Platform</p>
           </div>
-          <p className="text-gray-700 mb-6">Please log in to access the dashboard.</p>
+          
+          {authError ? (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+              <div className="text-red-600 text-4xl mb-2">⚠️</div>
+              <p className="text-red-800 font-semibold mb-2">Account Inactive</p>
+              <p className="text-sm text-red-700">{authError}</p>
+            </div>
+          ) : (
+            <p className="text-gray-700 mb-6">Please log in to access the dashboard.</p>
+          )}
+          
           <button 
             onClick={() => User.login()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
           >
-            Login with Google
+            {authError ? 'Login with Different Account' : 'Login with Google'}
           </button>
+          
+          {authError && (
+            <p className="mt-4 text-xs text-gray-500">
+              If you believe this is an error, please contact your administrator.
+            </p>
+          )}
         </div>
       </div>
     );

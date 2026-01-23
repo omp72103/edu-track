@@ -15,17 +15,30 @@ export default function LiveTrackingMap3D({ geoFence, activeStudents }) {
   useEffect(() => {
     if (!geoFence || map.current) return;
 
-    // Initialize Mapbox map with 3D buildings and terrain
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [geoFence.longitude, geoFence.latitude],
-      zoom: 17,
-      pitch: 60, // 3D tilt
-      bearing: -17.6,
-      antialias: true,
-      accessToken: MAPBOX_TOKEN
-    });
+    // Check if valid Mapbox token is available
+    if (!MAPBOX_TOKEN || MAPBOX_TOKEN.includes('example')) {
+      console.error('Invalid or missing Mapbox token. Please set VITE_MAPBOX_ACCESS_TOKEN environment variable.');
+      setMapLoaded(false);
+      return;
+    }
+
+    try {
+      // Initialize Mapbox map with 3D buildings and terrain
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [geoFence.longitude, geoFence.latitude],
+        zoom: 17,
+        pitch: 60, // 3D tilt
+        bearing: -17.6,
+        antialias: true,
+        accessToken: MAPBOX_TOKEN
+      });
+    } catch (error) {
+      console.error('Error initializing Mapbox:', error);
+      setMapLoaded(false);
+      return;
+    }
 
     // Add navigation controls (zoom, rotate, pitch)
     map.current.addControl(new mapboxgl.NavigationControl({
@@ -236,6 +249,33 @@ export default function LiveTrackingMap3D({ geoFence, activeStudents }) {
         <div className="text-center text-gray-500">
           <p className="text-lg font-semibold">⚠️ No Geo-Fence Configured</p>
           <p className="text-sm mt-2">Please configure a geo-fence zone for this session</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check for valid Mapbox token
+  if (!MAPBOX_TOKEN || MAPBOX_TOKEN.includes('example')) {
+    return (
+      <div className="h-[500px] bg-gradient-to-br from-orange-50 to-red-50 rounded-lg flex items-center justify-center p-8">
+        <div className="text-center max-w-2xl">
+          <div className="text-6xl mb-4">🗺️</div>
+          <p className="text-xl font-bold text-gray-800 mb-2">3D Maps Require Configuration</p>
+          <p className="text-sm text-gray-600 mb-4">
+            To enable 3D map tracking, you need a free Mapbox access token.
+          </p>
+          <div className="bg-white rounded-lg p-4 text-left text-xs space-y-2 shadow-md">
+            <p className="font-bold text-gray-700">📋 Setup Instructions:</p>
+            <ol className="list-decimal list-inside space-y-1 text-gray-600">
+              <li>Get free token: <a href="https://account.mapbox.com/access-tokens/" target="_blank" className="text-blue-600 underline">https://account.mapbox.com/access-tokens/</a></li>
+              <li>Go to Base44 Dashboard → Settings → Environment Variables</li>
+              <li>Add: <code className="bg-gray-100 px-1 rounded">VITE_MAPBOX_ACCESS_TOKEN</code> = your_token</li>
+              <li>Restart the app</li>
+            </ol>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            💡 Tip: Use the 2D View tab below for basic map tracking without configuration
+          </p>
         </div>
       </div>
     );

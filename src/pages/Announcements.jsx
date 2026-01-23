@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Announcement, Batch, User } from "@/entities/all";
+import { Announcement, Batch, User, Student } from "@/entities/all";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { sendAnnouncementNotifications } from "@/functions/sendAnnouncementNotifications";
 
 const priorities = ["Low", "Medium", "High", "Urgent"];
 const categories = ["General", "Assessment", "Timetable", "Event", "Holiday", "Other"];
@@ -61,15 +60,42 @@ export default function AnnouncementsPage() {
         sender_email: user.email,
         announcement_date: new Date().toISOString()
       });
+
+      // Create notifications for recipients
+      let recipients = [];
       
-      // Send notifications to students
-      try {
-        await sendAnnouncementNotifications({ announcementId: announcement.id });
-      } catch (notifError) {
-        console.error("Error sending notifications:", notifError);
+      if (formData.recipient_type === "Batch" && formData.batch_id) {
+        // Get all students in the batch
+        const students = await Student.filter({ batch_id: formData.batch_id });
+        recipients = students.map(s => ({
+          student_id: s.id,
+          batch_id: s.batch_id
+        }));
+      } else if (formData.recipient_type === "Students" || formData.recipient_type === "All") {
+        // Get all students
+        const students = await Student.list();
+        recipients = students.map(s => ({
+          student_id: s.id,
+          batch_id: s.batch_id
+        }));
+      }
+
+      // Create notifications for all recipients
+      if (recipients.length > 0) {
+        await Promise.all(recipients.map(recipient =>
+          base44.entities.StudentNotification.create({
+            student_id: recipient.student_id,
+            batch_id: recipient.batch_id,
+            title: announcement.title,
+            message: announcement.message,
+            category: announcement.category,
+            priority: announcement.priority,
+            is_read: false
+          })
+        ));
       }
       
-      setMessage({ type: "success", text: "Announcement sent successfully!" });
+      setMessage({ type: "success", text: `Announcement sent to ${recipients.length} students!` });
       await loadData();
       resetForm();
       setShowAddModal(false);

@@ -12,15 +12,14 @@ export default function StudentComplaints({ student }) {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [faculties, setFaculties] = useState([]);
   const [formData, setFormData] = useState({
     category: 'Faculty',
-    faculty_email: '',
     faculty_name: '',
     title: '',
     description: '',
     priority: 'Medium'
   });
+  const [faculties, setFaculties] = useState([]);
 
   useEffect(() => {
     const loadFaculties = async () => {
@@ -80,7 +79,7 @@ export default function StudentComplaints({ student }) {
 
   const handleSubmit = async () => {
     try {
-      const complaintData = {
+      await base44.entities.Complaint.create({
         student_id: student.id,
         student_name: student.name,
         student_email: student.email,
@@ -88,22 +87,13 @@ export default function StudentComplaints({ student }) {
         batch_id: student.batch_id,
         college_name: student.college_name,
         year: student.year,
-        category: formData.category,
-        title: formData.title,
-        description: formData.description,
-        priority: formData.priority
-      };
-
-      if (formData.category === 'Faculty' && formData.faculty_email) {
-        complaintData.faculty_email = formData.faculty_email;
-        complaintData.faculty_name = formData.faculty_name;
-      }
-
-      await base44.entities.Complaint.create(complaintData);
+        faculty_name: formData.category === 'Faculty' ? formData.faculty_name : null,
+        ...formData
+      });
       
       await fetchComplaints();
       setShowForm(false);
-      setFormData({ category: 'Faculty', faculty_email: '', faculty_name: '', title: '', description: '', priority: 'Medium' });
+      setFormData({ category: 'Faculty', faculty_name: '', title: '', description: '', priority: 'Medium' });
     } catch (error) {
       console.error("Error submitting complaint:", error);
     }
@@ -233,32 +223,29 @@ export default function StudentComplaints({ student }) {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold mb-2">Category</label>
+              <label className="block text-sm font-semibold mb-2">Complaint Type</label>
               <select
                 value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value, faculty_email: '', faculty_name: ''})}
+                onChange={(e) => setFormData({...formData, category: e.target.value, faculty_name: ''})}
                 className="w-full px-3 py-2 border rounded-lg"
               >
-                <option value="Faculty">Faculty</option>
-                <option value="General">General</option>
+                <option value="Faculty">Faculty Related</option>
+                <option value="Other">Other Issues</option>
               </select>
             </div>
 
             {formData.category === 'Faculty' && (
               <div>
-                <label className="block text-sm font-semibold mb-2">Select Faculty</label>
+                <label className="block text-sm font-semibold mb-2">Select Faculty *</label>
                 <select
-                  value={formData.faculty_email}
-                  onChange={(e) => {
-                    const faculty = faculties.find(f => f.email === e.target.value);
-                    setFormData({...formData, faculty_email: e.target.value, faculty_name: faculty?.name || ''});
-                  }}
+                  value={formData.faculty_name}
+                  onChange={(e) => setFormData({...formData, faculty_name: e.target.value})}
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 >
-                  <option value="">Select a faculty...</option>
+                  <option value="">Choose faculty...</option>
                   {faculties.map(f => (
-                    <option key={f.id} value={f.email}>{f.name}</option>
+                    <option key={f.id} value={f.name}>{f.name}</option>
                   ))}
                 </select>
               </div>

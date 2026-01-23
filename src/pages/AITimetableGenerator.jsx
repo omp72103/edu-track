@@ -296,7 +296,6 @@ export default function AITimetableGenerator() {
       if (batchIdx > 0) doc.addPage();
 
       const { batch, timeSlots, entries, workingDays } = batchData;
-      const lectureSlots = timeSlots.filter(s => s.type === 'lecture');
 
       // Modern Header with Gradient Effect
       doc.setFillColor(79, 70, 229);
@@ -315,11 +314,12 @@ export default function AITimetableGenerator() {
       doc.text(`Academic Timetable | ${batch.year || ''} ${batch.branch || ''}`, 148, 20, { align: 'center' });
       doc.text(`Generated: ${new Date().toLocaleDateString()}`, 148, 26, { align: 'center' });
 
-      // Table setup
-      let y = 45;
-      const dayColWidth = 30;
-      const slotColWidth = (297 - dayColWidth - 20) / lectureSlots.length;
-      const rowHeight = 22;
+      // Table setup - adjusted for better fit
+      let y = 40;
+      const dayColWidth = 25;
+      const totalSlotsWidth = 297 - dayColWidth - 20; // Total available width for time slots
+      const slotColWidth = totalSlotsWidth / timeSlots.length;
+      const rowHeight = 20;
       const startX = 10;
 
       // Header Row - Time Slots
@@ -337,16 +337,16 @@ export default function AITimetableGenerator() {
           doc.setFillColor(251, 191, 36);
           doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
           doc.setTextColor(120, 53, 15);
-          doc.setFontSize(8);
-          doc.text(slot.name, xPos + slotColWidth/2, y + 8, { align: 'center' });
-          doc.setFontSize(7);
-          doc.text(slot.time, xPos + slotColWidth/2, y + 15, { align: 'center' });
+          doc.setFontSize(6.5);
+          doc.text(slot.name, xPos + slotColWidth/2, y + 7, { align: 'center' });
+          doc.setFontSize(5.5);
+          doc.text(slot.time, xPos + slotColWidth/2, y + 13, { align: 'center' });
         } else {
           doc.setFillColor(99, 102, 241);
           doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
           doc.setTextColor(255, 255, 255);
-          doc.setFontSize(7);
-          doc.text(slot.time, xPos + slotColWidth/2, y + 13, { align: 'center' });
+          doc.setFontSize(6);
+          doc.text(slot.time, xPos + slotColWidth/2, y + 11, { align: 'center' });
         }
       });
       
@@ -379,14 +379,16 @@ export default function AITimetableGenerator() {
               doc.setFillColor(224, 231, 255);
               doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
               doc.setTextColor(67, 56, 202);
-              doc.setFontSize(8);
+              doc.setFontSize(6.5);
               doc.setFont(undefined, 'bold');
-              doc.text(entry.subject.substring(0, 12), xPos + slotColWidth/2, y + 8, { align: 'center' });
-              doc.setFontSize(6);
+              const subjectText = entry.subject.length > 15 ? entry.subject.substring(0, 13) + '..' : entry.subject;
+              doc.text(subjectText, xPos + slotColWidth/2, y + 7, { align: 'center' });
+              doc.setFontSize(5.5);
               doc.setFont(undefined, 'normal');
-              doc.text(entry.faculty_name.substring(0, 15), xPos + slotColWidth/2, y + 14, { align: 'center' });
+              const facultyText = entry.faculty_name.length > 18 ? entry.faculty_name.substring(0, 16) + '..' : entry.faculty_name;
+              doc.text(facultyText, xPos + slotColWidth/2, y + 12, { align: 'center' });
               doc.setFontSize(5);
-              doc.text(entry.class_type, xPos + slotColWidth/2, y + 18, { align: 'center' });
+              doc.text(entry.class_type, xPos + slotColWidth/2, y + 16, { align: 'center' });
             } else {
               doc.setFillColor(dayIdx % 2 === 0 ? 249 : 255, dayIdx % 2 === 0 ? 250 : 255, dayIdx % 2 === 0 ? 251 : 255);
               doc.rect(xPos, y, slotColWidth, rowHeight, 'F');

@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { StudentPerformance, Student, Batch, AttendanceRecord, Session } from "@/entities/all";
+import { StudentPerformance, Student, Batch, AttendanceRecord, Session, Complaint, Feedback, AssignmentSubmission } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Calendar, BookOpen } from "lucide-react";
+import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Calendar, BookOpen, AlertTriangle, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
+import jsPDF from "jspdf";
 
 const assessmentTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Assignment", "Project", "Practical", "Final Exam", "Quiz"];
 const grades = ["A+", "A", "B+", "B", "C", "D", "F"];
@@ -224,18 +225,113 @@ export default function PerformancePage() {
   const filteredStudents = students.filter(s => !filterBatch || s.batch_id === batches.find(b => b.id === filterBatch)?.batch_id);
 
   const showStudentDialog = async (student, stats, perfs) => {
-    // Fetch attendance data for the student
+    // Fetch comprehensive student data
     try {
-      const [attendanceData, sessionData] = await Promise.all([
+      const [attendanceData, sessionData, complaints, feedback, assignments] = await Promise.all([
         AttendanceRecord.filter({ student_id: student.id }),
-        Session.filter({ batch_id: student.batch_id })
+        Session.filter({ batch_id: student.batch_id }),
+        Complaint.filter({ student_id: student.id }),
+        Feedback.filter({ student_id: student.id }),
+        AssignmentSubmission.filter({ student_id: student.id })
       ]);
       
-      setStudentDialog({ student, stats, perfs, attendance: attendanceData, sessions: sessionData });
+      setStudentDialog({ 
+        student, 
+        stats, 
+        perfs, 
+        attendance: attendanceData, 
+        sessions: sessionData,
+        complaints: complaints,
+        feedback: feedback,
+        assignments: assignments
+      });
     } catch (error) {
       console.error("Error loading student details:", error);
-      setStudentDialog({ student, stats, perfs, attendance: [], sessions: [] });
+      setStudentDialog({ student, stats, perfs, attendance: [], sessions: [], complaints: [], feedback: [], assignments: [] });
     }
+  };
+
+  const exportStudentPDF = (studentData) => {
+    const doc = new jsPDF();
+    const { student, stats, perfs, attendance, sessions, complaints, feedback, assignments } = studentData;
+    
+    const totalSessions = sessions?.length || 0;
+    const presentCount = attendance?.filter(a => a.is_present).length || 0;
+    const attendancePercent = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+
+    // Header
+    doc.setFillColor(59, 130, 246);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.text('Student Performance Report', 105, 20, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 105, 30, { align: 'center' });
+
+    // Student Info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(18);
+    doc.text(student.name, 20, 55);
+    doc.setFontSize(11);
+    doc.text(`Roll No: ${student.roll_no}${student.prn ? ' | PRN: ' + student.prn : ''}`, 20, 62);
+    doc.text(`Batch: ${batches.find(b => b.batch_id === student.batch_id)?.batch_name || 'N/A'}`, 20, 69);
+
+    // Stats Section
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Performance Summary', 20, 85);
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(11);
+    let y = 95;
+    doc.text(`Average Grade: ${stats?.avgGrade || 'N/A'}`, 20, y);
+    doc.text(`Average Score: ${stats?.avgPercentage || 0}%`, 20, y + 7);
+    doc.text(`Total Assessments: ${stats?.totalAssessments || 0}`, 20, y + 14);
+    doc.text(`Attendance: ${attendancePercent}% (${presentCount}/${totalSessions})`, 20, y + 21);
+
+    // Violations/Issues
+    y += 35;
+    doc.setFont(undefined, 'bold');
+    doc.text('Violations & Issues', 20, y);
+    doc.setFont(undefined, 'normal');
+    y += 7;
+    if (complaints?.length > 0) {
+      doc.text(`Complaints Filed: ${complaints.length}`, 20, y);
+      y += 7;
+    }
+    if (attendancePercent < 75) {
+      doc.setTextColor(239, 68, 68);
+      doc.text(`⚠ Low Attendance Warning: ${attendancePercent}%`, 20, y);
+      doc.setTextColor(0, 0, 0);
+      y += 7;
+    }
+    const lateSubmissions = assignments?.filter(a => a.is_late).length || 0;
+    if (lateSubmissions > 0) {
+      doc.text(`Late Submissions: ${lateSubmissions}`, 20, y);
+      y += 7;
+    }
+
+    // Performance Records
+    y += 10;
+    doc.setFont(undefined, 'bold');
+    doc.text('Assessment History', 20, y);
+    doc.setFont(undefined, 'normal');
+    y += 10;
+    perfs.slice(0, 10).forEach((perf, idx) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(`${idx + 1}. ${perf.subject} - ${perf.assessment_type}`, 20, y);
+      doc.text(`${perf.marks_obtained}/${perf.total_marks} (${perf.percentage}%) - Grade: ${perf.grade}`, 25, y + 5);
+      y += 12;
+    });
+
+    // Footer
+    doc.setFontSize(9);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Powered by EDU TRACK - Education Management System', 105, 285, { align: 'center' });
+
+    doc.save(`${student.name}_Performance_Report.pdf`);
   };
 
   return (
@@ -540,6 +636,17 @@ export default function PerformancePage() {
 
                   {/* Overview Tab */}
                   <TabsContent value="overview" className="space-y-6">
+                    {/* Export Button */}
+                    <div className="flex justify-end mb-4">
+                      <Button 
+                        onClick={() => exportStudentPDF(studentDialog)}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Full Report (PDF)
+                      </Button>
+                    </div>
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
                         <CardContent className="p-6">
@@ -693,6 +800,77 @@ export default function PerformancePage() {
 
                   {/* History Tab */}
                   <TabsContent value="history" className="space-y-4">
+                    {/* Violations & Issues Section */}
+                    <Card className="bg-gradient-to-r from-red-50 to-orange-50 border-red-200">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-800">
+                          <AlertTriangle className="w-5 h-5" />
+                          Violations & Issues
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {attendancePercent < 75 && (
+                          <div className="bg-red-100 border border-red-300 rounded-lg p-3">
+                            <p className="text-red-900 font-semibold">⚠️ Low Attendance Warning</p>
+                            <p className="text-red-700 text-sm">Current attendance: {attendancePercent}% (Below 75% threshold)</p>
+                          </div>
+                        )}
+                        {studentDialog.complaints?.length > 0 && (
+                          <div className="bg-orange-100 border border-orange-300 rounded-lg p-3">
+                            <p className="text-orange-900 font-semibold">📋 Complaints Filed: {studentDialog.complaints.length}</p>
+                            {studentDialog.complaints.slice(0, 3).map(c => (
+                              <p key={c.id} className="text-orange-700 text-sm mt-1">• {c.title} ({c.status})</p>
+                            ))}
+                          </div>
+                        )}
+                        {(() => {
+                          const lateSubmissions = studentDialog.assignments?.filter(a => a.is_late).length || 0;
+                          return lateSubmissions > 0 && (
+                            <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                              <p className="text-yellow-900 font-semibold">⏰ Late Submissions: {lateSubmissions}</p>
+                            </div>
+                          );
+                        })()}
+                        {studentDialog.feedback?.length > 0 && (
+                          <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
+                            <p className="text-blue-900 font-semibold">💬 Feedback Submitted: {studentDialog.feedback.length}</p>
+                          </div>
+                        )}
+                        {attendancePercent >= 75 && (!studentDialog.complaints || studentDialog.complaints.length === 0) && (
+                          <div className="bg-green-100 border border-green-300 rounded-lg p-3">
+                            <p className="text-green-900 font-semibold">✅ No violations or issues recorded</p>
+                            <p className="text-green-700 text-sm">Student is in good standing</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Assignment Activity */}
+                    {studentDialog.assignments?.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <FileText className="w-5 h-5" />
+                            Assignment Activity
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {studentDialog.assignments.slice(0, 5).map(a => (
+                              <div key={a.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                  <p className="font-semibold text-sm">{a.assignment_id}</p>
+                                  <p className="text-xs text-gray-600">{a.status}</p>
+                                </div>
+                                {a.is_late && <Badge className="bg-red-500 text-white">Late</Badge>}
+                                {a.marks_obtained && <Badge className="bg-green-500 text-white">{a.marks_obtained} marks</Badge>}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     <h3 className="text-xl font-bold">Assessment History</h3>
                     {studentDialog.perfs.length === 0 ? (
                       <p className="text-center text-gray-500 py-12">No assessment records found</p>

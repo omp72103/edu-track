@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, FileText, TrendingUp, Bell, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import AlertPanel from "../dashboard/AlertPanel";
 
 export default function StudentDashboard({ student, onNavigate }) {
   const [stats, setStats] = useState({
@@ -124,6 +125,9 @@ export default function StudentDashboard({ student, onNavigate }) {
         </h1>
         <p className="text-blue-100">Have a great learning day</p>
       </div>
+
+      {/* Alert Panel */}
+      <AlertPanel studentId={student.id} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

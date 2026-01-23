@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        if (qrAge > 60) {
+        if (qrAge > 120) {
             return Response.json({ 
                 success: false, 
                 error: `QR code expired ${Math.floor(qrAge)} seconds ago. Please ask your faculty for a new QR code.`,
@@ -413,8 +413,29 @@ Deno.serve(async (req) => {
                 prn: student.prn || student_identifier,
                 student_name: student.name,
                 email: student.email,
+                latitude,
+                longitude,
+                gps_accuracy,
                 status: 'submitted',
                 last_active_at: new Date().toISOString()
+            });
+        } else {
+            // Create if not exists (fallback)
+            await base44.asServiceRole.entities.QRActiveStudent.create({
+                session_id,
+                student_id: student.id,
+                prn: student.prn || student_identifier,
+                student_name: student.name,
+                email: student.email,
+                device_fingerprint: deviceFingerprint,
+                latitude,
+                longitude,
+                gps_accuracy,
+                is_inside_geofence: isInsideGeofence,
+                distance_from_geofence: distanceFromGeofence,
+                portal_opened_at: new Date().toISOString(),
+                last_active_at: new Date().toISOString(),
+                status: 'submitted'
             });
         }
 

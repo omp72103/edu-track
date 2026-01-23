@@ -11,7 +11,7 @@ import { createPageUrl } from "@/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
-const QR_EXPIRY_SECONDS = 60;
+const QR_EXPIRY_SECONDS = 120;
 
 export default function QRAttendancePage() {
   const location = useLocation();

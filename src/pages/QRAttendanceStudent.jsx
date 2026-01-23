@@ -16,7 +16,7 @@ export default function QRAttendanceStudent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState("");
   const [message, setMessage] = useState("");
-  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [timeRemaining, setTimeRemaining] = useState(120);
   const [successData, setSuccessData] = useState(null);
   const [gpsLocation, setGpsLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
@@ -99,16 +99,16 @@ export default function QRAttendanceStudent() {
           return;
         }
 
-        // SECURITY CHECK 4: STRICT 60-second expiry
+        // SECURITY CHECK 4: STRICT 120-second expiry
         const qrAge = (now - qrTimestamp) / 1000;
-        if (qrAge > 60) {
+        if (qrAge > 120) {
           setStatus("expired");
-          setMessage(`⏰ QR code expired ${Math.floor(qrAge)} seconds ago. This QR code was only valid for 60 seconds. Please ask your faculty to generate a new one.`);
+          setMessage(`⏰ QR code expired ${Math.floor(qrAge)} seconds ago. This QR code was only valid for 120 seconds. Please ask your faculty to generate a new one.`);
           return;
         }
 
         // Set countdown
-        setTimeRemaining(Math.max(0, 60 - Math.floor(qrAge)));
+        setTimeRemaining(Math.max(0, 120 - Math.floor(qrAge)));
         setIsPrivateBatch(batch_type === 'private');
         setStatus("ready");
         
@@ -179,7 +179,7 @@ export default function QRAttendanceStudent() {
       const now = Date.now();
       const qrTimestamp = parseInt(timestamp);
       const qrAge = (now - qrTimestamp) / 1000;
-      const remaining = Math.max(0, 60 - Math.floor(qrAge));
+      const remaining = Math.max(0, 120 - Math.floor(qrAge));
       
       setTimeRemaining(remaining);
       
@@ -261,7 +261,7 @@ export default function QRAttendanceStudent() {
             <div className="p-4 bg-red-100 rounded-lg text-sm text-red-800">
               <Shield className="w-5 h-5 mx-auto mb-2" />
               <p className="font-semibold">🔒 Security Notice</p>
-              <p className="mt-1">QR codes expire after 60 seconds for your security. This prevents unauthorized attendance marking.</p>
+              <p className="mt-1">QR codes expire after 120 seconds for your security. This prevents unauthorized attendance marking.</p>
             </div>
           </CardContent>
         </Card>

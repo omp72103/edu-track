@@ -573,34 +573,55 @@ Generate ONLY valid JSON with this structure for ALL lectures across ALL working
         )}
 
         {generatedTimetable && (
-          <Card>
-            <CardHeader className="bg-gray-50">
-              <CardTitle>Generated Timetable Preview</CardTitle>
+          <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+              <CardTitle className="text-2xl">📅 Generated Timetable - {generatedTimetable.batch_name}</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="space-y-4">
-                {Object.entries(groupByDay(generatedTimetable.entries)).map(([day, entries]) => {
-                  if (entries.length === 0) return null;
-                  return (
-                    <div key={day} className="border rounded-lg overflow-hidden">
-                      <div className="bg-purple-600 text-white px-4 py-2 font-semibold">{day}</div>
-                      <div className="divide-y">
-                        {entries.map((entry, idx) => (
-                          <div key={idx} className="p-3 flex justify-between items-center">
-                            <div>
-                              <span className="font-semibold">{entry.time_slot}</span>
-                              <p className="text-sm">{entry.subject} - {entry.faculty_name}</p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Badge variant="outline">{entry.room_number}</Badge>
-                              <Badge className="bg-blue-100 text-blue-800">{entry.class_type}</Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-purple-100 to-blue-100">
+                      <th className="border border-gray-300 px-4 py-3 text-left font-bold">Day / Time</th>
+                      {Array.from({ length: parseInt(timetableStructure.lectures_per_day) }, (_, i) => (
+                        <th key={i} className="border border-gray-300 px-4 py-3 text-center font-bold">
+                          Lecture {i + 1}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(groupByDay(generatedTimetable.entries)).map(([day, entries]) => {
+                      if (entries.length === 0) return null;
+                      return (
+                        <tr key={day} className="hover:bg-purple-50 transition-colors">
+                          <td className="border border-gray-300 px-4 py-3 font-bold bg-purple-50">{day}</td>
+                          {Array.from({ length: parseInt(timetableStructure.lectures_per_day) }, (_, i) => {
+                            const entry = entries[i];
+                            if (!entry) return <td key={i} className="border border-gray-300 px-4 py-3 text-center text-gray-400">-</td>;
+                            
+                            return (
+                              <td key={i} className="border border-gray-300 px-3 py-3">
+                                <div className="text-center">
+                                  <div className="font-semibold text-purple-900 text-sm">{entry.subject}</div>
+                                  <div className="text-xs text-gray-600">{entry.faculty_name}</div>
+                                  <div className="text-xs text-gray-500">{entry.room_number}</div>
+                                  <Badge className="mt-1 text-xs bg-blue-100 text-blue-800">{entry.class_type}</Badge>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ Review the generated timetable carefully. Ensure no faculty conflicts and all subjects are properly allocated before saving.
+                </p>
               </div>
             </CardContent>
           </Card>

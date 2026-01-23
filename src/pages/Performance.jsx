@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 
 const assessmentTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Assignment", "Project", "Practical", "Final Exam", "Quiz"];
 const grades = ["A+", "A", "B+", "B", "C", "D", "F"];
@@ -823,14 +823,11 @@ export default function PerformancePage() {
                             ))}
                           </div>
                         )}
-                        {(() => {
-                          const lateSubmissions = studentDialog.assignments?.filter(a => a.is_late).length || 0;
-                          return lateSubmissions > 0 && (
-                            <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
-                              <p className="text-yellow-900 font-semibold">⏰ Late Submissions: {lateSubmissions}</p>
-                            </div>
-                          );
-                        })()}
+                        {studentDialog.assignments && studentDialog.assignments.filter(a => a.is_late).length > 0 && (
+                          <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                            <p className="text-yellow-900 font-semibold">⏰ Late Submissions: {studentDialog.assignments.filter(a => a.is_late).length}</p>
+                          </div>
+                        )}
                         {studentDialog.feedback?.length > 0 && (
                           <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
                             <p className="text-blue-900 font-semibold">💬 Feedback Submitted: {studentDialog.feedback.length}</p>

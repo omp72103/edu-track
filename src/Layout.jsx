@@ -32,7 +32,7 @@ const mainNavItems = [
   { name: "CreateSession", label: "Create Session", icon: PlusCircle },
   { name: "Upload", label: "Upload Students", icon: Upload },
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck },
-  { name: "ExcalidrawTeacher", label: "Teaching Notes", icon: FileText },
+  { name: "TeachingNotes", label: "Teaching Notes", icon: FileText },
   { name: "Batches", label: "Manage Batches", icon: Users },
   { name: "TimeTable", label: "Timetable", icon: Calendar },
   { name: "Performance", label: "Performance", icon: TrendingUp },
@@ -159,7 +159,7 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName]);
 
   // Public pages - render without layout
-  if (currentPageName === "QRAttendanceStudent" || currentPageName === "StudentPortal" || currentPageName === "Home") {
+  if (currentPageName === "QRAttendanceStudent" || currentPageName === "StudentPortal" || currentPageName === "Home" || currentPageName === "TeachingNoteEditor") {
     return <>{children}</>;
   }
 

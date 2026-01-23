@@ -23,20 +23,53 @@ Deno.serve(async (req) => {
         const body = await req.json();
         const { session_id, student_identifier, batch_type, latitude, longitude, gps_accuracy, device_fingerprint } = body;
 
-        if (!session_id || !student_identifier || !latitude || !longitude) {
+        // Validate required parameters
+        if (!session_id || !student_identifier || !device_fingerprint) {
             return Response.json({ 
                 success: false, 
-                error: "Missing required parameters" 
+                error: "Missing required parameters (session_id, student_identifier, device_fingerprint)" 
             }, { status: 400 });
         }
 
-        // Get session data
+        // Validate GPS coordinates
+        if (latitude === null || longitude === null || latitude === undefined || longitude === undefined) {
+            return Response.json({ 
+                success: false, 
+                error: "GPS location is required. Please enable location services." 
+            }, { status: 400 });
+        }
+
+        // Validate GPS are valid numbers
+        if (typeof latitude !== 'number' || typeof longitude !== 'number' || isNaN(latitude) || isNaN(longitude)) {
+            return Response.json({ 
+                success: false, 
+                error: "Invalid GPS coordinates received" 
+            }, { status: 400 });
+        }
+
+        // Validate student identifier
+        if (!student_identifier.trim()) {
+            return Response.json({ 
+                success: false, 
+                error: "Invalid PRN/Roll number" 
+            }, { status: 400 });
+        }
+
+        // Validate and get session data
         const sessionData = await base44.asServiceRole.entities.Session.get(session_id);
         if (!sessionData) {
             return Response.json({ 
                 success: false, 
-                error: "Session not found" 
+                error: "Session not found or expired" 
             }, { status: 404 });
+        }
+
+        // Verify session is active
+        if (sessionData.status === 'completed' || sessionData.status === 'cancelled') {
+            return Response.json({ 
+                success: false, 
+                error: "This session has ended. Cannot access attendance portal." 
+            }, { status: 400 });
         }
 
         // Find student by PRN or Roll Number

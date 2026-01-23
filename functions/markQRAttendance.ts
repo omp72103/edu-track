@@ -55,12 +55,20 @@ Deno.serve(async (req) => {
         if (!session_id || !timestamp || !student_identifier) {
             return Response.json({ 
                 success: false, 
-                error: "Missing required parameters" 
+                error: "Missing required parameters (session_id, timestamp, student_identifier)" 
             }, { status: 400 });
         }
 
-        // SECURITY CHECK: Validate GPS data if geo-fencing is required
-        if (!latitude || !longitude) {
+        // Validate student identifier format
+        if (!student_identifier.trim()) {
+            return Response.json({ 
+                success: false, 
+                error: "Invalid PRN/Roll number format" 
+            }, { status: 400 });
+        }
+
+        // SECURITY CHECK: Validate GPS data
+        if (latitude === null || longitude === null || latitude === undefined || longitude === undefined) {
             return Response.json({ 
                 success: false, 
                 error: "Location access is required to mark attendance. Please enable GPS and try again.",
@@ -68,10 +76,19 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
+        // Validate GPS are valid numbers
+        if (typeof latitude !== 'number' || typeof longitude !== 'number' || isNaN(latitude) || isNaN(longitude)) {
+            return Response.json({ 
+                success: false, 
+                error: "Invalid GPS coordinates received",
+                requires_location: true
+            }, { status: 400 });
+        }
+
         if (!gps_accuracy || gps_accuracy > 100) {
             return Response.json({ 
                 success: false, 
-                error: `GPS accuracy too low (${gps_accuracy}m). Please ensure GPS is enabled and try again in an open area.`,
+                error: `GPS accuracy too low (${Math.round(gps_accuracy)}m). Please ensure GPS is enabled and try again in an open area.`,
                 requires_location: true
             }, { status: 400 });
         }
@@ -103,14 +120,22 @@ Deno.serve(async (req) => {
             }, { status: 400 });
         }
 
-        // Use service role for all operations (no student login required)
+        // Validate session exists and matches the request
         const sessionData = await base44.asServiceRole.entities.Session.get(session_id);
         
         if (!sessionData) {
             return Response.json({ 
                 success: false, 
-                error: "Session not found" 
+                error: "Session not found. Please scan a valid QR code." 
             }, { status: 404 });
+        }
+
+        // Verify session is still active
+        if (sessionData.status === 'completed' || sessionData.status === 'cancelled') {
+            return Response.json({ 
+                success: false, 
+                error: "This attendance session has ended. Cannot submit attendance." 
+            }, { status: 400 });
         }
 
         // Check for geo-fence zone

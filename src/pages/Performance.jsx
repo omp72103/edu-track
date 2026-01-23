@@ -26,6 +26,7 @@ export default function PerformancePage() {
   const [filterStudent, setFilterStudent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [studentDialog, setStudentDialog] = useState(null);
   
   const [formData, setFormData] = useState({
     student_id: "",
@@ -220,6 +221,10 @@ export default function PerformancePage() {
 
   const filteredStudents = students.filter(s => !filterBatch || s.batch_id === batches.find(b => b.id === filterBatch)?.batch_id);
 
+  const showStudentDialog = (student, stats, perfs) => {
+    setStudentDialog({ student, stats, perfs });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-6 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -391,7 +396,18 @@ export default function PerformancePage() {
                 {getFilteredPerformances().map(perf => {
                   const stats = getStudentStats(perf.student_id);
                   return (
-                    <div key={perf.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div 
+                      key={perf.id} 
+                      className="border-0 rounded-2xl p-4 backdrop-blur-xl bg-white/80 hover:bg-white/95 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group"
+                      onClick={() => {
+                        const student = students.find(s => s.id === perf.student_id);
+                        if (student) {
+                          const studentStats = getStudentStats(student.id);
+                          const studentPerfs = performances.filter(p => p.student_id === student.id);
+                          showStudentDialog(student, studentStats, studentPerfs);
+                        }
+                      }}
+                    >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
@@ -420,11 +436,17 @@ export default function PerformancePage() {
                           </div>
                           {perf.remarks && <p className="text-sm text-gray-500 mt-2 italic">{perf.remarks}</p>}
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="icon" onClick={() => handleEdit(perf)}>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="icon" onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(perf);
+                          }}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleDelete(perf.id)}>
+                          <Button variant="outline" size="icon" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(perf.id);
+                          }}>
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </Button>
                         </div>
@@ -444,6 +466,90 @@ export default function PerformancePage() {
         students={students}
         onUpdate={loadData}
       />
+
+      {/* Student Summary Dialog */}
+      {studentDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setStudentDialog(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold mb-2">{studentDialog.student.name}</h2>
+                  <div className="flex gap-3 text-blue-100">
+                    <span>Roll No: {studentDialog.student.roll_no}</span>
+                    {studentDialog.student.prn && <span>• PRN: {studentDialog.student.prn}</span>}
+                  </div>
+                </div>
+                <button onClick={() => setStudentDialog(null)} className="text-white hover:bg-white/20 rounded-full p-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6">
+              {studentDialog.stats && (
+                <div className="grid grid-cols-3 gap-6">
+                  <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
+                    <CardContent className="p-6">
+                      <Award className="w-10 h-10 mb-3 opacity-80" />
+                      <div className="text-3xl font-bold">{studentDialog.stats.avgGrade}</div>
+                      <div className="text-green-100">Average Grade</div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+                    <CardContent className="p-6">
+                      <TrendingUp className="w-10 h-10 mb-3 opacity-80" />
+                      <div className="text-3xl font-bold">{studentDialog.stats.avgPercentage}%</div>
+                      <div className="text-blue-100">Average Score</div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
+                    <CardContent className="p-6">
+                      <BarChart3 className="w-10 h-10 mb-3 opacity-80" />
+                      <div className="text-3xl font-bold">{studentDialog.stats.totalAssessments}</div>
+                      <div className="text-purple-100">Assessments</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-xl font-bold mb-4">Performance History</h3>
+                <div className="space-y-3">
+                  {studentDialog.perfs.map(perf => (
+                    <div key={perf.id} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-semibold">{perf.subject}</span>
+                            <Badge className={`${
+                              perf.grade === 'A+' || perf.grade === 'A' ? 'bg-green-100 text-green-800' :
+                              perf.grade === 'B+' || perf.grade === 'B' ? 'bg-blue-100 text-blue-800' :
+                              perf.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {perf.grade}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                            <span>{perf.assessment_type}</span>
+                            <span>{perf.marks_obtained}/{perf.total_marks} ({perf.percentage}%)</span>
+                          </div>
+                        </div>
+                        <span className="text-sm text-gray-500">{perf.assessment_date}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

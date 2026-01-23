@@ -211,10 +211,6 @@ export default function BatchesPage() {
               <Upload className="w-4 h-4 mr-2" />
               Bulk Upload Students
             </Button>
-            <Button onClick={() => setCreateModalOpen(true)} className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white hover:from-purple-600 hover:to-indigo-600 shadow-lg">
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create Private Batch
-            </Button>
           </div>
         </div>
 
@@ -295,7 +291,11 @@ export default function BatchesPage() {
                       </tr>
                     )) :
                     filteredBatches.map((batch) => (
-                      <tr key={batch.id} className="hover:bg-blue-50 border-b border-gray-100 transition-colors">
+                      <tr 
+                        key={batch.id} 
+                        className="hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-b border-gray-100 transition-all duration-300 cursor-pointer group"
+                        onClick={() => navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`))}
+                      >
                         <td className="px-6 py-4">
                           <div>
                             <div className="font-bold text-gray-800">{batch.batch_name}</div>
@@ -330,21 +330,15 @@ export default function BatchesPage() {
                             👥 {batch.student_count || 0}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-center gap-2">
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`))}
-                              className="hover:bg-blue-100"
-                              title="View Advanced Analytics"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => exportBatchData(batch)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportBatchData(batch);
+                              }}
                               disabled={isExporting && exportingId === batch.id}
                               className="hover:bg-green-100"
                             >
@@ -355,7 +349,12 @@ export default function BatchesPage() {
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" className="hover:bg-red-100">
+                                <Button 
+                                  variant="destructive" 
+                                  size="icon" 
+                                  className="hover:bg-red-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -368,7 +367,10 @@ export default function BatchesPage() {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>❌ Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteBatch(batch.id)} className="bg-red-600 hover:bg-red-700">
+                                  <AlertDialogAction onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteBatch(batch.id);
+                                  }} className="bg-red-600 hover:bg-red-700">
                                     🗑️ Delete
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
@@ -394,8 +396,13 @@ export default function BatchesPage() {
                   </Card>
                 )) :
                 filteredBatches.map((batch) => (
-                  <Card key={batch.id} className="border-2 hover:border-blue-300 transition-all duration-200">
-                    <CardContent className="p-4">
+                  <Card 
+                    key={batch.id} 
+                    className="border-0 backdrop-blur-xl bg-white/80 hover:bg-white/95 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer rounded-2xl overflow-hidden group"
+                    onClick={() => navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`))}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <CardContent className="p-4 relative z-10">
                       <div className="space-y-3">
                         <div>
                           <h3 className="font-bold text-lg text-gray-800">{batch.batch_name}</h3>
@@ -437,15 +444,10 @@ export default function BatchesPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`))}
-                            className="flex-1"
-                          >
-                            <Eye className="w-4 h-4 mr-1" /> 👁️ Analytics
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => exportBatchData(batch)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportBatchData(batch);
+                            }}
                             disabled={isExporting && exportingId === batch.id}
                             className="flex-1"
                           >

@@ -1,7 +1,9 @@
 import AITimetableGenerator from './pages/AITimetableGenerator';
 import AdvancedAnalysis from './pages/AdvancedAnalysis';
 import Announcements from './pages/Announcements';
+import AssignmentManagement from './pages/AssignmentManagement';
 import Attendance from './pages/Attendance';
+import BatchAnalytics from './pages/BatchAnalytics';
 import BatchDetails from './pages/BatchDetails';
 import BatchDetailsPage from './pages/BatchDetailsPage';
 import Batches from './pages/Batches';
@@ -28,8 +30,6 @@ import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import AssignmentManagement from './pages/AssignmentManagement';
-import BatchAnalytics from './pages/BatchAnalytics';
 import __Layout from './Layout.jsx';
 
 
@@ -37,7 +37,9 @@ export const PAGES = {
     "AITimetableGenerator": AITimetableGenerator,
     "AdvancedAnalysis": AdvancedAnalysis,
     "Announcements": Announcements,
+    "AssignmentManagement": AssignmentManagement,
     "Attendance": Attendance,
+    "BatchAnalytics": BatchAnalytics,
     "BatchDetails": BatchDetails,
     "BatchDetailsPage": BatchDetailsPage,
     "Batches": Batches,
@@ -64,8 +66,6 @@ export const PAGES = {
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "AssignmentManagement": AssignmentManagement,
-    "BatchAnalytics": BatchAnalytics,
 }
 
 export const pagesConfig = {

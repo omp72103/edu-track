@@ -30,6 +30,7 @@ import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
+import Profile from './pages/Profile';
 import __Layout from './Layout.jsx';
 
 
@@ -66,6 +67,7 @@ export const PAGES = {
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
+    "Profile": Profile,
 }
 
 export const pagesConfig = {

@@ -103,7 +103,7 @@ export default function AITimetableGenerator() {
     setCart([...cart, cartItem]);
     setSubjectData([]);
     setSelectedBatch("");
-    setMessage({ type: "success", text: `${batch.batch_name} added to cart` });
+    setMessage({ type: "success", text: `${batch.batch_name} queued successfully!` });
   };
 
   const removeFromCart = (id) => {
@@ -112,12 +112,12 @@ export default function AITimetableGenerator() {
 
   const generateFinalTimetable = async () => {
     if (cart.length === 0) {
-      setMessage({ type: "error", text: "Cart is empty. Add batches first." });
+      setMessage({ type: "error", text: "Queue is empty. Add batches first." });
       return;
     }
 
     setIsGenerating(true);
-    setMessage(null);
+    setMessage({ type: "info", text: "Generating timetable... This may take a moment." });
 
     try {
       const allEntries = [];
@@ -193,13 +193,44 @@ Generate valid JSON for ALL lectures:`;
       }
 
       setFinalTimetable(allEntries);
-      setMessage({ type: "success", text: "Final timetable generated successfully!" });
+      
+      // Automatically save to database
+      await saveToDatabaseAuto(allEntries);
+      
+      setMessage({ type: "success", text: "Timetable generated and saved successfully! View it in Timetable section." });
     } catch (error) {
       console.error("Error generating timetable:", error);
       setMessage({ type: "error", text: "Failed to generate timetable" });
     }
 
     setIsGenerating(false);
+  };
+
+  const saveToDatabaseAuto = async (entries) => {
+    try {
+      for (const entry of entries) {
+        const batch = batches.find(b => b.batch_id === entry.batch_id);
+        const faculty = faculties.find(f => f.name === entry.faculty_name) || faculties[0];
+
+        await TimeTable.create({
+          batch_id: entry.batch_id,
+          college_name: batch?.college_name || "",
+          year: batch?.year || "",
+          branch: batch?.branch || "",
+          division: batch?.division || "",
+          day_of_week: entry.day_of_week,
+          time_slot: entry.time_slot,
+          subject: entry.subject,
+          faculty_name: entry.faculty_name,
+          faculty_email: faculty?.email || "",
+          room_number: entry.room_number,
+          class_type: entry.class_type,
+          academic_year: "2025-26"
+        });
+      }
+    } catch (error) {
+      console.error("Error auto-saving to database:", error);
+    }
   };
 
   const downloadPDF = () => {
@@ -340,10 +371,10 @@ Generate valid JSON for ALL lectures:`;
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center justify-center gap-3">
-            <Sparkles className="w-10 h-10 text-purple-600" />
-            AI Timetable Generator (Cart System)
+          <Sparkles className="w-10 h-10 text-purple-600" />
+          AI Timetable Generator
           </h1>
-          <p className="text-gray-600 mt-2">Add multiple batches to cart and generate unified timetable</p>
+          <p className="text-gray-600 mt-2">Configure batches, queue them, and generate a smart class schedule</p>
         </div>
 
         {message && (
@@ -464,9 +495,9 @@ Generate valid JSON for ALL lectures:`;
                   ))}
                 </div>
 
-                <Button onClick={addToCart} className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Add to Cart
+                <Button onClick={addToCart} className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Add to Queue
                 </Button>
               </CardContent>
             </Card>
@@ -477,13 +508,17 @@ Generate valid JSON for ALL lectures:`;
             <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl sticky top-6">
               <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100">
                 <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  Cart ({cart.length})
+                  <Calendar className="w-5 h-5" />
+                  Queued Batches ({cart.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4 space-y-3">
                 {cart.length === 0 ? (
-                  <p className="text-gray-500 text-sm text-center py-8">Cart is empty</p>
+                  <div className="text-center py-8">
+                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">No batches queued yet</p>
+                    <p className="text-gray-400 text-xs mt-1">Configure and queue batches to start</p>
+                  </div>
                 ) : (
                   cart.map(item => (
                     <div key={item.id} className="bg-blue-50 rounded-lg p-3 border border-blue-200">
@@ -504,9 +539,19 @@ Generate valid JSON for ALL lectures:`;
                   <Button
                     onClick={generateFinalTimetable}
                     disabled={isGenerating}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    className="w-full h-12 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-xl text-lg font-semibold"
                   >
-                    {isGenerating ? "🔄 Generating..." : "🚀 Generate Final Timetable"}
+                    {isGenerating ? (
+                      <>
+                        <Wand2 className="w-5 h-5 mr-2 animate-spin" />
+                        Generating AI Timetable...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Generate Smart Timetable
+                      </>
+                    )}
                   </Button>
                 )}
               </CardContent>
@@ -518,54 +563,57 @@ Generate valid JSON for ALL lectures:`;
         {finalTimetable && finalTimetable.length > 0 && (
           <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-2xl">
             <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-2xl">📅 Generated Timetable (Rectangular Format)</CardTitle>
-                <div className="flex gap-2">
-                  <Button onClick={downloadPDF} className="bg-white text-purple-600 hover:bg-gray-100">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </Button>
-                  <Button onClick={saveToDatabaseAll} className="bg-green-600 hover:bg-green-700">
-                    💾 Save All to Database
-                  </Button>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <CheckCircle className="w-6 h-6" />
+                    Generated Timetable (Rectangular View)
+                  </CardTitle>
+                  <p className="text-blue-100 text-sm mt-1">Auto-saved to database • View in Timetable section</p>
                 </div>
+                <Button onClick={downloadPDF} className="bg-white text-purple-600 hover:bg-gray-100 shadow-lg">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-6">
               {Object.entries(groupByDayAndBatch(finalTimetable)).map(([batchName, days]) => (
-                <div key={batchName} className="mb-8">
-                  <h3 className="text-xl font-bold mb-4 text-purple-900">{batchName}</h3>
-                  <div className="overflow-x-auto border-2 border-purple-300 rounded-lg">
-                    <table className="w-full border-collapse">
+                <div key={batchName} className="mb-10">
+                  <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-t-xl">
+                    <h3 className="text-2xl font-bold">{batchName}</h3>
+                  </div>
+                  <div className="overflow-x-auto border-4 border-purple-300 rounded-b-xl shadow-lg">
+                    <table className="w-full border-collapse min-w-[1200px]">
                       <thead>
-                        <tr className="bg-gradient-to-r from-purple-200 to-blue-200">
-                          <th className="border-2 border-purple-300 px-4 py-3 text-left font-bold w-32">Day</th>
+                        <tr className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
+                          <th className="border-2 border-white px-6 py-4 text-left font-bold text-lg sticky left-0 bg-blue-500 z-10 min-w-[140px]">Day / Time</th>
                           {Array.from({ length: 8 }, (_, i) => (
-                            <th key={i} className="border-2 border-purple-300 px-4 py-3 text-center font-bold">
-                              Slot {i + 1}
+                            <th key={i} className="border-2 border-white px-4 py-4 text-center font-bold min-w-[160px]">
+                              <div className="text-sm">Slot {i + 1}</div>
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="bg-white">
                         {daysOfWeek.map(day => {
                           const dayEntries = days[day] || [];
                           if (dayEntries.length === 0) return null;
                           const sorted = dayEntries.sort((a, b) => a.time_slot.localeCompare(b.time_slot));
                           return (
-                            <tr key={day} className="hover:bg-purple-50 transition-colors">
-                              <td className="border-2 border-purple-300 px-4 py-4 font-bold bg-purple-100">{day}</td>
+                            <tr key={day} className="hover:bg-blue-50 transition-colors">
+                              <td className="border-2 border-gray-300 px-6 py-6 font-bold text-lg bg-gradient-to-r from-purple-100 to-blue-100 sticky left-0 z-10">{day}</td>
                               {Array.from({ length: 8 }, (_, i) => {
                                 const entry = sorted[i];
-                                if (!entry) return <td key={i} className="border-2 border-purple-300 px-4 py-4 text-center text-gray-400">-</td>;
+                                if (!entry) return <td key={i} className="border-2 border-gray-300 px-4 py-6 text-center text-gray-400 text-lg">—</td>;
                                 return (
-                                  <td key={i} className="border-2 border-purple-300 px-3 py-4">
-                                    <div className="text-center">
-                                      <div className="font-semibold text-purple-900 text-sm">{entry.subject}</div>
-                                      <div className="text-xs text-gray-600 mt-1">{entry.time_slot}</div>
-                                      <div className="text-xs text-blue-600">{entry.faculty_name}</div>
+                                  <td key={i} className="border-2 border-gray-300 px-4 py-4 bg-gradient-to-br from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 transition-all">
+                                    <div className="text-center space-y-1">
+                                      <div className="font-bold text-purple-900 text-sm leading-tight">{entry.subject}</div>
+                                      <div className="text-xs text-indigo-600 font-semibold">{entry.time_slot}</div>
+                                      <div className="text-xs text-gray-700 font-medium">{entry.faculty_name}</div>
                                       <div className="text-xs text-gray-500">{entry.room_number}</div>
-                                      <Badge className="mt-1 text-xs bg-blue-100 text-blue-800 border-blue-300">{entry.class_type}</Badge>
+                                      <Badge className="mt-1 text-xs bg-blue-500 text-white px-2 py-0.5 font-medium">{entry.class_type}</Badge>
                                     </div>
                                   </td>
                                 );

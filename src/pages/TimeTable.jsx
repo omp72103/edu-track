@@ -207,14 +207,14 @@ export default function TimeTablePage() {
             </h1>
             <p className="text-gray-600">Manage and view class schedules</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button onClick={() => window.location.href = createPageUrl("AITimetableGenerator")} variant="outline" className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600">
               <Calendar className="w-4 h-4" />
-              AI Timetable
+              <span className="hidden sm:inline">AI Timetable</span>
             </Button>
             <Button onClick={exportToCSV} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
-              Export CSV
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
             <Dialog open={showAddModal} onOpenChange={(open) => {
               setShowAddModal(open);
@@ -362,8 +362,8 @@ export default function TimeTablePage() {
                 <p>No timetable entries found</p>
               </div>
             ) : (
-              <div className="overflow-x-auto border-2 border-blue-300 rounded-xl shadow-lg">
-                <table className="w-full border-collapse min-w-[1000px]">
+              <div className="overflow-x-auto border-2 border-blue-300 rounded-xl shadow-lg -mx-4 sm:mx-0">
+                <table className="w-full border-collapse min-w-[800px]">
                   <thead>
                     <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
                       <th className="border-2 border-white px-4 py-3 text-left font-bold sticky left-0 bg-blue-600 z-10 min-w-[140px]">Time / Day</th>

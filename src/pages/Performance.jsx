@@ -344,20 +344,20 @@ export default function PerformancePage() {
       <div className="max-w-7xl mx-auto space-y-6 relative z-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <BarChart3 className="w-8 h-8 text-blue-600" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <BarChart3 className="w-6 sm:w-8 h-6 sm:h-8 text-blue-600" />
               Student Performance
             </h1>
-            <p className="text-gray-600">Track and manage student academic performance</p>
+            <p className="text-gray-600 text-sm sm:text-base">Track and manage student academic performance</p>
           </div>
-          <div className="flex gap-3">
-            <Button onClick={() => setShowEmailModal(true)} variant="outline" className="gap-2">
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full md:w-auto">
+            <Button onClick={() => setShowEmailModal(true)} variant="outline" className="gap-2 flex-1 sm:flex-none">
               <Mail className="w-4 h-4" />
-              Manage Emails
+              <span className="hidden sm:inline">Manage Emails</span>
             </Button>
-            <Button onClick={exportToCSV} variant="outline" className="gap-2">
+            <Button onClick={exportToCSV} variant="outline" className="gap-2 flex-1 sm:flex-none">
               <Download className="w-4 h-4" />
-              Export CSV
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
             <Dialog open={showAddModal} onOpenChange={(open) => {
               setShowAddModal(open);
@@ -461,9 +461,9 @@ export default function PerformancePage() {
           </Alert>
         )}
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
-            <Label>Filter by Batch</Label>
+            <Label className="text-sm sm:text-base">Filter by Batch</Label>
             <Select value={filterBatch} onValueChange={setFilterBatch}>
               <SelectTrigger><SelectValue placeholder="All Batches"/></SelectTrigger>
               <SelectContent>
@@ -473,7 +473,7 @@ export default function PerformancePage() {
             </Select>
           </div>
           <div>
-            <Label>Filter by Student</Label>
+            <Label className="text-sm sm:text-base">Filter by Student</Label>
             <Select value={filterStudent} onValueChange={setFilterStudent}>
               <SelectTrigger><SelectValue placeholder="All Students"/></SelectTrigger>
               <SelectContent>
@@ -482,8 +482,8 @@ export default function PerformancePage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>Search</Label>
+          <div className="sm:col-span-2 md:col-span-1">
+            <Label className="text-sm sm:text-base">Search</Label>
             <Input placeholder="Search by name or subject" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </div>

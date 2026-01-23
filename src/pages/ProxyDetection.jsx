@@ -138,13 +138,13 @@ export default function ProxyDetectionPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Shield className="w-8 h-8 text-red-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Proxy Detection & Security Alerts</h1>
+        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+          <Shield className="w-6 sm:w-8 h-6 sm:h-8 text-red-600" />
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Proxy Detection & Security</h1>
         </div>
-        <p className="text-gray-600">Monitor and review suspicious attendance attempts</p>
+        <p className="text-gray-600 text-sm sm:text-base">Monitor suspicious attendance attempts</p>
       </div>
 
       {/* Statistics */}
@@ -204,7 +204,7 @@ export default function ProxyDetectionPage() {
       {/* Filters */}
       <Card className="mb-6">
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             <Input
               placeholder="Search PRN, Roll No..."
               value={searchTerm}
@@ -285,10 +285,10 @@ export default function ProxyDetectionPage() {
         ) : (
           filteredLogs.map((log) => (
             <Card key={log.id} className="border-l-4 border-l-red-500">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4 mb-4">
+                  <div className="flex-1 w-full">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
                       <Badge className={getStatusColor(log.status)}>
                         {log.status}
                       </Badge>
@@ -297,7 +297,7 @@ export default function ProxyDetectionPage() {
                         Risk: {log.risk_score}/100
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-sm">
                       <div>
                         <p className="text-gray-500">PRN/Roll No</p>
                         <p className="font-semibold">{log.student_identifier}</p>
@@ -357,24 +357,28 @@ export default function ProxyDetectionPage() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   {log.status === 'flagged' && (
                     <>
                       <Button
                         size="sm"
                         variant="destructive"
                         onClick={() => updateLogStatus(log.id, 'confirmed', 'Proxy attendance confirmed')}
+                        className="w-full sm:w-auto"
                       >
                         <XCircle className="w-4 h-4 mr-1" />
-                        Confirm Violation
+                        <span className="hidden sm:inline">Confirm Violation</span>
+                        <span className="sm:hidden">Confirm</span>
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => updateLogStatus(log.id, 'cleared', 'False positive - legitimate attempt')}
+                        className="w-full sm:w-auto"
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
-                        Clear (False Positive)
+                        <span className="hidden sm:inline">Clear (False Positive)</span>
+                        <span className="sm:hidden">Clear</span>
                       </Button>
                     </>
                   )}
@@ -385,6 +389,7 @@ export default function ProxyDetectionPage() {
                       const notes = prompt("Add review notes:");
                       if (notes) updateLogStatus(log.id, 'reviewed', notes);
                     }}
+                    className="w-full sm:w-auto"
                   >
                     Add Notes
                   </Button>

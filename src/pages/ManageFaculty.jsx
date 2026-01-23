@@ -104,16 +104,16 @@ export default function ManageFaculty() {
   const displayedFaculty = showAll ? filteredFaculty : filteredFaculty.slice(0, 5);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Faculty Management</h1>
-            <p className="text-gray-600 mt-1">Manage AIML department faculty members</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Faculty Management</h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage AIML department faculty members</p>
           </div>
           <Button 
             onClick={() => { setEditingFaculty(null); setIsModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" /> 
             Add New Faculty
@@ -174,13 +174,13 @@ export default function ManageFaculty() {
                 className="bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => handleViewDetails(facultyMember)}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <UserCog className="w-6 h-6 text-blue-600" />
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <UserCog className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="text-lg font-semibold text-gray-900">
                             {facultyMember.name}
@@ -208,36 +208,37 @@ export default function ManageFaculty() {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
                       {/* Activate/Deactivate Button */}
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleToggleStatus(facultyMember)}
-                        className={`${
+                        className={`w-full sm:w-auto ${
                           facultyMember.status === 'active' 
                             ? 'border-orange-200 text-orange-600 hover:bg-orange-50' 
                             : 'border-green-200 text-green-600 hover:bg-green-50'
                         }`}
                       >
-                        {facultyMember.status === 'active' ? '🔒 Deactivate' : '✅ Activate'}
+                        <span className="hidden sm:inline">{facultyMember.status === 'active' ? '🔒 Deactivate' : '✅ Activate'}</span>
+                        <span className="sm:hidden">{facultyMember.status === 'active' ? '🔒' : '✅'}</span>
                       </Button>
                       
                       <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleEdit(facultyMember)}
-                        className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50 w-full sm:w-auto"
                       >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
+                        <Edit className="w-4 h-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Edit</span>
                       </Button>
                       
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50">
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Delete
+                          <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50 w-full sm:w-auto">
+                            <Trash2 className="w-4 h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Delete</span>
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

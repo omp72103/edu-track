@@ -227,14 +227,14 @@ export default function AssignmentManagement() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">📝 Assignment Management</h1>
-            <p className="text-gray-600 mt-1">Create, manage, and evaluate student assignments</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📝 Assignment Management</h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Create, manage, and evaluate student assignments</p>
           </div>
           <Button 
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Assignment
@@ -248,9 +248,9 @@ export default function AssignmentManagement() {
             
             return (
               <Card key={assignment.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                    <div className="flex-1 w-full">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-xl font-bold text-gray-900">{assignment.title}</h3>
                         <Badge className={assignment.content_type === 'QUIZ' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}>
@@ -299,14 +299,16 @@ export default function AssignmentManagement() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 w-full sm:w-auto">
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => handleViewSubmissions(assignment)}
+                        className="flex-1 sm:flex-none"
                       >
                         <Eye className="w-4 h-4 mr-1" />
-                        View Submissions
+                        <span className="hidden sm:inline">View Submissions</span>
+                        <span className="sm:hidden">View</span>
                       </Button>
                       <Button 
                         variant="outline" 

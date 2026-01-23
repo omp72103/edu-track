@@ -1583,23 +1583,23 @@ export default function AdvancedAnalysis() {
     };
 
     return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-start gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate(createPageUrl("Dashboard"))}
-            className="bg-white"
+            className="bg-white flex-shrink-0"
           >
             <span className="text-xl">←</span>
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <TrendingUp className="w-8 h-8 text-purple-600" />
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <TrendingUp className="w-6 sm:w-8 h-6 sm:h-8 text-purple-600" />
               Advanced Attendance Analysis
             </h1>
-            <p className="text-gray-600 mt-1">Upload attendance data and generate stunning analytical reports</p>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">Upload data and generate analytical reports</p>
           </div>
         </div>
 
@@ -1618,16 +1618,16 @@ export default function AdvancedAnalysis() {
               Upload & Analyze Attendance Data
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8 space-y-6">
+          <CardContent className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
             {/* Batch Details Form */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5" />
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <FileSpreadsheet className="w-4 sm:w-5 h-4 sm:h-5" />
                 Step 1: Enter Batch Details
               </h3>
               <div className="grid gap-4">
                 <div>
-                  <Label className="font-semibold">Division *</Label>
+                  <Label className="font-semibold text-sm sm:text-base">Division *</Label>
                   <Input
                     placeholder="e.g., A, B, C"
                     value={formData.division}
@@ -1638,14 +1638,14 @@ export default function AdvancedAnalysis() {
               </div>
             </div>
 
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                <Upload className="w-5 h-5" />
+            <div className="border-t pt-4 sm:pt-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <Upload className="w-4 sm:w-5 h-4 sm:h-5" />
                 Step 2: Upload Attendance File
               </h3>
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50"
+                className="border-2 border-dashed border-purple-300 rounded-lg p-6 sm:p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50"
               >
                 <input
                   ref={fileInputRef}
@@ -1671,7 +1671,7 @@ export default function AdvancedAnalysis() {
             <Button
               onClick={handleAnalyze}
               disabled={isProcessing || !selectedFile}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg py-6 shadow-lg"
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-base sm:text-lg py-4 sm:py-6 shadow-lg"
             >
               {isProcessing ? (
                 <div className="flex items-center gap-2">
@@ -1787,7 +1787,7 @@ export default function AdvancedAnalysis() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
                 <Button
                   onClick={handleExportHTML}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
@@ -1806,6 +1806,7 @@ export default function AdvancedAnalysis() {
                 <Button
                   onClick={handleNewAnalysis}
                   variant="outline"
+                  className="w-full sm:w-auto"
                 >
                   New Analysis
                 </Button>

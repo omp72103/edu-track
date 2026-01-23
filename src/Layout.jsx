@@ -48,9 +48,7 @@ const adminNavItems = [
   { name: "ManageFaculty", label: "Manage Faculty", icon: UserCog },
 ];
 
-const commonNavItems = [
-  { name: "Profile", label: "My Profile", icon: UserIcon },
-];
+const commonNavItems = [];
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -346,44 +344,17 @@ export default function Layout({ children, currentPageName }) {
                 </div>
                 )}
 
-                {/* Profile Link for All Users */}
-                <div className="pt-3 space-y-1 border-t border-gray-200/50">
-                {!isSidebarCollapsed && (
-                <div className="px-3 mb-2">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Account</span>
-                </div>
-                )}
-                {commonNavItems.map((item) => {
-                const isActive = location.pathname.startsWith(createPageUrl(item.name));
-                return (
-                  <Link
-                    key={item.name}
-                    to={createPageUrl(item.name)}
-                    className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                      isActive 
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
-                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md hover:scale-102'
-                    } ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                    onClick={() => setIsSidebarOpen(false)}
-                    title={isSidebarCollapsed ? (item.label || item.name) : ''}
-                  >
-                    <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
-                    {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
-                    {!isSidebarCollapsed && isActive && (
-                      <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                    )}
-                  </Link>
-                );
-                })}
-                </div>
-                </div>
+
 
                 {/* User Section with Glassmorphism */}
                 <div className="p-4 border-t border-gray-200/50 bg-gradient-to-r from-slate-50 to-blue-50">
             {user && !isSidebarCollapsed && (
-              <div className="relative mb-3 w-full">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20"></div>
-                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg">
+              <button 
+                onClick={() => window.location.href = createPageUrl("Profile")}
+                className="relative mb-3 w-full hover:scale-102 transition-transform duration-300"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40"></div>
+                <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
@@ -397,26 +368,21 @@ export default function Layout({ children, currentPageName }) {
                     </p>
                   </div>
                 </div>
-              </div>
+              </button>
             )}
             {user && isSidebarCollapsed && (
-              <div className="flex justify-center mb-3 w-full">
+              <button
+                onClick={() => window.location.href = createPageUrl("Profile")}
+                className="flex justify-center mb-3 w-full"
+              >
                 <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30"></div>
-                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white" title={user.full_name}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30 hover:opacity-60 transition-opacity"></div>
+                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={user.full_name}>
                     {user.full_name.charAt(0).toUpperCase()}
                   </div>
                 </div>
-              </div>
+              </button>
             )}
-            <button
-              onClick={() => User.logout()}
-              className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-pink-50 hover:text-red-600 transition-all duration-300 w-full hover:shadow-md ${isSidebarCollapsed ? 'justify-center' : ''}`}
-              title={isSidebarCollapsed ? 'Logout' : ''}
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0 group-hover:scale-110 transition-transform" />
-              {!isSidebarCollapsed && <span>Logout</span>}
-            </button>
           </div>
         </div>
       </div>
@@ -466,8 +432,8 @@ export default function Layout({ children, currentPageName }) {
         }
       `}</style>
 
-      {/* Enhanced Profile Modal */}
-      {showProfileModal && (
+      {/* Profile Modal - Removed as profile is now accessed via Profile page */}
+      {false && showProfileModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={() => setShowProfileModal(false)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
             <button 

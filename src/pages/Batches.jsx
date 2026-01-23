@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Removed ShadCN Table components as per new UI outline using native table elements
 // import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Download, Filter, Clock, Eye, Trash2, PlusCircle, Upload } from "lucide-react";
+import { Users, Download, Filter, Clock, Eye, Trash2, PlusCircle, Upload, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, parseISO } from "date-fns";
@@ -337,52 +337,66 @@ export default function BatchesPage() {
                           </Badge>
                         </td>
                         <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                exportBatchData(batch);
-                              }}
-                              disabled={isExporting && exportingId === batch.id}
-                              className="hover:bg-green-100"
-                            >
-                              {isExporting && exportingId === batch.id ?
-                                <Clock className="w-4 h-4 animate-spin" /> :
-                                <Download className="w-4 h-4" />
-                              }
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="destructive" 
-                                  size="icon" 
-                                  className="hover:bg-red-100"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>🗑️ Delete Batch?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will permanently delete the batch '<strong>{batch.batch_name}</strong>'. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>❌ Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteBatch(batch.id);
-                                  }} className="bg-red-600 hover:bg-red-700">
-                                    🗑️ Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                         <div className="flex justify-center gap-2">
+                           <Button
+                             variant="outline"
+                             size="icon"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`));
+                             }}
+                             className="hover:bg-blue-100"
+                             title="View Students"
+                           >
+                             <Eye className="w-4 h-4" />
+                           </Button>
+                           <Button
+                             variant="outline"
+                             size="icon"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               exportBatchData(batch);
+                             }}
+                             disabled={isExporting && exportingId === batch.id}
+                             className="hover:bg-green-100"
+                             title="Export Data"
+                           >
+                             {isExporting && exportingId === batch.id ?
+                               <Clock className="w-4 h-4 animate-spin" /> :
+                               <Download className="w-4 h-4" />
+                             }
+                           </Button>
+                           <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <Button 
+                                 variant="destructive" 
+                                 size="icon" 
+                                 className="hover:bg-red-100"
+                                 onClick={(e) => e.stopPropagation()}
+                                 title="Delete Batch"
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </Button>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>Delete Batch?</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                   This will permanently delete the batch '<strong>{batch.batch_name}</strong>'. This action cannot be undone.
+                                 </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                 <AlertDialogAction onClick={(e) => {
+                                   e.stopPropagation();
+                                   handleDeleteBatch(batch.id);
+                                 }} className="bg-red-600 hover:bg-red-700">
+                                   Delete
+                                 </AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
+                         </div>
                         </td>
                       </tr>
                     ))

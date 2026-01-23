@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { MAPBOX_ACCESS_TOKEN } from './MapboxConfig';
 
-// Mapbox access token - You need to set this as an environment variable or secret
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZWR1dHJhY2siLCJhIjoiY2x5MHh5enl6MGFvZDJrcjN4YzB6cGJ6ZiJ9.example'; // Replace with your token
+const MAPBOX_TOKEN = MAPBOX_ACCESS_TOKEN;
 
 export default function LiveTrackingMap3D({ geoFence, activeStudents }) {
   const mapContainer = useRef(null);

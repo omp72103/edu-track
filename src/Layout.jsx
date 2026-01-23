@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { User, Faculty, Student } from "@/entities/all";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -63,6 +64,27 @@ export default function Layout({ children, currentPageName }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isPWAInstalled, setIsPWAInstalled] = useState(false);
+
+  // Register service worker
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('✅ Service Worker registered:', registration);
+          })
+          .catch(error => {
+            console.log('❌ Service Worker registration failed:', error);
+          });
+      });
+    }
+
+    // Check if PWA is installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsPWAInstalled(true);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {

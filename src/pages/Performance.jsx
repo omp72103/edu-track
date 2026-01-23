@@ -577,53 +577,68 @@ export default function PerformancePage() {
       />
 
       {/* Enhanced Student Summary Dialog with Charts */}
-      {studentDialog && (() => {
-        const totalSessions = studentDialog.sessions?.length || 0;
-        const presentCount = studentDialog.attendance?.filter(a => a.is_present).length || 0;
-        const absentCount = studentDialog.attendance?.filter(a => !a.is_present).length || 0;
-        const attendancePercent = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+      {studentDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={() => setStudentDialog(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <StudentDetailModal 
+              studentDialog={studentDialog}
+              batches={batches}
+              onClose={() => setStudentDialog(null)}
+              onExport={() => exportStudentPDF(studentDialog)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-        // Performance trend data
-        const performanceTrend = studentDialog.perfs.slice(-8).map(p => ({
-          subject: p.subject.substring(0, 10),
-          percentage: p.percentage
-        }));
+function StudentDetailModal({ studentDialog, batches, onClose, onExport }) {
+  const totalSessions = studentDialog.sessions?.length || 0;
+  const presentCount = studentDialog.attendance?.filter(a => a.is_present).length || 0;
+  const absentCount = studentDialog.attendance?.filter(a => !a.is_present).length || 0;
+  const attendancePercent = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
 
-        // Subject-wise performance
-        const subjectPerformance = studentDialog.perfs.reduce((acc, p) => {
-          if (!acc[p.subject]) {
-            acc[p.subject] = { subject: p.subject, total: 0, count: 0 };
-          }
-          acc[p.subject].total += p.percentage;
-          acc[p.subject].count += 1;
-          return acc;
-        }, {});
+  // Performance trend data
+  const performanceTrend = studentDialog.perfs.slice(-8).map(p => ({
+    subject: p.subject.substring(0, 10),
+    percentage: p.percentage
+  }));
 
-        const subjectData = Object.values(subjectPerformance).map(s => ({
-          subject: s.subject.substring(0, 12),
-          avg: Math.round(s.total / s.count)
-        }));
+  // Subject-wise performance
+  const subjectPerformance = studentDialog.perfs.reduce((acc, p) => {
+    if (!acc[p.subject]) {
+      acc[p.subject] = { subject: p.subject, total: 0, count: 0 };
+    }
+    acc[p.subject].total += p.percentage;
+    acc[p.subject].count += 1;
+    return acc;
+  }, {});
 
-        return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={() => setStudentDialog(null)}>
-            <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-4xl font-bold mb-3">{studentDialog.student.name}</h2>
-                    <div className="flex gap-4 text-blue-100">
-                      <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> Roll: {studentDialog.student.roll_no}</span>
-                      {studentDialog.student.prn && <span>• PRN: {studentDialog.student.prn}</span>}
-                      {studentDialog.student.email && <span>• {studentDialog.student.email}</span>}
-                    </div>
-                  </div>
-                  <button onClick={() => setStudentDialog(null)} className="text-white hover:bg-white/20 rounded-full p-3 transition-all">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+  const subjectData = Object.values(subjectPerformance).map(s => ({
+    subject: s.subject.substring(0, 12),
+    avg: Math.round(s.total / s.count)
+  }));
+
+  return (
+    <>
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-4xl font-bold mb-3">{studentDialog.student.name}</h2>
+            <div className="flex gap-4 text-blue-100">
+              <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> Roll: {studentDialog.student.roll_no}</span>
+              {studentDialog.student.prn && <span>• PRN: {studentDialog.student.prn}</span>}
+              {studentDialog.student.email && <span>• {studentDialog.student.email}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white hover:bg-white/20 rounded-full p-3 transition-all">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
               <div className="p-8">
                 <Tabs defaultValue="overview" className="w-full">
@@ -634,18 +649,18 @@ export default function PerformancePage() {
                     <TabsTrigger value="history">History</TabsTrigger>
                   </TabsList>
 
-                  {/* Overview Tab */}
-                  <TabsContent value="overview" className="space-y-6">
-                    {/* Export Button */}
-                    <div className="flex justify-end mb-4">
-                      <Button 
-                        onClick={() => exportStudentPDF(studentDialog)}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 gap-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        Export Full Report (PDF)
-                      </Button>
-                    </div>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Export Button */}
+          <div className="flex justify-end mb-4">
+            <Button 
+              onClick={onExport}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export Full Report (PDF)
+            </Button>
+          </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
@@ -899,13 +914,8 @@ export default function PerformancePage() {
                         </div>
                       ))
                     )}
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-    </div>
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }

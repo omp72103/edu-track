@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, TrendingUp, Users, Calendar, BookOpen, Award } from "lucide-react";
+import { Download, TrendingUp, Users, Calendar, BookOpen, Award, PieChart, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
+import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export default function BatchAnalytics() {
   const [batch, setBatch] = useState(null);
@@ -316,6 +317,56 @@ export default function BatchAnalytics() {
     return { avgAttendance };
   };
 
+  // Prepare chart data
+  const getAttendanceTrendData = () => {
+    const sessionsByDate = sessions.reduce((acc, session) => {
+      const date = format(new Date(session.session_date), 'dd MMM');
+      const presentCount = attendanceRecords.filter(r => r.session_id === session.id && r.is_present).length;
+      const total = students.length;
+      const percentage = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+      
+      acc.push({ date, percentage, present: presentCount, total });
+      return acc;
+    }, []);
+    
+    return sessionsByDate.slice(-10); // Last 10 sessions
+  };
+
+  const getPresentAbsentData = () => {
+    const totalPresent = attendanceRecords.filter(r => r.is_present).length;
+    const totalAbsent = attendanceRecords.filter(r => !r.is_present).length;
+    
+    return [
+      { name: 'Present', value: totalPresent, color: '#10b981' },
+      { name: 'Absent', value: totalAbsent, color: '#ef4444' }
+    ];
+  };
+
+  const getStudentDistributionData = () => {
+    return students.map(student => {
+      const presentCount = attendanceRecords.filter(r => r.student_id === student.id && r.is_present).length;
+      const percentage = sessions.length > 0 ? Math.round((presentCount / sessions.length) * 100) : 0;
+      
+      return {
+        name: student.name.split(' ')[0], // First name only
+        attendance: percentage
+      };
+    }).slice(0, 15); // Top 15 students
+  };
+
+  const getFacultySessionData = () => {
+    const facultyMap = sessions.reduce((acc, session) => {
+      const faculty = session.faculty_name;
+      acc[faculty] = (acc[faculty] || 0) + 1;
+      return acc;
+    }, {});
+    
+    return Object.entries(facultyMap).map(([name, count]) => ({
+      name: name.split(' ')[0], // First name only
+      sessions: count
+    }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
@@ -371,12 +422,118 @@ export default function BatchAnalytics() {
               </Card>
             </div>
 
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Attendance Trend Line Chart */}
+              <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100">
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-600" />
+                    Attendance Trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={getAttendanceTrendData()}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="date" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip 
+                        contentStyle={{ background: 'rgba(255,255,255,0.95)', borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="percentage" stroke="#3b82f6" strokeWidth={3} name="Attendance %" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Present vs Absent Pie Chart */}
+              <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100">
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="w-5 h-5 text-green-600" />
+                    Present vs Absent
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <RechartsPieChart>
+                      <Pie 
+                        data={getPresentAbsentData()} 
+                        cx="50%" 
+                        cy="50%" 
+                        labelLine={false}
+                        label={({ name, value }) => `${name}: ${value}`}
+                        outerRadius={80} 
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {getPresentAbsentData().map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Student Distribution Bar Chart */}
+              <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100">
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                    Student Attendance Distribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={getStudentDistributionData()}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="name" stroke="#666" angle={-45} textAnchor="end" height={80} />
+                      <YAxis stroke="#666" />
+                      <Tooltip 
+                        contentStyle={{ background: 'rgba(255,255,255,0.95)', borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      />
+                      <Legend />
+                      <Bar dataKey="attendance" fill="#8b5cf6" name="Attendance %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Faculty Session Count */}
+              <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-xl">
+                <CardHeader className="bg-gradient-to-r from-orange-100 to-red-100">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-orange-600" />
+                    Faculty Session Count
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={getFacultySessionData()}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="name" stroke="#666" />
+                      <YAxis stroke="#666" />
+                      <Tooltip 
+                        contentStyle={{ background: 'rgba(255,255,255,0.95)', borderRadius: '10px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      />
+                      <Legend />
+                      <Bar dataKey="sessions" fill="#f59e0b" name="Sessions" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
             <Button 
               onClick={generateHTMLReport}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-6 text-lg shadow-xl"
             >
               <Download className="w-6 h-6 mr-3" />
-              Download Advanced HTML Report
+              Download Advanced HTML Report with Charts
             </Button>
           </CardContent>
         </Card>

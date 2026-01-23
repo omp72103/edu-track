@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { StudentPerformance, Student, Batch } from "@/entities/all";
+import { StudentPerformance, Student, Batch, AttendanceRecord, Session } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail } from "lucide-react";
+import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Calendar, BookOpen } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
 
 const assessmentTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Assignment", "Project", "Practical", "Final Exam", "Quiz"];
@@ -221,8 +223,19 @@ export default function PerformancePage() {
 
   const filteredStudents = students.filter(s => !filterBatch || s.batch_id === batches.find(b => b.id === filterBatch)?.batch_id);
 
-  const showStudentDialog = (student, stats, perfs) => {
-    setStudentDialog({ student, stats, perfs });
+  const showStudentDialog = async (student, stats, perfs) => {
+    // Fetch attendance data for the student
+    try {
+      const [attendanceData, sessionData] = await Promise.all([
+        AttendanceRecord.filter({ student_id: student.id }),
+        Session.filter({ batch_id: student.batch_id })
+      ]);
+      
+      setStudentDialog({ student, stats, perfs, attendance: attendanceData, sessions: sessionData });
+    } catch (error) {
+      console.error("Error loading student details:", error);
+      setStudentDialog({ student, stats, perfs, attendance: [], sessions: [] });
+    }
   };
 
   return (
@@ -467,89 +480,257 @@ export default function PerformancePage() {
         onUpdate={loadData}
       />
 
-      {/* Student Summary Dialog */}
-      {studentDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setStudentDialog(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-bold mb-2">{studentDialog.student.name}</h2>
-                  <div className="flex gap-3 text-blue-100">
-                    <span>Roll No: {studentDialog.student.roll_no}</span>
-                    {studentDialog.student.prn && <span>• PRN: {studentDialog.student.prn}</span>}
+      {/* Enhanced Student Summary Dialog with Charts */}
+      {studentDialog && (() => {
+        const totalSessions = studentDialog.sessions?.length || 0;
+        const presentCount = studentDialog.attendance?.filter(a => a.is_present).length || 0;
+        const absentCount = studentDialog.attendance?.filter(a => !a.is_present).length || 0;
+        const attendancePercent = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+
+        // Performance trend data
+        const performanceTrend = studentDialog.perfs.slice(-8).map(p => ({
+          subject: p.subject.substring(0, 10),
+          percentage: p.percentage
+        }));
+
+        // Subject-wise performance
+        const subjectPerformance = studentDialog.perfs.reduce((acc, p) => {
+          if (!acc[p.subject]) {
+            acc[p.subject] = { subject: p.subject, total: 0, count: 0 };
+          }
+          acc[p.subject].total += p.percentage;
+          acc[p.subject].count += 1;
+          return acc;
+        }, {});
+
+        const subjectData = Object.values(subjectPerformance).map(s => ({
+          subject: s.subject.substring(0, 12),
+          avg: Math.round(s.total / s.count)
+        }));
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={() => setStudentDialog(null)}>
+            <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-4xl font-bold mb-3">{studentDialog.student.name}</h2>
+                    <div className="flex gap-4 text-blue-100">
+                      <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> Roll: {studentDialog.student.roll_no}</span>
+                      {studentDialog.student.prn && <span>• PRN: {studentDialog.student.prn}</span>}
+                      {studentDialog.student.email && <span>• {studentDialog.student.email}</span>}
+                    </div>
                   </div>
+                  <button onClick={() => setStudentDialog(null)} className="text-white hover:bg-white/20 rounded-full p-3 transition-all">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <button onClick={() => setStudentDialog(null)} className="text-white hover:bg-white/20 rounded-full p-2">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
-            </div>
 
-            <div className="p-8 space-y-6">
-              {studentDialog.stats && (
-                <div className="grid grid-cols-3 gap-6">
-                  <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
-                    <CardContent className="p-6">
-                      <Award className="w-10 h-10 mb-3 opacity-80" />
-                      <div className="text-3xl font-bold">{studentDialog.stats.avgGrade}</div>
-                      <div className="text-green-100">Average Grade</div>
-                    </CardContent>
-                  </Card>
+              <div className="p-8">
+                <Tabs defaultValue="overview" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4 mb-8">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="attendance">Attendance</TabsTrigger>
+                    <TabsTrigger value="performance">Performance</TabsTrigger>
+                    <TabsTrigger value="history">History</TabsTrigger>
+                  </TabsList>
 
-                  <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
-                    <CardContent className="p-6">
-                      <TrendingUp className="w-10 h-10 mb-3 opacity-80" />
-                      <div className="text-3xl font-bold">{studentDialog.stats.avgPercentage}%</div>
-                      <div className="text-blue-100">Average Score</div>
-                    </CardContent>
-                  </Card>
+                  {/* Overview Tab */}
+                  <TabsContent value="overview" className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
+                        <CardContent className="p-6">
+                          <Award className="w-10 h-10 mb-3 opacity-80" />
+                          <div className="text-3xl font-bold">{studentDialog.stats?.avgGrade || 'N/A'}</div>
+                          <div className="text-green-100">Avg Grade</div>
+                        </CardContent>
+                      </Card>
 
-                  <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
-                    <CardContent className="p-6">
-                      <BarChart3 className="w-10 h-10 mb-3 opacity-80" />
-                      <div className="text-3xl font-bold">{studentDialog.stats.totalAssessments}</div>
-                      <div className="text-purple-100">Assessments</div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+                      <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
+                        <CardContent className="p-6">
+                          <TrendingUp className="w-10 h-10 mb-3 opacity-80" />
+                          <div className="text-3xl font-bold">{studentDialog.stats?.avgPercentage || 0}%</div>
+                          <div className="text-blue-100">Avg Score</div>
+                        </CardContent>
+                      </Card>
 
-              <div>
-                <h3 className="text-xl font-bold mb-4">Performance History</h3>
-                <div className="space-y-3">
-                  {studentDialog.perfs.map(perf => (
-                    <div key={perf.id} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="font-semibold">{perf.subject}</span>
-                            <Badge className={`${
-                              perf.grade === 'A+' || perf.grade === 'A' ? 'bg-green-100 text-green-800' :
-                              perf.grade === 'B+' || perf.grade === 'B' ? 'bg-blue-100 text-blue-800' :
-                              perf.grade === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {perf.grade}
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                            <span>{perf.assessment_type}</span>
-                            <span>{perf.marks_obtained}/{perf.total_marks} ({perf.percentage}%)</span>
+                      <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
+                        <CardContent className="p-6">
+                          <BarChart3 className="w-10 h-10 mb-3 opacity-80" />
+                          <div className="text-3xl font-bold">{studentDialog.stats?.totalAssessments || 0}</div>
+                          <div className="text-purple-100">Assessments</div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl">
+                        <CardContent className="p-6">
+                          <Calendar className="w-10 h-10 mb-3 opacity-80" />
+                          <div className="text-3xl font-bold">{attendancePercent}%</div>
+                          <div className="text-orange-100">Attendance</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Profile Details */}
+                    <Card className="bg-gradient-to-br from-gray-50 to-blue-50">
+                      <CardHeader>
+                        <CardTitle>Student Profile</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-gray-600">Batch</Label>
+                          <p className="font-semibold">{batches.find(b => b.batch_id === studentDialog.student.batch_id)?.batch_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-gray-600">College</Label>
+                          <p className="font-semibold">{studentDialog.student.college_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-gray-600">Year</Label>
+                          <p className="font-semibold">{studentDialog.student.year || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <Label className="text-gray-600">Branch</Label>
+                          <p className="font-semibold">{studentDialog.student.branch || 'N/A'}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Attendance Tab */}
+                  <TabsContent value="attendance" className="space-y-6">
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card className="bg-gradient-to-br from-blue-100 to-blue-200">
+                        <CardContent className="p-6 text-center">
+                          <BookOpen className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                          <div className="text-2xl font-bold text-blue-900">{totalSessions}</div>
+                          <div className="text-sm text-blue-700">Total Sessions</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-green-100 to-green-200">
+                        <CardContent className="p-6 text-center">
+                          <Award className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                          <div className="text-2xl font-bold text-green-900">{presentCount}</div>
+                          <div className="text-sm text-green-700">Present</div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-red-100 to-red-200">
+                        <CardContent className="p-6 text-center">
+                          <svg className="w-8 h-8 mx-auto mb-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          <div className="text-2xl font-bold text-red-900">{absentCount}</div>
+                          <div className="text-sm text-red-700">Absent</div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Attendance Percentage</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="w-full bg-gray-200 rounded-full h-8">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-green-500 h-8 rounded-full flex items-center justify-center text-white font-bold transition-all duration-1000"
+                            style={{ width: `${attendancePercent}%` }}
+                          >
+                            {attendancePercent}%
                           </div>
                         </div>
-                        <span className="text-sm text-gray-500">{perf.assessment_date}</span>
-                      </div>
+                        <p className="text-center mt-4 text-gray-600">
+                          {attendancePercent >= 75 ? '✅ Good Standing' : '⚠️ Below 75% - Needs Improvement'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Performance Tab with Charts */}
+                  <TabsContent value="performance" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Performance Trend */}
+                      <Card>
+                        <CardHeader className="bg-gradient-to-r from-purple-100 to-pink-100">
+                          <CardTitle>Performance Trend</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <ResponsiveContainer width="100%" height={250}>
+                            <LineChart data={performanceTrend}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="subject" angle={-45} textAnchor="end" height={80} />
+                              <YAxis />
+                              <Tooltip />
+                              <Legend />
+                              <Line type="monotone" dataKey="percentage" stroke="#8b5cf6" strokeWidth={3} name="Score %" />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+
+                      {/* Subject-wise Performance */}
+                      <Card>
+                        <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100">
+                          <CardTitle>Subject-wise Average</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={subjectData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="subject" angle={-45} textAnchor="end" height={80} />
+                              <YAxis />
+                              <Tooltip />
+                              <Legend />
+                              <Bar dataKey="avg" fill="#3b82f6" name="Avg %" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
                     </div>
-                  ))}
-                </div>
+                  </TabsContent>
+
+                  {/* History Tab */}
+                  <TabsContent value="history" className="space-y-4">
+                    <h3 className="text-xl font-bold">Assessment History</h3>
+                    {studentDialog.perfs.length === 0 ? (
+                      <p className="text-center text-gray-500 py-12">No assessment records found</p>
+                    ) : (
+                      studentDialog.perfs.map(perf => (
+                        <div key={perf.id} className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-5 border border-gray-200 hover:shadow-lg transition-all">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-3">
+                                <span className="font-bold text-lg">{perf.subject}</span>
+                                <Badge className={`${
+                                  perf.grade === 'A+' || perf.grade === 'A' ? 'bg-green-500 text-white' :
+                                  perf.grade === 'B+' || perf.grade === 'B' ? 'bg-blue-500 text-white' :
+                                  perf.grade === 'C' ? 'bg-yellow-500 text-white' :
+                                  'bg-red-500 text-white'
+                                } text-lg px-3 py-1`}>
+                                  {perf.grade}
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
+                                <span><strong>Type:</strong> {perf.assessment_type}</span>
+                                <span><strong>Score:</strong> {perf.marks_obtained}/{perf.total_marks} ({perf.percentage}%)</span>
+                                {perf.semester && <span><strong>Semester:</strong> {perf.semester}</span>}
+                                {perf.remarks && <span className="col-span-2 italic text-gray-600">{perf.remarks}</span>}
+                              </div>
+                            </div>
+                            <span className="text-sm text-gray-500 bg-white px-3 py-1 rounded-lg">{perf.assessment_date}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

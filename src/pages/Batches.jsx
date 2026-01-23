@@ -466,6 +466,18 @@ export default function BatchesPage() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
+                              navigate(createPageUrl(`StudentRecordsPage?batch_id=${batch.id}`));
+                            }}
+                            className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               exportBatchData(batch);
                             }}
                             disabled={isExporting && exportingId === batch.id}
@@ -475,7 +487,7 @@ export default function BatchesPage() {
                               <Clock className="w-4 h-4 mr-1 animate-spin" /> :
                               <Download className="w-4 h-4 mr-1" />
                             }
-                            📊 Export
+                            Export
                           </Button>
                         </div>
                       </div>

@@ -387,6 +387,9 @@ export default function QRAttendancePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Real-time Alerts */}
+      <FacultyAlerts sessionId={session_id} />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Brain, 
   Users, 
@@ -18,14 +20,24 @@ import {
   Download,
   FileSpreadsheet,
   TrendingUp,
-  CheckCircle
+  CheckCircle,
+  Calendar,
+  Clock
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
 
 const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 
 export default function PredictiveAnalysis() {
   const fileInputRef = useRef(null);
+  
+  // Event-Based Prediction State
+  const [customEvent, setCustomEvent] = useState("");
+  const [predictionPeriod, setPredictionPeriod] = useState("1month");
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [eventPredictions, setEventPredictions] = useState(null);
+  
+  // Student Risk Analysis State
   const [formData, setFormData] = useState({
     year: "",
     division: ""
@@ -84,7 +96,6 @@ export default function PredictiveAnalysis() {
   const analyzeAttendanceData = (data) => {
     const students = [];
     
-    // Find columns
     const findColumn = (keywords) => {
       for (const row of data) {
         for (const key of Object.keys(row)) {
@@ -119,24 +130,21 @@ export default function PredictiveAnalysis() {
       }
 
       if (name.trim().length > 0) {
-        // Calculate absence ratio
         const absenceRatio = totalDays > 0 ? (daysAbsent / totalDays) : 0;
         
-        // Absenteeism Risk Classification (Rule-based)
         let riskLevel = 'low';
         let riskScore = 0;
         if (percentage >= 85) {
           riskLevel = 'low';
-          riskScore = 20 + (100 - percentage) * 0.5; // 20-27.5
+          riskScore = 20 + (100 - percentage) * 0.5;
         } else if (percentage >= 70) {
           riskLevel = 'moderate';
-          riskScore = 40 + (85 - percentage) * 2; // 40-70
+          riskScore = 40 + (85 - percentage) * 2;
         } else {
           riskLevel = 'high';
-          riskScore = 70 + (70 - percentage) * 0.5; // 70-100
+          riskScore = 70 + (70 - percentage) * 0.5;
         }
 
-        // Academic Impact Prediction (Rule-based)
         let academicImpact = '';
         let predictedGradeDrop = '';
         if (percentage >= 90) {
@@ -150,7 +158,6 @@ export default function PredictiveAnalysis() {
           predictedGradeDrop = '2-3 grade points';
         }
 
-        // Predicted final attendance (simple linear projection)
         const trendFactor = absenceRatio > 0.15 ? -2 : absenceRatio > 0.1 ? -1 : 0;
         const predictedFinal = Math.max(0, Math.min(100, percentage + trendFactor));
 
@@ -196,6 +203,87 @@ export default function PredictiveAnalysis() {
     }
     
     return recommendations;
+  };
+
+  const generateEventPredictions = async () => {
+    setIsPredicting(true);
+    try {
+      const today = new Date();
+      const endDate = predictionPeriod === "1month" ? addMonths(today, 1) : 
+                      predictionPeriod === "2months" ? addMonths(today, 2) : addMonths(today, 3);
+      
+      const prompt = `You are an educational attendance prediction system for Indian colleges. Analyze and predict attendance patterns.
+
+Current Date: ${format(today, 'dd MMMM yyyy')}
+Prediction Period: ${format(today, 'dd MMM yyyy')} to ${format(endDate, 'dd MMM yyyy')}
+${customEvent ? `Custom Event to Consider: ${customEvent}` : ''}
+
+Based on the Indian academic calendar, festivals, and common events, predict attendance impact for the given period.
+
+Consider these factors:
+1. Major Indian festivals (Ganesh Chaturthi, Diwali, Holi, Eid, Christmas, Pongal, Onam, Durga Puja, etc.)
+2. National holidays (Independence Day, Republic Day, Gandhi Jayanti)
+3. College events (Annual Day, Sports Day, Cultural Fest, Technical Fest)
+4. Exam periods (Mid-terms, Finals, Practicals)
+5. Weather conditions (Monsoon, Extreme heat)
+6. Long weekends and bridge holidays
+7. Regional festivals based on college location
+
+Provide a detailed prediction with:
+1. List of upcoming events/festivals with dates
+2. Expected attendance drop percentage for each event
+3. Number of days likely to be affected
+4. Recommendations for faculty/administration
+
+Be specific with dates and realistic with predictions.`;
+
+      const response = await InvokeLLM({
+        prompt,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "Overall prediction summary" },
+            predicted_events: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  event_name: { type: "string" },
+                  event_date: { type: "string" },
+                  event_type: { type: "string", enum: ["festival", "holiday", "college_event", "exam", "weather", "other"] },
+                  expected_attendance_drop: { type: "number", description: "Percentage drop expected" },
+                  affected_days: { type: "number" },
+                  severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+                  description: { type: "string" }
+                }
+              }
+            },
+            weekly_predictions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  week: { type: "string" },
+                  expected_avg_attendance: { type: "number" },
+                  risk_level: { type: "string" },
+                  key_events: { type: "string" }
+                }
+              }
+            },
+            recommendations: {
+              type: "array",
+              items: { type: "string" }
+            },
+            overall_risk_score: { type: "number", description: "1-10 scale" }
+          }
+        }
+      });
+
+      setEventPredictions(response);
+    } catch (error) {
+      console.error("Error generating predictions:", error);
+    }
+    setIsPredicting(false);
   };
 
   const handleAnalyze = async () => {
@@ -585,7 +673,6 @@ export default function PredictiveAnalysis() {
         google.charts.setOnLoadCallback(drawCharts);
 
         function drawCharts() {
-            // Risk Distribution Pie Chart
             var pieData = google.visualization.arrayToDataTable([
                 ['Risk Level', 'Count'],
                 ${riskDistributionData}
@@ -607,7 +694,6 @@ export default function PredictiveAnalysis() {
             var pieChart = new google.visualization.PieChart(document.getElementById('risk_pie_chart'));
             pieChart.draw(pieData, pieOptions);
 
-            // Risk Score Bar Chart
             var barData = google.visualization.arrayToDataTable([
                 ['Student', 'Risk Score'],
                 ${studentChartData}
@@ -637,7 +723,6 @@ export default function PredictiveAnalysis() {
             var barChart = new google.visualization.ColumnChart(document.getElementById('risk_bar_chart'));
             barChart.draw(barData, barOptions);
 
-            // Attendance Impact Chart
             var impactData = google.visualization.arrayToDataTable([
                 ['Student', 'Attendance %'],
                 ${attendanceImpactData}
@@ -697,6 +782,27 @@ export default function PredictiveAnalysis() {
     }
   };
 
+  const getSeverityColor = (severity) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical': return 'border-red-500 bg-red-50';
+      case 'high': return 'border-orange-500 bg-orange-50';
+      case 'medium': return 'border-yellow-500 bg-yellow-50';
+      case 'low': return 'border-green-500 bg-green-50';
+      default: return 'border-gray-300 bg-gray-50';
+    }
+  };
+
+  const getEventIcon = (type) => {
+    switch (type) {
+      case 'festival': return '🎉';
+      case 'holiday': return '🏛️';
+      case 'college_event': return '🎓';
+      case 'exam': return '📝';
+      case 'weather': return '🌧️';
+      default: return '📅';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-6">
       <div className="max-w-7xl mx-auto">
@@ -706,245 +812,414 @@ export default function PredictiveAnalysis() {
             <Brain className="w-8 h-8 text-purple-600" />
             Predictive Attendance Insights
           </h1>
-          <p className="text-gray-600 mt-1">AI-powered absenteeism risk prediction and academic impact analysis</p>
+          <p className="text-gray-600 mt-1">AI-powered predictions for attendance patterns and student risk assessment</p>
         </div>
 
-        {message && (
-          <Alert className={`mb-6 ${message.type === 'error' ? 'border-red-200 bg-red-50' : message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
-            <AlertDescription className={message.type === 'error' ? 'text-red-800' : message.type === 'success' ? 'text-green-800' : 'text-blue-800'}>
-              {message.text}
-            </AlertDescription>
-          </Alert>
-        )}
+        <Tabs defaultValue="events" className="space-y-6">
+          <TabsList className="bg-white shadow-md p-1 rounded-xl">
+            <TabsTrigger value="events" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
+              <Calendar className="w-4 h-4 mr-2" />
+              Event-Based Predictions
+            </TabsTrigger>
+            <TabsTrigger value="students" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white rounded-lg px-6">
+              <Users className="w-4 h-4 mr-2" />
+              Student Risk Analysis
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Input Section */}
-        <Card className="shadow-xl border-2 border-purple-100 mb-6">
-          <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Student Risk Analysis - Upload & Configure
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label className="font-semibold">Academic Year *</Label>
-                <select
-                  value={formData.year}
-                  onChange={(e) => setFormData({...formData, year: e.target.value})}
-                  className="mt-2 w-full p-2 border rounded-lg"
-                >
-                  <option value="">Select Year</option>
-                  {years.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label className="font-semibold">Division *</Label>
-                <Input
-                  placeholder="e.g., A, B, C"
-                  value={formData.division}
-                  onChange={(e) => setFormData({...formData, division: e.target.value})}
-                  className="mt-2"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label className="font-semibold">Upload Attendance CSV *</Label>
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50 mt-2"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {selectedFile ? selectedFile.name : "Drop your attendance CSV here"}
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Required columns: Roll No, Student Name, Total Days, Days Present, Days Absent, Attendance %
-                </p>
-                <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Browse Files
-                </Button>
-              </div>
-            </div>
-
-            <Button 
-              onClick={handleAnalyze}
-              disabled={isProcessing || !selectedFile}
-              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 py-6 text-lg"
-            >
-              {isProcessing ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Data...</>
-              ) : (
-                <><Brain className="w-4 h-4 mr-2" /> Analyze Attendance & Predict Risks</>
-              )}
-            </Button>
-
-            <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-purple-200">
-              <h4 className="font-bold text-purple-900 mb-2 text-sm">🎯 What This Analysis Provides:</h4>
-              <ul className="text-xs text-purple-800 space-y-1">
-                <li className="flex items-center gap-2">✓ <strong>Rule-based absenteeism risk prediction</strong> (Low/Medium/High)</li>
-                <li className="flex items-center gap-2">✓ <strong>Academic impact assessment</strong> based on attendance patterns</li>
-                <li className="flex items-center gap-2">✓ <strong>Student-wise risk scores</strong> and intervention priorities</li>
-                <li className="flex items-center gap-2">✓ <strong>Interactive charts</strong> - pie, bar, distribution graphs</li>
-                <li className="flex items-center gap-2">✓ <strong>Downloadable HTML report</strong> with actionable recommendations</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results Section */}
-        {analysisResult && (
-          <>
-            {/* Summary Cards */}
-            <div className="grid md:grid-cols-4 gap-4 mb-6">
-              <Card className="shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                <CardContent className="p-6 text-center">
-                  <Users className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                  <div className="text-3xl font-bold">{analysisResult.summary.totalStudents}</div>
-                  <div className="text-sm opacity-90">Total Students</div>
-                </CardContent>
-              </Card>
-              <Card className="shadow-lg bg-gradient-to-br from-red-500 to-orange-500 text-white">
-                <CardContent className="p-6 text-center">
-                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                  <div className="text-3xl font-bold">{analysisResult.summary.highRisk}</div>
-                  <div className="text-sm opacity-90">High Risk (&lt;70%)</div>
-                </CardContent>
-              </Card>
-              <Card className="shadow-lg bg-gradient-to-br from-yellow-500 to-amber-500 text-white">
-                <CardContent className="p-6 text-center">
-                  <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                  <div className="text-3xl font-bold">{analysisResult.summary.moderateRisk}</div>
-                  <div className="text-sm opacity-90">Moderate Risk (70-84%)</div>
-                </CardContent>
-              </Card>
-              <Card className="shadow-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
-                <CardContent className="p-6 text-center">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-80" />
-                  <div className="text-3xl font-bold">{analysisResult.summary.lowRisk}</div>
-                  <div className="text-sm opacity-90">Low Risk (≥85%)</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Student Risk Table */}
-            <Card className="shadow-lg mb-6">
-              <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    Student-wise Risk Analysis
-                  </span>
-                  <Button 
-                    onClick={generateHTMLReport}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Full Report
-                  </Button>
+          {/* Event-Based Predictions Tab */}
+          <TabsContent value="events" className="space-y-6">
+            <Card className="shadow-xl border-2 border-purple-100">
+              <CardHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  Predict Attendance Based on Events & Festivals
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {analysisResult.students
-                    .sort((a, b) => parseFloat(b.riskScore) - parseFloat(a.riskScore))
-                    .map((student, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`border rounded-xl p-4 ${
-                        student.riskLevel === 'high' ? 'border-red-300 bg-red-50' :
-                        student.riskLevel === 'moderate' ? 'border-yellow-300 bg-yellow-50' :
-                        'border-green-300 bg-green-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-lg text-gray-900">{student.name}</h4>
-                            <Badge variant="outline">{student.rollNo}</Badge>
-                            <Badge className={getRiskColor(student.riskLevel)}>{student.riskLevel.toUpperCase()}</Badge>
-                            {student.interventionPriority === 'immediate' && (
-                              <Badge className="bg-red-600 text-white animate-pulse">⚠️ IMMEDIATE ACTION</Badge>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Prediction Period</Label>
+                    <Select value={predictionPeriod} onValueChange={setPredictionPeriod}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1month">Next 1 Month</SelectItem>
+                        <SelectItem value="2months">Next 2 Months</SelectItem>
+                        <SelectItem value="3months">Next 3 Months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Custom Event (Optional)</Label>
+                    <Input 
+                      placeholder="e.g., College Annual Day on 15th Feb, Technical Fest..."
+                      value={customEvent}
+                      onChange={(e) => setCustomEvent(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <Button 
+                  onClick={generateEventPredictions}
+                  disabled={isPredicting}
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
+                  {isPredicting ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Events...</>
+                  ) : (
+                    <><Brain className="w-4 h-4 mr-2" /> Generate Predictions</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {eventPredictions && (
+              <>
+                {/* Summary Card */}
+                <Card className="shadow-lg border-l-4 border-purple-500">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">📊 Prediction Summary</h3>
+                        <p className="text-gray-700">{eventPredictions.summary}</p>
+                      </div>
+                      <div className="text-center bg-gradient-to-br from-purple-500 to-indigo-600 text-white px-6 py-4 rounded-xl">
+                        <div className="text-3xl font-bold">{eventPredictions.overall_risk_score}/10</div>
+                        <div className="text-sm opacity-90">Risk Score</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Predicted Events */}
+                <Card className="shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-purple-600" />
+                      Upcoming Events & Expected Impact
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {eventPredictions.predicted_events?.map((event, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`border-l-4 rounded-lg p-4 ${getSeverityColor(event.severity)}`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xl">{getEventIcon(event.event_type)}</span>
+                                <h4 className="font-bold text-gray-900">{event.event_name}</h4>
+                                <Badge className={getRiskColor(event.severity)}>{event.severity}</Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">{event.description}</p>
+                              <div className="flex flex-wrap gap-4 text-sm">
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-4 h-4" /> {event.event_date}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" /> {event.affected_days} days affected
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-red-600">-{event.expected_attendance_drop}%</div>
+                              <div className="text-xs text-gray-500">Expected Drop</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Weekly Predictions */}
+                {eventPredictions.weekly_predictions && (
+                  <Card className="shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                        Weekly Attendance Forecast
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {eventPredictions.weekly_predictions.map((week, idx) => (
+                          <div key={idx} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border">
+                            <div className="text-sm font-medium text-gray-600 mb-2">{week.week}</div>
+                            <div className="text-3xl font-bold text-gray-900 mb-1">{week.expected_avg_attendance}%</div>
+                            <Badge className={getRiskColor(week.risk_level)}>{week.risk_level} risk</Badge>
+                            {week.key_events && (
+                              <div className="text-xs text-gray-500 mt-2">{week.key_events}</div>
                             )}
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold" style={{
-                            color: student.riskScore > 70 ? '#ef4444' : 
-                                   student.riskScore > 40 ? '#f59e0b' : '#22c55e'
-                          }}>
-                            {student.riskScore}
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Recommendations */}
+                {eventPredictions.recommendations && (
+                  <Card className="shadow-lg border-2 border-green-200 bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-green-800">
+                        <Target className="w-5 h-5" />
+                        Recommendations for Administration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <ul className="space-y-3">
+                        {eventPredictions.recommendations.map((rec, idx) => (
+                          <li key={idx} className="flex items-start gap-3">
+                            <ChevronRight className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                            <span className="text-gray-700">{rec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          {/* Student Risk Analysis Tab */}
+          <TabsContent value="students" className="space-y-6">
+            {message && (
+              <Alert className={`${message.type === 'error' ? 'border-red-200 bg-red-50' : message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
+                <AlertDescription className={message.type === 'error' ? 'text-red-800' : message.type === 'success' ? 'text-green-800' : 'text-blue-800'}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Card className="shadow-xl border-2 border-purple-100">
+              <CardHeader className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  Student Risk Analysis - Upload & Configure
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-semibold">Academic Year *</Label>
+                    <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year}>{year}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Division *</Label>
+                    <Input
+                      placeholder="e.g., A, B, C"
+                      value={formData.division}
+                      onChange={(e) => setFormData({...formData, division: e.target.value})}
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="font-semibold">Upload Attendance CSV *</Label>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-purple-300 rounded-lg p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-gradient-to-br from-purple-50 to-blue-50 mt-2"
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <FileSpreadsheet className="w-16 h-16 mx-auto text-purple-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {selectedFile ? selectedFile.name : "Drop your attendance CSV here"}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      Required columns: Roll No, Student Name, Total Days, Days Present, Days Absent, Attendance %
+                    </p>
+                    <Button className="mt-4 bg-purple-600 hover:bg-purple-700">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Browse Files
+                    </Button>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleAnalyze}
+                  disabled={isProcessing || !selectedFile}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 py-6 text-lg"
+                >
+                  {isProcessing ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing Data...</>
+                  ) : (
+                    <><Brain className="w-4 h-4 mr-2" /> Analyze Attendance & Predict Risks</>
+                  )}
+                </Button>
+
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-purple-200">
+                  <h4 className="font-bold text-purple-900 mb-2 text-sm">🎯 What This Analysis Provides:</h4>
+                  <ul className="text-xs text-purple-800 space-y-1">
+                    <li className="flex items-center gap-2">✓ <strong>Rule-based absenteeism risk prediction</strong> (Low/Medium/High)</li>
+                    <li className="flex items-center gap-2">✓ <strong>Academic impact assessment</strong> based on attendance patterns</li>
+                    <li className="flex items-center gap-2">✓ <strong>Student-wise risk scores</strong> and intervention priorities</li>
+                    <li className="flex items-center gap-2">✓ <strong>Interactive charts</strong> - pie, bar, distribution graphs</li>
+                    <li className="flex items-center gap-2">✓ <strong>Downloadable HTML report</strong> with actionable recommendations</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {analysisResult && (
+              <>
+                <div className="grid md:grid-cols-4 gap-4">
+                  <Card className="shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                    <CardContent className="p-6 text-center">
+                      <Users className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-3xl font-bold">{analysisResult.summary.totalStudents}</div>
+                      <div className="text-sm opacity-90">Total Students</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="shadow-lg bg-gradient-to-br from-red-500 to-orange-500 text-white">
+                    <CardContent className="p-6 text-center">
+                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-3xl font-bold">{analysisResult.summary.highRisk}</div>
+                      <div className="text-sm opacity-90">High Risk (&lt;70%)</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="shadow-lg bg-gradient-to-br from-yellow-500 to-amber-500 text-white">
+                    <CardContent className="p-6 text-center">
+                      <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-3xl font-bold">{analysisResult.summary.moderateRisk}</div>
+                      <div className="text-sm opacity-90">Moderate Risk (70-84%)</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="shadow-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+                    <CardContent className="p-6 text-center">
+                      <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-80" />
+                      <div className="text-3xl font-bold">{analysisResult.summary.lowRisk}</div>
+                      <div className="text-sm opacity-90">Low Risk (≥85%)</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Users className="w-5 h-5 text-purple-600" />
+                        Student-wise Risk Analysis
+                      </span>
+                      <Button 
+                        onClick={generateHTMLReport}
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Full Report
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {analysisResult.students.map((student, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`border rounded-xl p-4 ${
+                            student.riskLevel === 'high' ? 'border-red-300 bg-red-50' :
+                            student.riskLevel === 'moderate' ? 'border-yellow-300 bg-yellow-50' :
+                            'border-green-300 bg-green-50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-lg text-gray-900">{student.name}</h4>
+                                <Badge variant="outline">{student.rollNo}</Badge>
+                                <Badge className={getRiskColor(student.riskLevel)}>{student.riskLevel.toUpperCase()}</Badge>
+                                {student.interventionPriority === 'immediate' && (
+                                  <Badge className="bg-red-600 text-white animate-pulse">⚠️ IMMEDIATE ACTION</Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold" style={{
+                                color: student.riskScore > 70 ? '#ef4444' : 
+                                       student.riskScore > 40 ? '#f59e0b' : '#22c55e'
+                              }}>
+                                {student.riskScore}
+                              </div>
+                              <div className="text-xs text-gray-500">Risk Score</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500">Risk Score</div>
-                        </div>
-                      </div>
 
-                      <div className="grid md:grid-cols-4 gap-3 mb-3">
-                        <div className="bg-white/60 rounded-lg p-3">
-                          <div className="text-sm text-gray-600">Current Attendance</div>
-                          <div className="text-xl font-bold text-gray-900">{student.percentage}%</div>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-3">
-                          <div className="text-sm text-gray-600">Predicted Final</div>
-                          <div className="text-lg font-semibold text-gray-900">{student.predictedFinalAttendance}%</div>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-3">
-                          <div className="text-sm text-gray-600">Academic Impact</div>
-                          <div className="text-sm font-semibold text-gray-900">{student.academicImpact.substring(0, 30)}...</div>
-                        </div>
-                        <div className="bg-white/60 rounded-lg p-3">
-                          <div className="text-sm text-gray-600">Grade Drop Risk</div>
-                          <div className="text-lg font-bold text-red-600">{student.predictedGradeDrop}</div>
-                        </div>
-                      </div>
+                          <div className="grid md:grid-cols-4 gap-3 mb-3">
+                            <div className="bg-white/60 rounded-lg p-3">
+                              <div className="text-sm text-gray-600">Current Attendance</div>
+                              <div className="text-xl font-bold text-gray-900">{student.percentage}%</div>
+                            </div>
+                            <div className="bg-white/60 rounded-lg p-3">
+                              <div className="text-sm text-gray-600">Predicted Final</div>
+                              <div className="text-lg font-semibold text-gray-900">{student.predictedFinalAttendance}%</div>
+                            </div>
+                            <div className="bg-white/60 rounded-lg p-3">
+                              <div className="text-sm text-gray-600">Academic Impact</div>
+                              <div className="text-sm font-semibold text-gray-900">{student.academicImpact.substring(0, 30)}...</div>
+                            </div>
+                            <div className="bg-white/60 rounded-lg p-3">
+                              <div className="text-sm text-gray-600">Grade Drop Risk</div>
+                              <div className="text-lg font-bold text-red-600">{student.predictedGradeDrop}</div>
+                            </div>
+                          </div>
 
-                      {student.recommendations?.length > 0 && (
-                        <div className="bg-white/80 rounded-lg p-3">
-                          <div className="text-sm font-semibold text-green-700 mb-1">💡 Recommendations:</div>
-                          <ul className="text-sm text-gray-700 space-y-1">
-                            {student.recommendations.map((rec, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <ChevronRight className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                                {rec}
-                              </li>
-                            ))}
-                          </ul>
+                          {student.recommendations?.length > 0 && (
+                            <div className="bg-white/80 rounded-lg p-3">
+                              <div className="text-sm font-semibold text-green-700 mb-1">💡 Recommendations:</div>
+                              <ul className="text-sm text-gray-700 space-y-1">
+                                {student.recommendations.map((rec, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <ChevronRight className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                    {rec}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
-            {/* Methodology Note */}
-            <Card className="shadow-lg border-2 border-yellow-200 bg-yellow-50">
-              <CardContent className="p-6">
-                <h3 className="font-bold text-yellow-900 mb-3 flex items-center gap-2">
-                  <Brain className="w-5 h-5" />
-                  📊 Prediction Methodology
-                </h3>
-                <div className="text-sm text-yellow-800 space-y-2">
-                  <p><strong>Rule-Based Inference:</strong> All predictions are derived from actual CSV data using empirical rules.</p>
-                  <p><strong>Risk Classification:</strong> Based on attendance percentage - Low (≥85%), Moderate (70-84%), High (&lt;70%)</p>
-                  <p><strong>Academic Impact:</strong> Correlation between attendance and performance based on educational research</p>
-                  <p><strong>No External Data:</strong> Zero assumptions or external training datasets used</p>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+                <Card className="shadow-lg border-2 border-yellow-200 bg-yellow-50">
+                  <CardContent className="p-6">
+                    <h3 className="font-bold text-yellow-900 mb-3 flex items-center gap-2">
+                      <Brain className="w-5 h-5" />
+                      📊 Prediction Methodology
+                    </h3>
+                    <div className="text-sm text-yellow-800 space-y-2">
+                      <p><strong>Rule-Based Inference:</strong> All predictions are derived from actual CSV data using empirical rules.</p>
+                      <p><strong>Risk Classification:</strong> Based on attendance percentage - Low (≥85%), Moderate (70-84%), High (&lt;70%)</p>
+                      <p><strong>Academic Impact:</strong> Correlation between attendance and performance based on educational research</p>
+                      <p><strong>No External Data:</strong> Zero assumptions or external training datasets used</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

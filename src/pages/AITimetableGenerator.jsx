@@ -299,28 +299,30 @@ export default function AITimetableGenerator() {
 
       // Modern Header with Gradient Effect
       doc.setFillColor(79, 70, 229);
-      doc.rect(0, 0, 297, 35, 'F');
+      doc.rect(0, 0, 297, 32, 'F');
       
       doc.setFillColor(59, 130, 246);
-      doc.rect(0, 0, 297, 30, 'F');
+      doc.rect(0, 0, 297, 28, 'F');
       
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(22);
+      doc.setFontSize(18);
       doc.setFont(undefined, 'bold');
-      doc.text(batch.batch_name, 148, 12, { align: 'center' });
+      doc.text(batch.batch_name, 148, 10, { align: 'center' });
       
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont(undefined, 'normal');
-      doc.text(`Academic Timetable | ${batch.year || ''} ${batch.branch || ''}`, 148, 20, { align: 'center' });
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 148, 26, { align: 'center' });
+      doc.text(`Academic Timetable | ${batch.year || ''} ${batch.branch || ''}`, 148, 17, { align: 'center' });
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 148, 23, { align: 'center' });
 
-      // Table setup - adjusted for better fit
-      let y = 40;
-      const dayColWidth = 25;
-      const totalSlotsWidth = 297 - dayColWidth - 20; // Total available width for time slots
-      const slotColWidth = totalSlotsWidth / timeSlots.length;
-      const rowHeight = 20;
-      const startX = 10;
+      // Table setup - adjusted for better fit with all slots including breaks
+      let y = 36;
+      const pageWidth = 297;
+      const margin = 8;
+      const dayColWidth = 22;
+      const availableWidth = pageWidth - (2 * margin) - dayColWidth;
+      const slotColWidth = availableWidth / timeSlots.length;
+      const rowHeight = 24;
+      const startX = margin;
 
       // Header Row - Time Slots
       doc.setFillColor(99, 102, 241);
@@ -334,20 +336,27 @@ export default function AITimetableGenerator() {
         const xPos = startX + dayColWidth + idx * slotColWidth;
         
         if (slot.type === 'break') {
+          // Break column with amber/yellow color
           doc.setFillColor(251, 191, 36);
           doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
           doc.setTextColor(120, 53, 15);
-          doc.setFontSize(6.5);
-          doc.text(slot.name, xPos + slotColWidth/2, y + 7, { align: 'center' });
-          doc.setFontSize(5.5);
-          doc.text(slot.time, xPos + slotColWidth/2, y + 13, { align: 'center' });
+          doc.setFontSize(6);
+          doc.setFont(undefined, 'bold');
+          doc.text(slot.name, xPos + slotColWidth/2, y + 9, { align: 'center' });
+          doc.setFontSize(5);
+          doc.setFont(undefined, 'normal');
+          const timeFormatted = slot.time.replace('-', '\n');
+          doc.text(slot.time, xPos + slotColWidth/2, y + 16, { align: 'center' });
         } else {
           doc.setFillColor(99, 102, 241);
           doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
           doc.setTextColor(255, 255, 255);
-          doc.setFontSize(6);
-          doc.text(slot.time, xPos + slotColWidth/2, y + 11, { align: 'center' });
+          doc.setFontSize(5.5);
+          doc.text(slot.time, xPos + slotColWidth/2, y + 14, { align: 'center' });
         }
+        // Draw border
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(xPos, y, slotColWidth, rowHeight, 'S');
       });
       
       y += rowHeight;
@@ -367,11 +376,12 @@ export default function AITimetableGenerator() {
           const xPos = startX + dayColWidth + idx * slotColWidth;
           
           if (slot.type === 'break') {
+            // Break cell - amber background
             doc.setFillColor(254, 243, 199);
             doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
             doc.setTextColor(146, 64, 14);
-            doc.setFontSize(7);
-            doc.text('---', xPos + slotColWidth/2, y + 13, { align: 'center' });
+            doc.setFontSize(6);
+            doc.text('BREAK', xPos + slotColWidth/2, y + 14, { align: 'center' });
           } else {
             const entry = dayEntries.find(e => e.time_slot === slot.time);
             
@@ -379,23 +389,27 @@ export default function AITimetableGenerator() {
               doc.setFillColor(224, 231, 255);
               doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
               doc.setTextColor(67, 56, 202);
-              doc.setFontSize(6.5);
-              doc.setFont(undefined, 'bold');
-              const subjectText = entry.subject.length > 15 ? entry.subject.substring(0, 13) + '..' : entry.subject;
-              doc.text(subjectText, xPos + slotColWidth/2, y + 7, { align: 'center' });
               doc.setFontSize(5.5);
-              doc.setFont(undefined, 'normal');
-              const facultyText = entry.faculty_name.length > 18 ? entry.faculty_name.substring(0, 16) + '..' : entry.faculty_name;
-              doc.text(facultyText, xPos + slotColWidth/2, y + 12, { align: 'center' });
+              doc.setFont(undefined, 'bold');
+              const maxChars = Math.floor(slotColWidth / 1.8);
+              const subjectText = entry.subject.length > maxChars ? entry.subject.substring(0, maxChars - 2) + '..' : entry.subject;
+              doc.text(subjectText, xPos + slotColWidth/2, y + 8, { align: 'center' });
               doc.setFontSize(5);
-              doc.text(entry.class_type, xPos + slotColWidth/2, y + 16, { align: 'center' });
+              doc.setFont(undefined, 'normal');
+              const facultyText = entry.faculty_name.length > maxChars ? entry.faculty_name.substring(0, maxChars - 2) + '..' : entry.faculty_name;
+              doc.text(facultyText, xPos + slotColWidth/2, y + 14, { align: 'center' });
+              doc.setFontSize(4.5);
+              doc.text(entry.class_type, xPos + slotColWidth/2, y + 19, { align: 'center' });
             } else {
               doc.setFillColor(dayIdx % 2 === 0 ? 249 : 255, dayIdx % 2 === 0 ? 250 : 255, dayIdx % 2 === 0 ? 251 : 255);
               doc.rect(xPos, y, slotColWidth, rowHeight, 'F');
+              doc.setTextColor(180, 180, 180);
+              doc.setFontSize(6);
+              doc.text('-', xPos + slotColWidth/2, y + 14, { align: 'center' });
             }
           }
           
-          doc.setDrawColor(209, 213, 219);
+          doc.setDrawColor(200, 200, 200);
           doc.rect(xPos, y, slotColWidth, rowHeight, 'S');
         });
         

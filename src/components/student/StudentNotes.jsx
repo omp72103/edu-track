@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { BookOpen, Download, Search, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { jsPDF } from "jspdf";
 
 export default function StudentNotes({ student }) {
   const [notes, setNotes] = useState([]);
@@ -166,7 +167,113 @@ export default function StudentNotes({ student }) {
                   {note.uploaded_by_name && <p><strong>By:</strong> {note.uploaded_by_name}</p>}
                 </div>
                 <Button 
-                  onClick={() => window.open(note.file_url, '_blank')}
+                  onClick={() => {
+                    if (note.file_url && note.file_url !== '#') {
+                      window.open(note.file_url, '_blank');
+                    } else {
+                      // Generate PDF for static notes
+                      const doc = new jsPDF();
+                      
+                      // Header
+                      doc.setFillColor(59, 130, 246);
+                      doc.rect(0, 0, 210, 40, 'F');
+                      doc.setTextColor(255, 255, 255);
+                      doc.setFontSize(20);
+                      doc.setFont(undefined, 'bold');
+                      doc.text(note.title, 105, 18, { align: 'center' });
+                      doc.setFontSize(12);
+                      doc.setFont(undefined, 'normal');
+                      doc.text(`Subject: ${note.subject}`, 105, 28, { align: 'center' });
+                      doc.text(`By: ${note.uploaded_by_name}`, 105, 35, { align: 'center' });
+                      
+                      // Content
+                      doc.setTextColor(0, 0, 0);
+                      doc.setFontSize(14);
+                      doc.setFont(undefined, 'bold');
+                      doc.text('Description', 20, 55);
+                      doc.setFontSize(11);
+                      doc.setFont(undefined, 'normal');
+                      const descLines = doc.splitTextToSize(note.description, 170);
+                      doc.text(descLines, 20, 65);
+                      
+                      // Sample content based on subject
+                      let sampleContent = '';
+                      if (note.subject === 'Machine Learning') {
+                        sampleContent = `
+Machine Learning Notes
+
+1. Introduction to Neural Networks
+- Artificial neurons and perceptrons
+- Activation functions (ReLU, Sigmoid, Tanh)
+- Forward propagation
+- Backpropagation algorithm
+
+2. Deep Learning Architectures
+- Convolutional Neural Networks (CNN)
+- Recurrent Neural Networks (RNN)
+- Long Short-Term Memory (LSTM)
+- Transformers and Attention Mechanism
+
+3. Training Techniques
+- Gradient descent optimization
+- Learning rate scheduling
+- Regularization (L1, L2, Dropout)
+- Batch normalization
+
+4. Practical Applications
+- Image classification
+- Natural language processing
+- Speech recognition
+- Recommendation systems`;
+                      } else if (note.subject === 'Data Structures') {
+                        sampleContent = `
+Data Structures Notes
+
+1. Trees
+- Binary Trees
+- Binary Search Trees (BST)
+- AVL Trees (Self-balancing)
+- Red-Black Trees
+
+2. Graphs
+- Graph representation (Adjacency Matrix/List)
+- BFS and DFS traversal
+- Shortest path algorithms
+- Minimum Spanning Tree
+
+3. Tree Operations
+- Insertion and Deletion
+- Tree traversal (Inorder, Preorder, Postorder)
+- Height and Depth calculation
+- Balancing operations`;
+                      } else {
+                        sampleContent = `
+${note.subject} Notes
+
+This document contains comprehensive study material for ${note.subject}.
+
+Topics Covered:
+- Core concepts and fundamentals
+- Important theories and principles
+- Practical examples and applications
+- Problem-solving techniques
+- Exam preparation tips
+
+For detailed content, please refer to the course materials provided by your instructor.`;
+                      }
+                      
+                      doc.setFontSize(10);
+                      const contentLines = doc.splitTextToSize(sampleContent, 170);
+                      doc.text(contentLines, 20, 85);
+                      
+                      // Footer
+                      doc.setFontSize(8);
+                      doc.setTextColor(128, 128, 128);
+                      doc.text(`Downloaded: ${new Date().toLocaleDateString()} | EDU TRACK`, 105, 285, { align: 'center' });
+                      
+                      doc.save(`${note.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+                    }
+                  }}
                   className="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600"
                 >
                   <Download className="w-4 h-4 mr-2" />

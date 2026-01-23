@@ -20,7 +20,6 @@ import ManageColleges from './pages/ManageColleges';
 import ManageFaculty from './pages/ManageFaculty';
 import ManageTimeTable from './pages/ManageTimeTable';
 import Messages from './pages/Messages';
-import Performance from './pages/Performance';
 import Profile from './pages/Profile';
 import ProxyDetection from './pages/ProxyDetection';
 import QRAttendance from './pages/QRAttendance';
@@ -32,6 +31,8 @@ import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
+import Performance from './pages/Performance';
+import FeedbackComplaintsAdmin from './pages/FeedbackComplaintsAdmin';
 import __Layout from './Layout.jsx';
 
 
@@ -58,7 +59,6 @@ export const PAGES = {
     "ManageFaculty": ManageFaculty,
     "ManageTimeTable": ManageTimeTable,
     "Messages": Messages,
-    "Performance": Performance,
     "Profile": Profile,
     "ProxyDetection": ProxyDetection,
     "QRAttendance": QRAttendance,
@@ -70,6 +70,8 @@ export const PAGES = {
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
+    "Performance": Performance,
+    "FeedbackComplaintsAdmin": FeedbackComplaintsAdmin,
 }
 
 export const pagesConfig = {

@@ -54,33 +54,36 @@ export default function StudentAnalysis({ student }) {
         setPerformance(performanceData);
       }
 
-      // Use static attendance if no records
+      // Use static attendance if no records - realistic data
       if (attendanceData.length === 0) {
-        const staticAttendance = Array(35).fill(null).map((_, i) => ({
+        const staticAttendance = Array(42).fill(null).map((_, i) => ({
           id: `static-${i}`,
           student_id: student.id,
-          is_present: i % 5 !== 0 // 80% attendance pattern
+          is_present: Math.random() > 0.18 // ~82% attendance
         }));
         setAttendance(staticAttendance);
       } else {
         setAttendance(attendanceData);
       }
 
-      // Static sessions
-      const staticSessions = sessionData.length === 0 ? Array(45).fill(null).map((_, i) => ({
+      // Static sessions - realistic count
+      const staticSessions = sessionData.length === 0 ? Array(42).fill(null).map((_, i) => ({
         id: `session-${i}`,
         batch_id: student.batch_id
       })) : sessionData;
       setSessions(staticSessions);
 
-      // Static assignments
+      // Static assignments - more realistic
       if (assignmentData.length === 0) {
         const staticAssignments = [
-          { status: 'Evaluated', is_late: false },
-          { status: 'Evaluated', is_late: false },
+          { status: 'Evaluated', is_late: false, marks_obtained: 85, total_marks: 100 },
+          { status: 'Evaluated', is_late: false, marks_obtained: 92, total_marks: 100 },
+          { status: 'Evaluated', is_late: false, marks_obtained: 78, total_marks: 100 },
           { status: 'Submitted', is_late: false },
           { status: 'Submitted', is_late: true },
-          { status: 'Evaluated', is_late: false }
+          { status: 'Evaluated', is_late: false, marks_obtained: 88, total_marks: 100 },
+          { status: 'Evaluated', is_late: false, marks_obtained: 90, total_marks: 100 },
+          { status: 'Pending', is_late: false }
         ];
         setAssignments(staticAssignments);
       } else {

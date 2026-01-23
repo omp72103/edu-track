@@ -306,6 +306,127 @@ export default function AdvancedAnalysis() {
       allRowKeys: data[0] ? Object.keys(data[0]) : []
     });
     
+    // Check if this is a summary CSV with pre-calculated attendance
+    // Look for columns like: Total Days, Days Present, Days Absent, Attendance %
+    const headerUpper = headers.map(h => h.toUpperCase().trim());
+    const hasTotalDays = headerUpper.some(h => h.includes('TOTAL') && h.includes('DAY'));
+    const hasDaysPresent = headerUpper.some(h => (h.includes('PRESENT') || h.includes('DAYS PRESENT')));
+    const hasAttendancePercent = headerUpper.some(h => h.includes('ATTENDANCE') || h.includes('%'));
+    
+    const isSummaryFormat = hasTotalDays || hasDaysPresent || hasAttendancePercent;
+    
+    console.log('📋 Format detection:', { isSummaryFormat, hasTotalDays, hasDaysPresent, hasAttendancePercent });
+    
+    if (isSummaryFormat) {
+      // Handle summary CSV format (Roll No, Student Name, Class, Total Days, Days Present, Days Absent, Attendance %)
+      console.log('📊 Detected SUMMARY format CSV with pre-calculated attendance');
+      
+      // Find column names (case-insensitive matching)
+      const findColumn = (keywords) => {
+        for (const h of headers) {
+          const upper = h.toUpperCase().trim();
+          if (keywords.some(k => upper.includes(k) || upper === k)) {
+            return h;
+          }
+        }
+        return null;
+      };
+      
+      const rollNoCol = findColumn(['ROLL NO', 'ROLL', 'SL NO', 'SR NO', 'SERIAL']);
+      const nameCol = findColumn(['STUDENT NAME', 'NAME', 'STUDENT']);
+      const classCol = findColumn(['CLASS', 'BATCH', 'DIVISION']);
+      const totalDaysCol = findColumn(['TOTAL DAYS', 'TOTAL']);
+      const presentCol = findColumn(['DAYS PRESENT', 'PRESENT']);
+      const absentCol = findColumn(['DAYS ABSENT', 'ABSENT']);
+      const percentCol = findColumn(['ATTENDANCE %', 'ATTENDANCE', '%', 'PERCENT']);
+      
+      console.log('📌 Column mapping:', { rollNoCol, nameCol, classCol, totalDaysCol, presentCol, absentCol, percentCol });
+      
+      // Parse student attendance from summary data
+      const studentAttendance = data.map(row => {
+        const name = row[nameCol] || '';
+        const rollNo = row[rollNoCol] || '';
+        const studentClass = row[classCol] || '';
+        const totalDays = parseInt(row[totalDaysCol]) || 0;
+        const daysPresent = parseInt(row[presentCol]) || 0;
+        const daysAbsent = parseInt(row[absentCol]) || 0;
+        
+        // Get percentage - either from CSV or calculate it
+        let percentage = 0;
+        if (percentCol && row[percentCol]) {
+          // Remove % sign and parse
+          percentage = parseFloat(row[percentCol].toString().replace('%', '').trim()) || 0;
+        } else if (totalDays > 0) {
+          percentage = ((daysPresent / totalDays) * 100);
+        }
+        
+        return {
+          name: name.trim(),
+          rollNo: rollNo.toString().trim(),
+          prn: '',
+          studentClass,
+          present: daysPresent,
+          absent: daysAbsent,
+          total: totalDays,
+          percentage: percentage.toFixed(1)
+        };
+      }).filter(s => s.name && s.name.trim().length > 0);
+      
+      // Sort by attendance percentage (descending)
+      studentAttendance.sort((a, b) => parseFloat(b.percentage) - parseFloat(a.percentage));
+      
+      // Calculate overall statistics
+      const totalStudents = studentAttendance.length;
+      const avgAttendance = totalStudents > 0 
+        ? (studentAttendance.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / totalStudents)
+        : 0;
+      
+      // For summary format, we don't have session-wise data, so create a summary view
+      const totalDaysValue = studentAttendance.length > 0 ? studentAttendance[0].total : 0;
+      
+      // Create attendance distribution as "attendanceByDate" for charts
+      const attendanceByDate = [
+        { date: 'Overall', present: Math.round(avgAttendance), total: 100, percentage: avgAttendance.toFixed(1) }
+      ];
+      
+      // Add distribution breakdown for better visualization
+      const ranges = [
+        { range: '90-100%', min: 90, max: 100 },
+        { range: '80-89%', min: 80, max: 90 },
+        { range: '75-79%', min: 75, max: 80 },
+        { range: '70-74%', min: 70, max: 75 },
+        { range: '60-69%', min: 60, max: 70 },
+        { range: '<60%', min: 0, max: 60 }
+      ];
+      
+      ranges.forEach(r => {
+        const count = studentAttendance.filter(s => {
+          const p = parseFloat(s.percentage);
+          return p >= r.min && p < r.max;
+        }).length;
+        attendanceByDate.push({
+          date: r.range,
+          present: count,
+          total: totalStudents,
+          percentage: totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0
+        });
+      });
+      
+      console.log('✅ Summary analysis complete:', { 
+        students: studentAttendance.length, 
+        avgAttendance: avgAttendance.toFixed(1),
+        totalDays: totalDaysValue
+      });
+      
+      return { 
+        attendanceByDate, 
+        studentAttendance, 
+        totalSessions: totalDaysValue,
+        isSummaryFormat: true
+      };
+    }
+    
+    // Original session-wise P/A format handling
     // Extract date columns - look for any column that's NOT metadata columns
     const metadataColumns = ['SL NO', 'PRN', 'STUDENT NAME'];
     const dateColumns = headers.filter(h => {
@@ -363,7 +484,7 @@ export default function AdvancedAnalysis() {
         firstRowKeys: data[0] ? Object.keys(data[0]) : [],
         sampleData: data.slice(0, 2)
       });
-      throw new Error('No attendance data detected. Please ensure your file has attendance marked as P/A or Present/Absent in date columns.');
+      throw new Error('No attendance data detected. Please ensure your file has attendance marked as P/A or Present/Absent in date columns, OR has pre-calculated columns like Total Days, Days Present, Attendance %.');
     }
 
     // Calculate attendance for each date column
@@ -429,7 +550,7 @@ export default function AdvancedAnalysis() {
 
     console.log('Analysis complete:', { sessions: dateColumns.length, students: students.length });
 
-    return { attendanceByDate, studentAttendance, totalSessions: dateColumns.length };
+    return { attendanceByDate, studentAttendance, totalSessions: dateColumns.length, isSummaryFormat: false };
   };
 
   const exportToCSV = (analysis, batchInfo) => {
@@ -496,11 +617,12 @@ export default function AdvancedAnalysis() {
   };
 
   const generateHTMLReport = (analysis, batchInfo, config) => {
-    const { attendanceByDate, studentAttendance, totalSessions } = analysis;
+    const { attendanceByDate, studentAttendance, totalSessions, isSummaryFormat } = analysis;
     const theme = getThemeColors(config.theme);
     
-    const overallAttendance = attendanceByDate.length > 0 
-      ? (attendanceByDate.reduce((sum, d) => sum + parseFloat(d.percentage), 0) / attendanceByDate.length).toFixed(1)
+    // Calculate overall attendance from student data for accuracy
+    const overallAttendance = studentAttendance.length > 0 
+      ? (studentAttendance.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / studentAttendance.length).toFixed(1)
       : 0;
 
     const topPerformers = studentAttendance.slice(0, 10);
@@ -510,7 +632,11 @@ export default function AdvancedAnalysis() {
     const average = studentAttendance.filter(s => parseFloat(s.percentage) >= 60 && parseFloat(s.percentage) < 75).length;
     const poor = studentAttendance.filter(s => parseFloat(s.percentage) < 60).length;
 
-    const chartData = attendanceByDate.map(d => `['${d.date.replace(/'/g, "\\'")}', ${parseFloat(d.percentage)}]`).join(',');
+    // For summary format, create distribution chart data
+    const chartData = isSummaryFormat 
+      ? attendanceByDate.slice(1).map(d => `['${d.date.replace(/'/g, "\\'")}', ${d.present}]`).join(',')
+      : attendanceByDate.map(d => `['${d.date.replace(/'/g, "\\'")}', ${parseFloat(d.percentage)}]`).join(',');
+    
     const studentChartData = studentAttendance.slice(0, 20).map(s => 
       `['${s.name.substring(0, 20).replace(/'/g, "\\'")}', ${parseFloat(s.percentage)}]`
     ).join(',');
@@ -888,10 +1014,12 @@ export default function AdvancedAnalysis() {
             ` : ''}
 
             ${config.includeCharts ? `
+            ${!isSummaryFormat ? `
             <div class="chart-container">
                 <h2 class="chart-title">📊 Attendance Trend Over Time (Line Chart)</h2>
                 <div id="line_chart" style="width: 100%; height: 400px;"></div>
             </div>
+            ` : ''}
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
                 <div class="chart-container">
@@ -909,10 +1037,12 @@ export default function AdvancedAnalysis() {
                 <div id="bar_chart" style="width: 100%; height: 500px;"></div>
             </div>
 
+            ${!isSummaryFormat ? `
             <div class="chart-container">
                 <h2 class="chart-title">📊 Session-wise Attendance Comparison (Area Chart)</h2>
                 <div id="area_chart" style="width: 100%; height: 400px;"></div>
             </div>
+            ` : ''}
             ` : ''}
 
             ${config.includeTopPerformers ? `
@@ -965,7 +1095,8 @@ export default function AdvancedAnalysis() {
         google.charts.setOnLoadCallback(drawCharts);
 
         function drawCharts() {
-            // Line Chart
+            ${!isSummaryFormat ? `
+            // Line Chart (only for session-wise data)
             var lineData = google.visualization.arrayToDataTable([
                 ['Date', 'Attendance %'],
                 ${chartData}
@@ -997,7 +1128,8 @@ export default function AdvancedAnalysis() {
             };
 
             var lineChart = new google.visualization.LineChart(document.getElementById('line_chart'));
-            lineChart.draw(lineData, lineOptions);
+            if (lineChart) lineChart.draw(lineData, lineOptions);
+            ` : ''}
 
             // Pie Chart
             var pieData = google.visualization.arrayToDataTable([
@@ -1079,7 +1211,8 @@ export default function AdvancedAnalysis() {
             var barChart = new google.visualization.ColumnChart(document.getElementById('bar_chart'));
             barChart.draw(barData, barOptions);
 
-            // Area Chart
+            ${!isSummaryFormat ? `
+            // Area Chart (only for session-wise data)
             var areaData = google.visualization.arrayToDataTable([
                 ['Date', 'Attendance %'],
                 ${chartData}
@@ -1109,7 +1242,8 @@ export default function AdvancedAnalysis() {
             };
 
             var areaChart = new google.visualization.AreaChart(document.getElementById('area_chart'));
-            areaChart.draw(areaData, areaOptions);
+            if (areaChart) areaChart.draw(areaData, areaOptions);
+            ` : ''}
         }
 
         // Responsive charts
@@ -1366,13 +1500,21 @@ export default function AdvancedAnalysis() {
       // Generate AI insights
       setMessage({ type: "info", text: "🤖 Generating AI insights and recommendations..." });
 
+      const studentAttendance = analysis.studentAttendance;
+      const attendanceByDate = analysis.attendanceByDate;
+      
+      // Calculate accurate overall attendance from student data
+      const overallAttendance = studentAttendance.length > 0 
+        ? (studentAttendance.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / studentAttendance.length).toFixed(1)
+        : 0;
+      
       try {
         const insightsPrompt = `Analyze this attendance data and provide detailed insights and recommendations:
 
       Batch: ${formData.college_name} - ${formData.branch} (${formData.year})
       Total Students: ${studentAttendance.length}
-      Total Sessions: ${analysis.totalSessions}
-      Overall Attendance: ${(attendanceByDate.reduce((sum, d) => sum + parseFloat(d.percentage), 0) / attendanceByDate.length).toFixed(1)}%
+      Total Days/Sessions: ${analysis.totalSessions}
+      Overall Average Attendance: ${overallAttendance}%
 
       Performance Distribution:
       - Excellent (≥90%): ${studentAttendance.filter(s => parseFloat(s.percentage) >= 90).length} students

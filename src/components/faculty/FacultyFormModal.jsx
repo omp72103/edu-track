@@ -94,17 +94,6 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="rate_per_hour">Rate per Hour (₹)</Label>
-            <Input
-              id="rate_per_hour"
-              type="number"
-              step="0.01"
-              placeholder="Enter hourly rate"
-              value={formData.rate_per_hour}
-              onChange={(e) => setFormData({ ...formData, rate_per_hour: parseFloat(e.target.value) || 0 })}
-            />
-          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

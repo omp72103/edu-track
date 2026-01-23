@@ -51,7 +51,7 @@ export default function CreateSession() {
         setUser(currentUser);
         setIsAdmin(currentUser.role === 'admin');
 
-        const facultyData = await base44.entities.Faculty.list();
+        const facultyData = await base44.entities.Faculty.filter({ status: 'active' });
         setFaculties(facultyData);
 
         // Auto-fill faculty info for non-admin users

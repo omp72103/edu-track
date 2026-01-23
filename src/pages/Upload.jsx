@@ -614,39 +614,12 @@ export default function UploadPage() {
                       <div className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <label className="font-semibold text-slate-700">College Name *</label>
-                            <Select value={formData.college_name} onValueChange={(value) => setFormData({...formData, college_name: value})}>
-                              <SelectTrigger><SelectValue placeholder="Select college"/></SelectTrigger>
-                              <SelectContent>
-                                {colleges.map(college => (
-                                  <SelectItem key={college.college_name} value={college.college_name}>
-                                    {college.short_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
                             <label className="font-semibold text-slate-700">Academic Year *</label>
                             <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
                               <SelectTrigger><SelectValue placeholder="Select year"/></SelectTrigger>
                               <SelectContent>
                                 {years.map(year => (
                                   <SelectItem key={year} value={year}>{year}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="font-semibold text-slate-700">Branch *</label>
-                            <Select value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value})}>
-                              <SelectTrigger><SelectValue placeholder="Select branch"/></SelectTrigger>
-                              <SelectContent>
-                                {branches.map(branch => (
-                                  <SelectItem key={branch} value={branch}>{branch}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>

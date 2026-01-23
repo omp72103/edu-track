@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, Shield, MapPin, Smartphone, Clock, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 
+const years = ["FY", "SY", "TY", "BTech"];
+const divisions = ["AIML-A", "AIML-B", "AIML-C"];
+
 export default function ProxyDetectionPage() {
   const [logs, setLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
@@ -17,6 +20,8 @@ export default function ProxyDetectionPage() {
   const [filterType, setFilterType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSession, setSelectedSession] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
+  const [filterDivision, setFilterDivision] = useState("all");
 
   useEffect(() => {
     loadData();
@@ -24,7 +29,7 @@ export default function ProxyDetectionPage() {
 
   useEffect(() => {
     applyFilters();
-  }, [logs, filterStatus, filterType, searchTerm, selectedSession]);
+  }, [logs, filterStatus, filterType, searchTerm, selectedSession, filterYear, filterDivision]);
 
   const loadData = async () => {
     setLoading(true);
@@ -54,6 +59,18 @@ export default function ProxyDetectionPage() {
 
     if (selectedSession !== "all") {
       filtered = filtered.filter(log => log.session_id === selectedSession);
+    }
+
+    // Filter by year - match session's year
+    if (filterYear !== "all") {
+      const sessionsForYear = sessions.filter(s => s.year === filterYear).map(s => s.id);
+      filtered = filtered.filter(log => sessionsForYear.includes(log.session_id));
+    }
+
+    // Filter by division - match session's division
+    if (filterDivision !== "all") {
+      const sessionsForDiv = sessions.filter(s => s.division === filterDivision).map(s => s.id);
+      filtered = filtered.filter(log => sessionsForDiv.includes(log.session_id));
     }
 
     if (searchTerm) {
@@ -187,12 +204,34 @@ export default function ProxyDetectionPage() {
       {/* Filters */}
       <Card className="mb-6">
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Input
               placeholder="Search PRN, Roll No..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {years.map(y => (
+                  <SelectItem key={y} value={y}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterDivision} onValueChange={setFilterDivision}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Division" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Divisions</SelectItem>
+                {divisions.map(d => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by Status" />

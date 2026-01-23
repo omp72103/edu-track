@@ -270,79 +270,57 @@ export default function Layout({ children, currentPageName }) {
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto custom-scrollbar">
-            {/* Main Menu Section */}
-            <div className="space-y-1">
-              {!isSidebarCollapsed && (
-                <div className="px-3 mb-2">
-                  <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Main Menu</span>
-                </div>
-              )}
-              <div className="space-y-1">
-                {facultyNavItems.map((item) => {
-                  // Hide faculty-only items for admin
-                  if (user?.role === 'admin' && item.facultyOnly) return null;
-                  
-                  const isActive = location.pathname.startsWith(createPageUrl(item.name));
-                  return (
-                    <Link
-                      key={item.name}
-                      to={createPageUrl(item.name)}
-                      className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                        isActive 
-                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50 scale-105' 
-                          : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md hover:scale-102'
-                      } ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                      onClick={() => setIsSidebarOpen(false)}
-                      title={isSidebarCollapsed ? (item.label || item.name) : ''}
-                    >
-                      <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
-                      {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
-                      {!isSidebarCollapsed && isActive && (
-                        <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+          <div className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto custom-scrollbar">
+            {/* All menu items in a single flat list */}
+            {facultyNavItems.map((item) => {
+              // Hide faculty-only items for admin
+              if (user?.role === 'admin' && item.facultyOnly) return null;
+              
+              const isActive = location.pathname.startsWith(createPageUrl(item.name));
+              return (
+                <Link
+                  key={item.name}
+                  to={createPageUrl(item.name)}
+                  className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
+                      : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md'
+                  } ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                  onClick={() => setIsSidebarOpen(false)}
+                  title={isSidebarCollapsed ? (item.label || item.name) : ''}
+                >
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? '' : 'group-hover:scale-110'} transition-transform`} />
+                  {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
+                  {!isSidebarCollapsed && isActive && (
+                    <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                  )}
+                </Link>
+              );
+            })}
             
-            {/* Admin Section */}
-            {user && user.role === 'admin' && (
-              <div className="pt-3 space-y-1 border-t border-gray-200/50">
-                {!isSidebarCollapsed && (
-                  <div className="px-3 mb-2 flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full font-bold shadow-md">
-                      Admin
-                    </span>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  {adminNavItems.map((item) => {
-                    const isActive = location.pathname.startsWith(createPageUrl(item.name));
-                    return (
-                      <Link
-                        key={item.name}
-                        to={createPageUrl(item.name)}
-                        className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                          isActive 
-                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50 scale-105' 
-                            : 'text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 hover:shadow-md hover:scale-102'
-                        } ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                        onClick={() => setIsSidebarOpen(false)}
-                        title={isSidebarCollapsed ? (item.label || item.name) : ''}
-                      >
-                        <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'animate-pulse' : 'group-hover:scale-110'} transition-transform`} />
-                        {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
-                        {!isSidebarCollapsed && isActive && (
-                          <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Admin items - shown only to admins, no section header */}
+            {user && user.role === 'admin' && adminNavItems.map((item) => {
+              const isActive = location.pathname.startsWith(createPageUrl(item.name));
+              return (
+                <Link
+                  key={item.name}
+                  to={createPageUrl(item.name)}
+                  className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30' 
+                      : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:shadow-md'
+                  } ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                  onClick={() => setIsSidebarOpen(false)}
+                  title={isSidebarCollapsed ? (item.label || item.name) : ''}
+                >
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? '' : 'group-hover:scale-110'} transition-transform`} />
+                  {!isSidebarCollapsed && <span>{item.label || item.name}</span>}
+                  {!isSidebarCollapsed && isActive && (
+                    <div className="ml-auto w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                  )}
+                </Link>
+              );
+            })}
 
           </div>
 

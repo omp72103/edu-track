@@ -43,7 +43,7 @@ export default function AITimetableGenerator() {
     try {
       const [batchData, facultyData] = await Promise.all([
         Batch.list(),
-        Faculty.list()
+        Faculty.filter({ status: 'active' })
       ]);
       setBatches(batchData);
       setFaculties(facultyData);

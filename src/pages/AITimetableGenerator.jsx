@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function AITimetableGenerator() {
+  const [step, setStep] = useState(1);
+  const [academicYear, setAcademicYear] = useState("");
   const [batches, setBatches] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState("");
@@ -20,16 +22,17 @@ export default function AITimetableGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState(null);
-  const [preferences, setPreferences] = useState({
-    start_time: "09:00",
-    end_time: "17:00",
-    class_duration: "60",
+  const [timetableStructure, setTimetableStructure] = useState({
+    working_days: "5",
+    lectures_per_day: "6",
+    lecture_duration: "60",
     break_duration: "10",
     lunch_start: "13:00",
     lunch_duration: "60",
-    subjects: "",
-    working_days: "5"
+    start_time: "09:00"
   });
+  const [subjectData, setSubjectData] = useState([]);
+  const [facultySubjects, setFacultySubjects] = useState({});
 
   useEffect(() => {
     loadData();
@@ -48,9 +51,23 @@ export default function AITimetableGenerator() {
     }
   };
 
+  const addSubject = () => {
+    setSubjectData([...subjectData, { name: "", lectures_per_week: "", type: "Theory" }]);
+  };
+
+  const updateSubject = (index, field, value) => {
+    const updated = [...subjectData];
+    updated[index][field] = value;
+    setSubjectData(updated);
+  };
+
+  const removeSubject = (index) => {
+    setSubjectData(subjectData.filter((_, i) => i !== index));
+  };
+
   const generateTimetable = async () => {
-    if (!selectedBatch) {
-      setMessage({ type: "error", text: "Please select a batch" });
+    if (!selectedBatch || subjectData.length === 0) {
+      setMessage({ type: "error", text: "Please complete all steps before generating" });
       return;
     }
 
@@ -59,43 +76,55 @@ export default function AITimetableGenerator() {
 
     try {
       const batch = batches.find(b => b.id === selectedBatch);
-      const facultyList = faculties.map(f => `${f.name} (${f.department || "General"})`).join(", ");
       
-      const prompt = `Generate an optimized weekly timetable for the following:
+      // Build faculty-subject mapping
+      const facultyMapping = Object.entries(facultySubjects)
+        .filter(([_, subjects]) => subjects.length > 0)
+        .map(([facultyName, subjects]) => `${facultyName} teaches: ${subjects.join(", ")}`)
+        .join("\n");
+      
+      const subjectsList = subjectData.map(s => 
+        `${s.name} (${s.lectures_per_week} lectures/week, ${s.type})`
+      ).join("\n");
+      
+      const prompt = `You are an intelligent academic timetable generation system. Generate an optimized, conflict-free class timetable.
 
+📚 ACADEMIC DATA:
 Batch: ${batch.batch_name}
+Academic Year: ${academicYear}
 College: ${batch.college_name}
-Year: ${batch.year}
 
-Available Faculty: ${facultyList}
+🏗 TIMETABLE STRUCTURE:
+- Working Days: ${timetableStructure.working_days} days per week (${timetableStructure.working_days === "5" ? "Mon-Fri" : "Mon-Sat"})
+- Lectures Per Day: ${timetableStructure.lectures_per_day}
+- Lecture Duration: ${timetableStructure.lecture_duration} minutes
+- Start Time: ${timetableStructure.start_time}
+- Lunch Break: ${timetableStructure.lunch_start} for ${timetableStructure.lunch_duration} minutes
 
-Preferences:
-- Start Time: ${preferences.start_time}
-- End Time: ${preferences.end_time}
-- Class Duration: ${preferences.class_duration} minutes
-- Break Duration: ${preferences.break_duration} minutes
-- Lunch Break: ${preferences.lunch_start} for ${preferences.lunch_duration} minutes
-- Working Days: ${preferences.working_days} days per week
-- Subjects: ${preferences.subjects || "Computer Science, Mathematics, Physics, Chemistry, English, Data Structures, Programming"}
+📖 SUBJECTS & REQUIREMENTS:
+${subjectsList}
 
-Requirements:
-1. Optimize to avoid faculty clashes
-2. Balance workload across days
-3. Include theory, practical, and tutorial sessions
-4. Assign appropriate rooms (301-320 for theory, Lab1-Lab5 for practicals)
-5. Consider student fatigue (no heavy subjects after lunch)
+👨‍🏫 FACULTY-SUBJECT MAPPING:
+${facultyMapping}
 
-Return ONLY a valid JSON array with this exact structure:
-[
-  {
-    "day_of_week": "Monday",
-    "time_slot": "09:00 AM - 10:00 AM",
-    "subject": "Data Structures",
-    "faculty_name": "Dr. Smith",
-    "room_number": "301",
-    "class_type": "Lecture"
-  }
-]`;
+🧠 ALLOCATION RULES:
+1. No faculty can be assigned to two classes at the same time
+2. Each subject must receive EXACTLY the required number of weekly slots
+3. Faculty workload must be evenly distributed across the week
+4. Avoid subject repetition on the same day if possible
+5. Balance difficult subjects across the week
+6. No heavy subjects immediately after lunch
+7. Theory classes in rooms 301-320, Lab/Practical classes in Lab1-Lab5
+
+⭐ OPTIMIZATION GOALS:
+- Minimize faculty idle time
+- Ensure no faculty clashes
+- Balance student cognitive load
+- Create a professional, conflict-free schedule
+
+Generate ONLY valid JSON with this structure for ALL lectures across ALL working days:
+
+`;
 
       const result = await base44.integrations.Core.InvokeLLM({
         prompt: prompt,
@@ -189,15 +218,41 @@ Return ONLY a valid JSON array with this exact structure:
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Sparkles className="w-8 h-8 text-purple-600" />
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center justify-center gap-3">
+            <Sparkles className="w-10 h-10 text-purple-600" />
             AI Timetable Generator
           </h1>
-          <p className="text-gray-600">Auto-generate optimized class schedules using AI</p>
+          <p className="text-gray-600 mt-2">Intelligent academic timetable generation with conflict-free scheduling</p>
         </div>
+
+        {/* Progress Steps */}
+        <Card className="backdrop-blur-xl bg-white/80 border-0 shadow-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              {[
+                { num: 1, label: "Academic Year" },
+                { num: 2, label: "Timetable Structure" },
+                { num: 3, label: "Subjects & Faculty" },
+                { num: 4, label: "Generate" }
+              ].map((s, i) => (
+                <React.Fragment key={s.num}>
+                  <div className="flex flex-col items-center">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
+                      step >= s.num ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {s.num}
+                    </div>
+                    <span className="text-xs mt-2 font-semibold">{s.label}</span>
+                  </div>
+                  {i < 3 && <div className={`flex-1 h-1 mx-4 ${step > s.num ? 'bg-gradient-to-r from-purple-600 to-blue-600' : 'bg-gray-200'}`}></div>}
+                </React.Fragment>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {message && (
           <Alert className={message.type === "error" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}>
@@ -208,127 +263,314 @@ Return ONLY a valid JSON array with this exact structure:
           </Alert>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="bg-purple-50">
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Configuration
-              </CardTitle>
+        {/* Step 1: Academic Year */}
+        {step === 1 && (
+          <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
+              <CardTitle>🎯 Step 1: Select Academic Year</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div>
-                <Label>Select Batch *</Label>
-                <Select value={selectedBatch} onValueChange={setSelectedBatch}>
-                  <SelectTrigger><SelectValue placeholder="Choose a batch"/></SelectTrigger>
+                <Label className="text-lg font-semibold">Academic Year *</Label>
+                <Select value={academicYear} onValueChange={setAcademicYear}>
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="Choose academic year" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {batches.map(b => (
-                      <SelectItem key={b.id} value={b.id}>{b.batch_name} - {b.year}</SelectItem>
+                    <SelectItem value="First Year">First Year</SelectItem>
+                    <SelectItem value="Second Year">Second Year</SelectItem>
+                    <SelectItem value="Third Year">Third Year</SelectItem>
+                    <SelectItem value="Final Year">Final Year</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-lg font-semibold">Select Batch/Division *</Label>
+                <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="Choose batch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches.filter(b => !academicYear || b.year === academicYear).map(b => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.batch_name} - {b.year}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Start Time</Label>
-                  <Input type="time" value={preferences.start_time} onChange={(e) => setPreferences({...preferences, start_time: e.target.value})} />
-                </div>
-                <div>
-                  <Label>End Time</Label>
-                  <Input type="time" value={preferences.end_time} onChange={(e) => setPreferences({...preferences, end_time: e.target.value})} />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Class Duration (mins)</Label>
-                  <Input type="number" value={preferences.class_duration} onChange={(e) => setPreferences({...preferences, class_duration: e.target.value})} />
-                </div>
-                <div>
-                  <Label>Break Duration (mins)</Label>
-                  <Input type="number" value={preferences.break_duration} onChange={(e) => setPreferences({...preferences, break_duration: e.target.value})} />
-                </div>
-              </div>
+              <Button 
+                onClick={() => setStep(2)} 
+                disabled={!academicYear || !selectedBatch}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 h-12 text-base"
+              >
+                Next: Timetable Structure →
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Lunch Start</Label>
-                  <Input type="time" value={preferences.lunch_start} onChange={(e) => setPreferences({...preferences, lunch_start: e.target.value})} />
-                </div>
-                <div>
-                  <Label>Lunch Duration (mins)</Label>
-                  <Input type="number" value={preferences.lunch_duration} onChange={(e) => setPreferences({...preferences, lunch_duration: e.target.value})} />
-                </div>
-              </div>
-
+        {/* Step 2: Timetable Structure */}
+        {step === 2 && (
+          <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
+              <CardTitle>🏗 Step 2: Define Timetable Structure</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
               <div>
-                <Label>Working Days per Week</Label>
-                <Select value={preferences.working_days} onValueChange={(value) => setPreferences({...preferences, working_days: value})}>
-                  <SelectTrigger><SelectValue/></SelectTrigger>
+                <Label>Working Days per Week *</Label>
+                <Select value={timetableStructure.working_days} onValueChange={(value) => setTimetableStructure({...timetableStructure, working_days: value})}>
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5 Days (Mon-Fri)</SelectItem>
-                    <SelectItem value="6">6 Days (Mon-Sat)</SelectItem>
+                    <SelectItem value="5">5 Days (Monday to Friday)</SelectItem>
+                    <SelectItem value="6">6 Days (Monday to Saturday)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <Label>Subjects (comma-separated)</Label>
-                <Input 
-                  placeholder="e.g., Math, Physics, Chemistry" 
-                  value={preferences.subjects} 
-                  onChange={(e) => setPreferences({...preferences, subjects: e.target.value})} 
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Lectures Per Day *</Label>
+                  <Input 
+                    type="number" 
+                    min="4" 
+                    max="8" 
+                    value={timetableStructure.lectures_per_day} 
+                    onChange={(e) => setTimetableStructure({...timetableStructure, lectures_per_day: e.target.value})} 
+                    className="h-12 text-base"
+                  />
+                </div>
+                <div>
+                  <Label>Lecture Duration (mins) *</Label>
+                  <Input 
+                    type="number" 
+                    value={timetableStructure.lecture_duration} 
+                    onChange={(e) => setTimetableStructure({...timetableStructure, lecture_duration: e.target.value})} 
+                    className="h-12 text-base"
+                  />
+                </div>
               </div>
 
-              <Button 
-                onClick={generateTimetable} 
-                disabled={isGenerating || !selectedBatch}
-                className="w-full bg-purple-600 hover:bg-purple-700"
-              >
-                {isGenerating ? (
-                  <>Generating...</>
-                ) : (
-                  <>
-                    <Wand2 className="w-4 h-4 mr-2" />
-                    Generate Timetable
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Start Time *</Label>
+                  <Input 
+                    type="time" 
+                    value={timetableStructure.start_time} 
+                    onChange={(e) => setTimetableStructure({...timetableStructure, start_time: e.target.value})} 
+                    className="h-12 text-base"
+                  />
+                </div>
+                <div>
+                  <Label>Lunch Start *</Label>
+                  <Input 
+                    type="time" 
+                    value={timetableStructure.lunch_start} 
+                    onChange={(e) => setTimetableStructure({...timetableStructure, lunch_start: e.target.value})} 
+                    className="h-12 text-base"
+                  />
+                </div>
+                <div>
+                  <Label>Lunch Duration (mins) *</Label>
+                  <Input 
+                    type="number" 
+                    value={timetableStructure.lunch_duration} 
+                    onChange={(e) => setTimetableStructure({...timetableStructure, lunch_duration: e.target.value})} 
+                    className="h-12 text-base"
+                  />
+                </div>
+              </div>
 
-          <Card>
-            <CardHeader className="bg-blue-50">
-              <CardTitle>Preview & Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {!generatedTimetable ? (
-                <div className="text-center py-12">
-                  <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Configure and generate to see preview</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-green-900 mb-2">Generated for: {generatedTimetable.batch_name}</h3>
-                    <p className="text-sm text-green-700">Total Classes: {generatedTimetable.entries.length}</p>
-                    <p className="text-sm text-green-700">Days: {Object.keys(groupByDay(generatedTimetable.entries)).filter(day => groupByDay(generatedTimetable.entries)[day].length > 0).length}</p>
-                  </div>
-                  
-                  <Button 
-                    onClick={saveTimetable} 
-                    disabled={isSaving}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                  >
-                    {isSaving ? "Saving..." : "Save Timetable"}
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12">
+                  ← Back
+                </Button>
+                <Button onClick={() => setStep(3)} className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 h-12">
+                  Next: Subjects & Faculty →
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        </div>
+        )}
+
+        {/* Step 3: Subjects & Faculty */}
+        {step === 3 && (
+          <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
+              <CardTitle>📚 Step 3: Define Subjects & Faculty Assignment</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  ℹ️ Add all subjects and assign faculty members. The system will ensure no faculty conflicts and optimal workload distribution.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {subjectData.map((subject, index) => (
+                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="grid grid-cols-4 gap-3 mb-3">
+                      <div className="col-span-2">
+                        <Label>Subject Name</Label>
+                        <Input 
+                          value={subject.name} 
+                          onChange={(e) => updateSubject(index, 'name', e.target.value)} 
+                          placeholder="e.g., Data Structures"
+                        />
+                      </div>
+                      <div>
+                        <Label>Lectures/Week</Label>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          max="10" 
+                          value={subject.lectures_per_week} 
+                          onChange={(e) => updateSubject(index, 'lectures_per_week', e.target.value)} 
+                        />
+                      </div>
+                      <div>
+                        <Label>Type</Label>
+                        <Select value={subject.type} onValueChange={(value) => updateSubject(index, 'type', value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Theory">Theory</SelectItem>
+                            <SelectItem value="Practical">Practical</SelectItem>
+                            <SelectItem value="Lab">Lab</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button variant="destructive" size="sm" onClick={() => removeSubject(index)}>
+                      Remove Subject
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button onClick={addSubject} variant="outline" className="w-full">
+                + Add Subject
+              </Button>
+
+              <div className="border-t pt-4">
+                <Label className="text-lg font-semibold mb-3 block">Assign Faculty to Subjects</Label>
+                {faculties.map(faculty => (
+                  <div key={faculty.id} className="mb-3">
+                    <Label className="text-sm font-semibold">{faculty.name}</Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {subjectData.map((subject, idx) => (
+                        <Badge 
+                          key={idx}
+                          className={`cursor-pointer ${
+                            facultySubjects[faculty.name]?.includes(subject.name) 
+                              ? 'bg-purple-600 text-white' 
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                          onClick={() => {
+                            const current = facultySubjects[faculty.name] || [];
+                            const updated = current.includes(subject.name)
+                              ? current.filter(s => s !== subject.name)
+                              : [...current, subject.name];
+                            setFacultySubjects({...facultySubjects, [faculty.name]: updated});
+                          }}
+                        >
+                          {subject.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-12">
+                  ← Back
+                </Button>
+                <Button 
+                  onClick={() => setStep(4)} 
+                  disabled={subjectData.length === 0}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 h-12"
+                >
+                  Next: Generate Timetable →
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 4: Generate */}
+        {step === 4 && (
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-purple-100 to-blue-100">
+                <CardTitle>⚡ Step 4: Generate Optimized Timetable</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                  <h4 className="font-semibold text-green-900">Ready to Generate:</h4>
+                  <p className="text-sm text-green-700">✓ Academic Year: {academicYear}</p>
+                  <p className="text-sm text-green-700">✓ Batch: {batches.find(b => b.id === selectedBatch)?.batch_name}</p>
+                  <p className="text-sm text-green-700">✓ Subjects: {subjectData.length}</p>
+                  <p className="text-sm text-green-700">✓ Working Days: {timetableStructure.working_days}</p>
+                  <p className="text-sm text-green-700">✓ Lectures/Day: {timetableStructure.lectures_per_day}</p>
+                </div>
+
+                <Button 
+                  onClick={generateTimetable} 
+                  disabled={isGenerating}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 h-14 text-lg"
+                >
+                  {isGenerating ? (
+                    <>🔄 Generating Optimized Timetable...</>
+                  ) : (
+                    <>
+                      <Wand2 className="w-5 h-5 mr-2" />
+                      🚀 Generate AI-Powered Timetable
+                    </>
+                  )}
+                </Button>
+
+                <Button variant="outline" onClick={() => setStep(3)} className="w-full h-12">
+                  ← Back to Subjects
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="backdrop-blur-xl bg-white/90 border-0 shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-blue-100 to-indigo-100">
+                <CardTitle>📋 Preview & Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {!generatedTimetable ? (
+                  <div className="text-center py-12">
+                    <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">Click generate to create your optimized timetable</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-green-900 mb-2">✅ Timetable Generated!</h3>
+                      <p className="text-sm text-green-700">Batch: {generatedTimetable.batch_name}</p>
+                      <p className="text-sm text-green-700">Total Classes: {generatedTimetable.entries.length}</p>
+                      <p className="text-sm text-green-700">Days Covered: {Object.keys(groupByDay(generatedTimetable.entries)).filter(day => groupByDay(generatedTimetable.entries)[day].length > 0).length}</p>
+                    </div>
+                    
+                    <Button 
+                      onClick={saveTimetable} 
+                      disabled={isSaving}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 h-12 text-base"
+                    >
+                      {isSaving ? "💾 Saving..." : "💾 Save to Database"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {generatedTimetable && (
           <Card>

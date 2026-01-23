@@ -580,7 +580,8 @@ export default function PerformancePage() {
       {studentDialog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={() => setStudentDialog(null)}>
           <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white">
+              <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-4xl font-bold mb-3">{studentDialog.student.name}</h2>
                   <div className="flex gap-4 text-blue-100">

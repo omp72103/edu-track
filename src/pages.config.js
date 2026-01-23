@@ -6,6 +6,7 @@ import Attendance from './pages/Attendance';
 import BatchAnalytics from './pages/BatchAnalytics';
 import BatchDetails from './pages/BatchDetails';
 import BatchDetailsPage from './pages/BatchDetailsPage';
+import Batches from './pages/Batches';
 import ConsolidatedReport from './pages/ConsolidatedReport';
 import CreateSession from './pages/CreateSession';
 import Dashboard from './pages/Dashboard';
@@ -25,13 +26,12 @@ import ProxyDetection from './pages/ProxyDetection';
 import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
 import StudentPerformance from './pages/StudentPerformance';
+import StudentPortal from './pages/StudentPortal';
 import StudentRecordsPage from './pages/StudentRecordsPage';
 import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import Batches from './pages/Batches';
-import StudentPortal from './pages/StudentPortal';
 import __Layout from './Layout.jsx';
 
 
@@ -44,6 +44,7 @@ export const PAGES = {
     "BatchAnalytics": BatchAnalytics,
     "BatchDetails": BatchDetails,
     "BatchDetailsPage": BatchDetailsPage,
+    "Batches": Batches,
     "ConsolidatedReport": ConsolidatedReport,
     "CreateSession": CreateSession,
     "Dashboard": Dashboard,
@@ -63,13 +64,12 @@ export const PAGES = {
     "QRAttendance": QRAttendance,
     "QRAttendanceStudent": QRAttendanceStudent,
     "StudentPerformance": StudentPerformance,
+    "StudentPortal": StudentPortal,
     "StudentRecordsPage": StudentRecordsPage,
     "TeachingNoteEditor": TeachingNoteEditor,
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "Batches": Batches,
-    "StudentPortal": StudentPortal,
 }
 
 export const pagesConfig = {

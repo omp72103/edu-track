@@ -244,13 +244,11 @@ export default function StudentPortal() {
               >
                 <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
-                    {(student.name && student.name.trim() !== 'User' ? student.name : (user.email ? user.email.split('@')[0] : 'Student')).charAt(0).toUpperCase()}
+                    {student.name.trim().charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-gray-800 truncate">{student.name && student.name.trim() !== 'User' ? student.name : (user.email ? user.email.split('@')[0] : 'Student')}</p>
-                    <p className="text-xs text-indigo-600 capitalize font-semibold">
-                      {student.roll_no ? `Roll No: ${student.roll_no}` : 'Student'}
-                    </p>
+                    <p className="font-bold text-sm text-gray-800 truncate">{student.name.trim() || (user.email ? user.email.split('@')[0] : 'Student')}</p>
+                    <p className="text-xs text-indigo-600 capitalize font-semibold">Student</p>
                   </div>
                 </div>
               </button>
@@ -261,8 +259,8 @@ export default function StudentPortal() {
                 className="flex justify-center w-full"
               >
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={student.name && student.name.trim() !== 'User' ? student.name : (user.email ? user.email.split('@')[0] : 'Student')}>
-                    {(student.name && student.name.trim() !== 'User' ? student.name : (user.email ? user.email.split('@')[0] : 'S')).charAt(0).toUpperCase()}
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={student.name.trim() || (user.email ? user.email.split('@')[0] : 'Student')}>
+                    {(student.name.trim() || (user.email ? user.email.split('@')[0] : 'S')).charAt(0).toUpperCase()}
                   </div>
                 </div>
               </button>

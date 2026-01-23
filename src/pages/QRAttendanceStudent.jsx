@@ -18,6 +18,8 @@ export default function QRAttendanceStudent() {
   const [message, setMessage] = useState("");
   const [timeRemaining, setTimeRemaining] = useState(45);
   const [successData, setSuccessData] = useState(null);
+  const [location, setLocation] = useState(null);
+  const [locationError, setLocationError] = useState("");
 
   // Get parameters from URL
   const urlParams = new URLSearchParams(location.search);
@@ -126,6 +128,35 @@ export default function QRAttendanceStudent() {
     validateQRCode();
   }, [session_id, timestamp, batch_type]);
 
+  // Get user's location
+  useEffect(() => {
+    if (status === "ready") {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy
+            });
+            setLocationError("");
+          },
+          (error) => {
+            console.error("Location error:", error);
+            setLocationError("⚠️ Location access denied. Enable GPS to mark attendance.");
+            setStatus("error");
+            setMessage("📍 Location access is required to mark attendance. Please enable GPS in your browser settings and refresh the page.");
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        setLocationError("⚠️ GPS not supported on this device");
+        setStatus("error");
+        setMessage("📍 Your device does not support GPS. Please use a different device.");
+      }
+    }
+  }, [status]);
+
   // Countdown timer with STRICT expiry enforcement
   useEffect(() => {
     if (status === "expired" || status === "success" || status === "error" || !timestamp) return;
@@ -161,16 +192,25 @@ export default function QRAttendanceStudent() {
       return;
     }
 
+    if (!location) {
+      setMessage("📍 Waiting for GPS location. Please ensure location is enabled.");
+      return;
+    }
+
     setIsSubmitting(true);
     setMessage("");
 
     try {
-      // Call backend function to mark attendance (NO LOGIN REQUIRED)
+      // Call backend function to mark attendance with location data
       const response = await base44.functions.invoke('markQRAttendance', {
         session_id,
         timestamp,
         student_identifier: studentIdentifier.trim(),
-        batch_type
+        batch_type,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        gps_accuracy: location.accuracy,
+        user_agent: navigator.userAgent
       });
 
       if (response.data.success) {
@@ -248,6 +288,11 @@ export default function QRAttendanceStudent() {
                 <strong>🕐 Time:</strong> {successData.session.time}<br/>
                 <strong>👨‍🏫 Faculty:</strong> {successData.session.faculty}<br/>
                 <strong>🏛️ College:</strong> {successData.session.college}
+                {successData.location_verified && (
+                  <>
+                    <br/><strong>📍 Location:</strong> {successData.location_name || 'Verified'} ✅
+                  </>
+                )}
               </p>
             </div>
             <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
@@ -306,6 +351,19 @@ export default function QRAttendanceStudent() {
               </p>
             </div>
 
+            {locationError && (
+              <div className="p-3 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200">
+                {locationError}
+              </div>
+            )}
+
+            {location && (
+              <div className="p-3 rounded-lg bg-green-50 text-green-700 border border-green-200 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm">📍 Location verified (±{Math.round(location.accuracy)}m accuracy)</span>
+              </div>
+            )}
+
             {message && (
               <div className={`p-3 rounded-lg ${
                 status === "error" ? "bg-red-50 text-red-700 border border-red-200" : "bg-blue-50 text-blue-700 border border-blue-200"
@@ -316,7 +374,7 @@ export default function QRAttendanceStudent() {
 
             <Button 
               onClick={handleSubmitAttendance} 
-              disabled={isSubmitting || !studentIdentifier.trim() || timeRemaining <= 0 || status !== "ready"}
+              disabled={isSubmitting || !studentIdentifier.trim() || timeRemaining <= 0 || status !== "ready" || !location}
               className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-lg py-6"
             >
               {isSubmitting ? (

@@ -1,18 +1,78 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
 
+// Helper function to calculate distance between two coordinates (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // Distance in meters
+}
+
+// Generate device fingerprint from headers
+function generateDeviceFingerprint(req, userAgent) {
+    const components = [
+        userAgent || 'unknown',
+        req.headers.get('accept-language') || '',
+        req.headers.get('accept-encoding') || '',
+        req.headers.get('sec-ch-ua-platform') || ''
+    ];
+    return btoa(components.join('|')).substring(0, 32);
+}
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
         // Parse request body
         const body = await req.json();
-        const { session_id, timestamp, student_identifier, batch_type } = body;
+        const { 
+            session_id, 
+            timestamp, 
+            student_identifier, 
+            batch_type,
+            latitude,
+            longitude,
+            gps_accuracy,
+            user_agent
+        } = body;
+
+        // Generate device fingerprint and get IP
+        const deviceFingerprint = generateDeviceFingerprint(req, user_agent);
+        const ipAddress = req.headers.get('cf-connecting-ip') || 
+                         req.headers.get('x-forwarded-for') || 
+                         req.headers.get('x-real-ip') || 
+                         'unknown';
 
         // SECURITY CHECK 1: Validate required parameters
         if (!session_id || !timestamp || !student_identifier) {
             return Response.json({ 
                 success: false, 
                 error: "Missing required parameters" 
+            }, { status: 400 });
+        }
+
+        // SECURITY CHECK: Validate GPS data if geo-fencing is required
+        if (!latitude || !longitude) {
+            return Response.json({ 
+                success: false, 
+                error: "Location access is required to mark attendance. Please enable GPS and try again.",
+                requires_location: true
+            }, { status: 400 });
+        }
+
+        if (!gps_accuracy || gps_accuracy > 100) {
+            return Response.json({ 
+                success: false, 
+                error: `GPS accuracy too low (${gps_accuracy}m). Please ensure GPS is enabled and try again in an open area.`,
+                requires_location: true
             }, { status: 400 });
         }
 
@@ -53,6 +113,84 @@ Deno.serve(async (req) => {
             }, { status: 404 });
         }
 
+        // Check for geo-fence zone
+        const geoFenceZones = await base44.asServiceRole.entities.GeoFenceZone.filter({ 
+            session_id,
+            is_active: true 
+        });
+
+        let insideGeoFence = false;
+        let distanceFromGeoFence = null;
+        let geoFenceLocation = null;
+
+        if (geoFenceZones.length > 0) {
+            // Check if student is inside any of the geo-fences
+            for (const zone of geoFenceZones) {
+                const distance = calculateDistance(
+                    latitude, 
+                    longitude, 
+                    zone.latitude, 
+                    zone.longitude
+                );
+                
+                if (distance <= zone.radius_meters) {
+                    insideGeoFence = true;
+                    geoFenceLocation = zone.location_name;
+                    break;
+                }
+                
+                // Track minimum distance for logging
+                if (distanceFromGeoFence === null || distance < distanceFromGeoFence) {
+                    distanceFromGeoFence = distance;
+                    geoFenceLocation = zone.location_name;
+                }
+            }
+
+            // SECURITY: Block if outside geo-fence
+            if (!insideGeoFence) {
+                // Log proxy attempt
+                await base44.asServiceRole.entities.ProxyDetectionLog.create({
+                    session_id,
+                    student_identifier,
+                    device_fingerprint: deviceFingerprint,
+                    ip_address: ipAddress,
+                    latitude,
+                    longitude,
+                    gps_accuracy,
+                    distance_from_geofence: distanceFromGeoFence,
+                    violation_type: "outside_geofence",
+                    risk_score: Math.min(100, distanceFromGeoFence / 10),
+                    details: `Student is ${Math.round(distanceFromGeoFence)}m away from ${geoFenceLocation}`,
+                    timestamp: new Date().toISOString(),
+                    status: "flagged"
+                });
+
+                // Log submission attempt
+                await base44.asServiceRole.entities.AttendanceSubmissionLog.create({
+                    session_id,
+                    student_identifier,
+                    device_fingerprint: deviceFingerprint,
+                    ip_address: ipAddress,
+                    user_agent,
+                    latitude,
+                    longitude,
+                    gps_accuracy,
+                    submission_timestamp: new Date().toISOString(),
+                    qr_timestamp: timestamp,
+                    success: false,
+                    failure_reason: "outside_geofence",
+                    is_suspicious: true
+                });
+
+                return Response.json({ 
+                    success: false, 
+                    error: `⛔ You are outside the classroom area (${Math.round(distanceFromGeoFence)}m away from ${geoFenceLocation}). Please move closer to mark attendance.`,
+                    outside_geofence: true,
+                    distance: Math.round(distanceFromGeoFence)
+                }, { status: 403 });
+            }
+        }
+
         // Find student by PRN or Roll Number
         let student = null;
         const isPrivateBatch = batch_type === 'private';
@@ -87,12 +225,130 @@ Deno.serve(async (req) => {
         }
 
         if (!student) {
+            // Log failed attempt with unknown student
+            await base44.asServiceRole.entities.AttendanceSubmissionLog.create({
+                session_id,
+                student_identifier,
+                device_fingerprint: deviceFingerprint,
+                ip_address: ipAddress,
+                user_agent,
+                latitude,
+                longitude,
+                gps_accuracy,
+                submission_timestamp: new Date().toISOString(),
+                qr_timestamp: timestamp,
+                success: false,
+                failure_reason: "student_not_found",
+                is_suspicious: false
+            });
+
             return Response.json({ 
                 success: false, 
                 error: isPrivateBatch 
                     ? "Roll number not found in this batch. Please check and try again." 
                     : "PRN or roll number not found in this batch. Please check and try again."
             }, { status: 404 });
+        }
+
+        // PROXY DETECTION: Check for duplicate device fingerprint with different PRN
+        const sameDeviceSubmissions = await base44.asServiceRole.entities.AttendanceSubmissionLog.filter({
+            session_id,
+            device_fingerprint: deviceFingerprint,
+            success: true
+        });
+
+        if (sameDeviceSubmissions.length > 0) {
+            const previousPRN = sameDeviceSubmissions[0].student_identifier;
+            if (previousPRN !== student_identifier) {
+                // Log proxy attempt
+                await base44.asServiceRole.entities.ProxyDetectionLog.create({
+                    session_id,
+                    student_id: student.id,
+                    student_identifier,
+                    device_fingerprint: deviceFingerprint,
+                    ip_address: ipAddress,
+                    latitude,
+                    longitude,
+                    gps_accuracy,
+                    violation_type: "multiple_prns_same_device",
+                    risk_score: 95,
+                    details: `Same device used for ${previousPRN} and ${student_identifier}`,
+                    timestamp: new Date().toISOString(),
+                    status: "flagged"
+                });
+
+                await base44.asServiceRole.entities.AttendanceSubmissionLog.create({
+                    session_id,
+                    student_id: student.id,
+                    student_identifier,
+                    device_fingerprint: deviceFingerprint,
+                    ip_address: ipAddress,
+                    user_agent,
+                    latitude,
+                    longitude,
+                    gps_accuracy,
+                    submission_timestamp: new Date().toISOString(),
+                    qr_timestamp: timestamp,
+                    success: false,
+                    failure_reason: "duplicate_device",
+                    is_suspicious: true
+                });
+
+                return Response.json({ 
+                    success: false, 
+                    error: `⛔ Proxy attendance detected! This device was already used to mark attendance for another student (${previousPRN}). Contact your faculty immediately.`,
+                    proxy_detected: true
+                }, { status: 403 });
+            }
+        }
+
+        // PROXY DETECTION: Check for duplicate PRN from different devices
+        const samePRNSubmissions = await base44.asServiceRole.entities.AttendanceSubmissionLog.filter({
+            session_id,
+            student_identifier,
+            success: true
+        });
+
+        if (samePRNSubmissions.length > 0 && samePRNSubmissions[0].device_fingerprint !== deviceFingerprint) {
+            // Log proxy attempt
+            await base44.asServiceRole.entities.ProxyDetectionLog.create({
+                session_id,
+                student_id: student.id,
+                student_identifier,
+                device_fingerprint: deviceFingerprint,
+                ip_address: ipAddress,
+                latitude,
+                longitude,
+                gps_accuracy,
+                violation_type: "duplicate_prn",
+                risk_score: 90,
+                details: `PRN ${student_identifier} submitted from different device`,
+                timestamp: new Date().toISOString(),
+                status: "flagged"
+            });
+
+            await base44.asServiceRole.entities.AttendanceSubmissionLog.create({
+                session_id,
+                student_id: student.id,
+                student_identifier,
+                device_fingerprint: deviceFingerprint,
+                ip_address: ipAddress,
+                user_agent,
+                latitude,
+                longitude,
+                gps_accuracy,
+                submission_timestamp: new Date().toISOString(),
+                qr_timestamp: timestamp,
+                success: false,
+                failure_reason: "duplicate_prn",
+                is_suspicious: true
+            });
+
+            return Response.json({ 
+                success: false, 
+                error: `⛔ Your attendance was already marked from another device. If this is a mistake, contact your faculty immediately.`,
+                already_submitted: true
+            }, { status: 403 });
         }
 
         // Check if attendance already marked
@@ -127,11 +383,30 @@ Deno.serve(async (req) => {
             message = `Perfect! ${student.name}, your attendance has been marked successfully.`;
         }
 
+        // Log successful submission
+        await base44.asServiceRole.entities.AttendanceSubmissionLog.create({
+            session_id,
+            student_id: student.id,
+            student_identifier,
+            device_fingerprint: deviceFingerprint,
+            ip_address: ipAddress,
+            user_agent,
+            latitude,
+            longitude,
+            gps_accuracy,
+            submission_timestamp: new Date().toISOString(),
+            qr_timestamp: timestamp,
+            success: true,
+            is_suspicious: false
+        });
+
         return Response.json({ 
             success: true, 
             message,
             already_marked,
             student_name: student.name,
+            location_verified: geoFenceZones.length > 0,
+            location_name: geoFenceLocation,
             session: {
                 name: sessionData.session_name,
                 topic: sessionData.topic_taught,

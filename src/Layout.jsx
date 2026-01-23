@@ -26,29 +26,22 @@ import {
   MapPin
 } from "lucide-react";
 
-const mainNavItems = [
-  { name: "Home", icon: LayoutDashboard },
+// Faculty Nav Items (visible to both admin and faculty)
+const facultyNavItems = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "CreateSession", label: "Create Session", icon: PlusCircle },
-  { name: "Upload", label: "Upload Students", icon: Upload },
-  { name: "Attendance", label: "Take Attendance", icon: CalendarCheck },
-  { name: "TeachingNotes", label: "Teaching Notes", icon: FileText },
+  { name: "Attendance", label: "Take Attendance", icon: CalendarCheck, facultyOnly: true },
+  { name: "TeachingNotes", label: "Teaching Notes", icon: FileText, facultyOnly: true },
   { name: "Batches", label: "Manage Classes", icon: Users },
   { name: "TimeTable", label: "Timetable", icon: Calendar },
   { name: "Performance", label: "Performance", icon: TrendingUp },
   { name: "Announcements", label: "Announcements", icon: Megaphone },
-  { name: "Messages", label: "Messages", icon: MessageSquare },
-  { name: "AITimetableGenerator", label: "AI Timetable", icon: Sparkles },
   { name: "ProxyDetection", label: "Proxy Detection", icon: AlertCircle },
-  { name: "GeoFenceManagement", label: "Geo-Fencing", icon: MapPin },
+  { name: "GeoFenceManagement", label: "Geo-Fencing", icon: MapPin, facultyOnly: true },
 ];
 
 const adminNavItems = [
-  { name: "ManageColleges", label: "Manage Colleges", icon: Building },
   { name: "ManageFaculty", label: "Manage Faculty", icon: UserCog },
-  { name: "FacultyReport", label: "Faculty Report", icon: FileText },
-  { name: "ConsolidatedReport", label: "Consolidated Report", icon: Book },
-  { name: "AdvancedAnalysis", label: "Advanced Analysis", icon: TrendingUp },
 ];
 
 export default function Layout({ children, currentPageName }) {
@@ -246,9 +239,9 @@ export default function Layout({ children, currentPageName }) {
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72`}>
         {/* Glassmorphism Sidebar */}
         <div className="flex flex-col h-full bg-white/80 backdrop-blur-xl border-r border-white/20 shadow-2xl">
-          {/* Logo Section with Gradient */}
+          {/* Logo Section with Gradient - Clickable */}
           <div className="p-6 relative bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600">
-            <div className="flex items-center gap-3">
+            <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 hover:opacity-90 transition-opacity">
               <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-white/30 hover:scale-105 transition-transform duration-300">
                 <GraduationCap className="w-7 h-7 text-white" />
               </div>
@@ -258,7 +251,7 @@ export default function Layout({ children, currentPageName }) {
                   <span className="text-xs text-blue-100 font-medium">Smart Education Platform</span>
                 </div>
               )}
-            </div>
+            </Link>
             {/* Collapse Button - Desktop Only */}
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -279,7 +272,10 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               )}
               <div className="space-y-1">
-                {mainNavItems.map((item) => {
+                {facultyNavItems.map((item) => {
+                  // Hide faculty-only items for admin
+                  if (user?.role === 'admin' && item.facultyOnly) return null;
+                  
                   const isActive = location.pathname.startsWith(createPageUrl(item.name));
                   return (
                     <Link

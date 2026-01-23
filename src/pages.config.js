@@ -8,6 +8,9 @@ import Batches from './pages/Batches';
 import ConsolidatedReport from './pages/ConsolidatedReport';
 import CreateSession from './pages/CreateSession';
 import Dashboard from './pages/Dashboard';
+import ExcalidrawNotesList from './pages/ExcalidrawNotesList';
+import ExcalidrawTeacher from './pages/ExcalidrawTeacher';
+import ExcalidrawViewer from './pages/ExcalidrawViewer';
 import FacultyReport from './pages/FacultyReport';
 import GeoFenceManagement from './pages/GeoFenceManagement';
 import Home from './pages/Home';
@@ -21,13 +24,10 @@ import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
 import StudentPerformance from './pages/StudentPerformance';
 import StudentPortal from './pages/StudentPortal';
+import TeachingNoteEditor from './pages/TeachingNoteEditor';
+import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import ExcalidrawTeacher from './pages/ExcalidrawTeacher';
-import ExcalidrawNotesList from './pages/ExcalidrawNotesList';
-import ExcalidrawViewer from './pages/ExcalidrawViewer';
-import TeachingNotes from './pages/TeachingNotes';
-import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import __Layout from './Layout.jsx';
 
 
@@ -42,6 +42,9 @@ export const PAGES = {
     "ConsolidatedReport": ConsolidatedReport,
     "CreateSession": CreateSession,
     "Dashboard": Dashboard,
+    "ExcalidrawNotesList": ExcalidrawNotesList,
+    "ExcalidrawTeacher": ExcalidrawTeacher,
+    "ExcalidrawViewer": ExcalidrawViewer,
     "FacultyReport": FacultyReport,
     "GeoFenceManagement": GeoFenceManagement,
     "Home": Home,
@@ -55,13 +58,10 @@ export const PAGES = {
     "QRAttendanceStudent": QRAttendanceStudent,
     "StudentPerformance": StudentPerformance,
     "StudentPortal": StudentPortal,
+    "TeachingNoteEditor": TeachingNoteEditor,
+    "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "ExcalidrawTeacher": ExcalidrawTeacher,
-    "ExcalidrawNotesList": ExcalidrawNotesList,
-    "ExcalidrawViewer": ExcalidrawViewer,
-    "TeachingNotes": TeachingNotes,
-    "TeachingNoteEditor": TeachingNoteEditor,
 }
 
 export const pagesConfig = {

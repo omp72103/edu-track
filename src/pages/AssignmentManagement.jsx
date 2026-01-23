@@ -25,6 +25,7 @@ export default function AssignmentManagement() {
   const [submissions, setSubmissions] = useState([]);
   const [contentType, setContentType] = useState("FILE");
   const [quizQuestions, setQuizQuestions] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -157,6 +158,35 @@ export default function AssignmentManagement() {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please upload a PDF or DOC file");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData({...formData, attachment_url: file_url});
+      toast.success("File uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("Failed to upload file");
+    }
+    setUploadingFile(false);
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -254,6 +284,17 @@ export default function AssignmentManagement() {
                             <Clock className="w-4 h-4" />
                             <span>Time: {assignment.quiz_time_limit} min</span>
                           </div>
+                        )}
+                        {assignment.content_type === 'FILE' && assignment.attachment_url && (
+                          <a 
+                            href={assignment.attachment_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>Download Questions</span>
+                          </a>
                         )}
                       </div>
                     </div>
@@ -407,6 +448,48 @@ export default function AssignmentManagement() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* File Upload - Only for FILE type */}
+              {contentType === 'FILE' && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <Label className="mb-2 block">Upload Assignment Questions (PDF/DOC)</Label>
+                  <div className="flex items-center justify-center">
+                    {formData.attachment_url ? (
+                      <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg w-full">
+                        <FileText className="w-8 h-8 text-blue-600" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">File uploaded successfully</p>
+                          <p className="text-xs text-gray-600">Assignment questions attached</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setFormData({...formData, attachment_url: ''})}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex flex-col items-center gap-2 w-full">
+                        <Upload className="w-12 h-12 text-gray-400" />
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-gray-700">
+                            {uploadingFile ? 'Uploading...' : 'Click to upload'}
+                          </p>
+                          <p className="text-xs text-gray-500">PDF or DOC (Max 10MB)</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Quiz Settings */}
               {contentType === 'QUIZ' && (

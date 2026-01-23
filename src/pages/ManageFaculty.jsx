@@ -76,6 +76,18 @@ export default function ManageFaculty() {
     }
   };
 
+  const handleToggleStatus = async (facultyMember) => {
+    try {
+      const newStatus = facultyMember.status === 'active' ? 'inactive' : 'active';
+      await Faculty.update(facultyMember.id, {
+        status: newStatus
+      });
+      fetchFaculty();
+    } catch (error) {
+      console.error("Error toggling faculty status:", error);
+    }
+  };
+
   const handleViewDetails = (facultyMember) => {
     setSelectedFaculty(facultyMember);
     setIsDetailsModalOpen(true);
@@ -180,6 +192,20 @@ export default function ManageFaculty() {
                     </div>
                     
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      {/* Activate/Deactivate Button */}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleToggleStatus(facultyMember)}
+                        className={`${
+                          facultyMember.status === 'active' 
+                            ? 'border-orange-200 text-orange-600 hover:bg-orange-50' 
+                            : 'border-green-200 text-green-600 hover:bg-green-50'
+                        }`}
+                      >
+                        {facultyMember.status === 'active' ? '🔒 Deactivate' : '✅ Activate'}
+                      </Button>
+                      
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -189,6 +215,7 @@ export default function ManageFaculty() {
                         <Edit className="w-4 h-4 mr-1" />
                         Edit
                       </Button>
+                      
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" className="border-red-200 text-red-600 hover:bg-red-50">
@@ -295,10 +322,25 @@ export default function ManageFaculty() {
                         </span>
                       </div>
                     </div>
-                    <Button onClick={() => { setIsDetailsModalOpen(false); handleEdit(selectedFaculty); }}>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit Profile
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => handleToggleStatus(selectedFaculty)}
+                        className={`${
+                          selectedFaculty.status === 'active' 
+                            ? 'bg-orange-600 hover:bg-orange-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {selectedFaculty.status === 'active' ? '🔒 Deactivate Account' : '✅ Activate Account'}
+                      </Button>
+                      <Button 
+                        onClick={() => { setIsDetailsModalOpen(false); handleEdit(selectedFaculty); }}
+                        variant="outline"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

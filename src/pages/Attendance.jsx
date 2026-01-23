@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Session, Student, AttendanceRecord, User } from "@/entities/all";
 import { SendEmail } from "@/integrations/Core";
@@ -108,6 +107,16 @@ export default function AttendancePage() {
       
       // Generate professional Excel report with styling
       await generateProfessionalReport(attendanceData);
+      
+      // AUTOMATICALLY SEND EMAIL REPORT VIA BACKEND FUNCTION
+      try {
+        const { sendAttendanceReport } = await import('@/functions/sendAttendanceReport');
+        await sendAttendanceReport({ session_id: selectedSession.id });
+        console.log('✅ Automated email report sent successfully');
+      } catch (emailError) {
+        console.error('⚠️ Failed to send automated email report:', emailError);
+        // Continue even if email fails
+      }
       
       if (selectedSession.tpo_email) {
         try {

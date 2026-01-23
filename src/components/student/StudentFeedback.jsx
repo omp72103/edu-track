@@ -26,7 +26,31 @@ export default function StudentFeedback({ student }) {
       const list = await base44.entities.Feedback.filter({
         student_id: student.id
       }, '-created_date');
-      setFeedbacks(list);
+      
+      // Use static feedback if no data
+      if (list.length === 0) {
+        const staticFeedback = [
+          {
+            id: '1',
+            feedback_type: 'Faculty',
+            rating: 5,
+            comments: 'Dr. Anil Kumar explains Machine Learning concepts very clearly. The practical examples are really helpful.',
+            is_anonymous: false,
+            status: 'Reviewed'
+          },
+          {
+            id: '2',
+            feedback_type: 'Infrastructure',
+            rating: 4,
+            comments: 'The computer lab facilities are good, but could use more high-performance machines for ML training.',
+            is_anonymous: true,
+            status: 'Acknowledged'
+          }
+        ];
+        setFeedbacks(staticFeedback);
+      } else {
+        setFeedbacks(list);
+      }
     } catch (error) {
       console.error("Error fetching feedbacks:", error);
     }

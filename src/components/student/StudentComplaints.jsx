@@ -28,7 +28,35 @@ export default function StudentComplaints({ student }) {
       const list = await base44.entities.Complaint.filter({
         student_id: student.id
       }, '-created_date');
-      setComplaints(list);
+      
+      // Use static complaints if no data
+      if (list.length === 0) {
+        const staticComplaints = [
+          {
+            id: '1',
+            title: 'Lab Equipment Issue',
+            description: 'Some computers in Lab 301 are not working properly. Need immediate repair for ML practical sessions.',
+            category: 'Infrastructure',
+            priority: 'High',
+            status: 'In Review',
+            created_date: '2026-01-20',
+            admin_response: 'IT team has been notified. Repairs scheduled for tomorrow.'
+          },
+          {
+            id: '2',
+            title: 'Assignment Submission Portal Error',
+            description: 'Unable to submit Data Structures assignment due to portal error. Getting timeout message.',
+            category: 'Technical',
+            priority: 'Urgent',
+            status: 'Resolved',
+            created_date: '2026-01-18',
+            admin_response: 'Portal has been fixed. You can now submit your assignment. Deadline extended by 2 days.'
+          }
+        ];
+        setComplaints(staticComplaints);
+      } else {
+        setComplaints(list);
+      }
     } catch (error) {
       console.error("Error fetching complaints:", error);
     }

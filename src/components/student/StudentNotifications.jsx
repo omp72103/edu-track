@@ -26,10 +26,63 @@ export default function StudentNotifications({ student, setUnreadCount }) {
       }, '-created_date');
 
       const allNotifications = [...list, ...batchNotifications];
-      setNotifications(allNotifications);
       
-      const unread = allNotifications.filter(n => !n.is_read).length;
-      setUnreadCount(unread);
+      // Use static notifications if no data
+      if (allNotifications.length === 0) {
+        const staticNotifications = [
+          {
+            id: '1',
+            title: 'Mid-Semester Exam Schedule Released',
+            message: 'Mid-semester examination schedule has been published. Please check the timetable section for detailed schedule. Exams begin from February 5th.',
+            category: 'Exam',
+            priority: 'Urgent',
+            is_read: false,
+            created_date: '2026-01-22T10:00:00'
+          },
+          {
+            id: '2',
+            title: 'Machine Learning Assignment Deadline Extended',
+            message: 'Due to technical issues, the ML Neural Network assignment deadline has been extended to January 30th. Make use of extra time.',
+            category: 'Assignment',
+            priority: 'High',
+            is_read: false,
+            created_date: '2026-01-21T14:30:00'
+          },
+          {
+            id: '3',
+            title: 'Guest Lecture: AI in Healthcare',
+            message: 'Special guest lecture on "AI Applications in Healthcare" by Dr. Sharma on January 27th at 2 PM in the auditorium. All students are encouraged to attend.',
+            category: 'Event',
+            priority: 'Medium',
+            is_read: true,
+            created_date: '2026-01-20T09:00:00'
+          },
+          {
+            id: '4',
+            title: 'Lab Booking Available',
+            message: 'Computer Lab 301 is now available for student project work on weekends. Book slots through the portal.',
+            category: 'General',
+            priority: 'Low',
+            is_read: true,
+            created_date: '2026-01-19T11:00:00'
+          },
+          {
+            id: '5',
+            title: 'Attendance Alert',
+            message: 'Your attendance in Database Management is below 75%. Please ensure regular attendance to meet the minimum requirement.',
+            category: 'Alert',
+            priority: 'High',
+            is_read: false,
+            created_date: '2026-01-18T16:00:00'
+          }
+        ];
+        setNotifications(staticNotifications);
+        setUnreadCount(staticNotifications.filter(n => !n.is_read).length);
+      } else {
+        setNotifications(allNotifications);
+        const unread = allNotifications.filter(n => !n.is_read).length;
+        setUnreadCount(unread);
+      }
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }

@@ -32,8 +32,64 @@ export default function StudentAssignments({ student }) {
         student_id: student.id
       });
 
-      setAssignments(assignmentsList);
-      setSubmissions(submissionsList);
+      // Use static assignments if no data
+      if (assignmentsList.length === 0) {
+        const staticAssignments = [
+          {
+            id: '1',
+            title: 'Machine Learning - Neural Network Implementation',
+            description: 'Implement a multi-layer neural network from scratch using NumPy. Include forward propagation, backpropagation, and gradient descent.',
+            subject: 'Machine Learning',
+            batch_id: student.batch_id,
+            deadline: '2026-01-28T23:59:00',
+            max_marks: 100,
+            content_type: 'FILE',
+            status: 'active',
+            faculty_name: 'Dr. Anil Kumar'
+          },
+          {
+            id: '2',
+            title: 'Data Structures - Binary Search Tree Operations',
+            description: 'Create a balanced BST implementation with insert, delete, search, and traversal operations.',
+            subject: 'Data Structures',
+            batch_id: student.batch_id,
+            deadline: '2026-01-30T23:59:00',
+            max_marks: 100,
+            content_type: 'FILE',
+            status: 'active',
+            faculty_name: 'Prof. Priya Sharma'
+          },
+          {
+            id: '3',
+            title: 'DBMS Quiz - SQL and Normalization',
+            description: 'Online quiz covering advanced SQL queries, joins, and database normalization concepts.',
+            subject: 'Database Management',
+            batch_id: student.batch_id,
+            deadline: '2026-01-25T23:59:00',
+            max_marks: 50,
+            content_type: 'QUIZ',
+            status: 'active',
+            faculty_name: 'Dr. Rajesh Patil'
+          }
+        ];
+        
+        const staticSubmissions = [
+          {
+            assignment_id: '3',
+            student_id: student.id,
+            status: 'Evaluated',
+            marks_obtained: 45,
+            submitted_at: '2026-01-24T18:30:00',
+            is_late: false
+          }
+        ];
+        
+        setAssignments(staticAssignments);
+        setSubmissions(staticSubmissions);
+      } else {
+        setAssignments(assignmentsList);
+        setSubmissions(submissionsList);
+      }
     } catch (error) {
       console.error("Error fetching assignments:", error);
     }

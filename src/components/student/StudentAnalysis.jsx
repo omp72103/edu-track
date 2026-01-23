@@ -33,10 +33,59 @@ export default function StudentAnalysis({ student }) {
         base44.entities.AssignmentSubmission.filter({ student_id: student.id })
       ]);
 
-      setPerformance(performanceData);
-      setAttendance(attendanceData);
-      setSessions(sessionData);
-      setAssignments(assignmentData);
+      // Use static data if no performance records
+      if (performanceData.length === 0) {
+        const staticPerformance = [
+          { subject: 'Machine Learning', assessment_type: 'Internal Test 1', marks_obtained: 85, total_marks: 100, percentage: 85, grade: 'A', assessment_date: '2026-01-15' },
+          { subject: 'Machine Learning', assessment_type: 'Assignment', marks_obtained: 92, total_marks: 100, percentage: 92, grade: 'A+', assessment_date: '2026-01-10' },
+          { subject: 'Data Structures', assessment_type: 'Internal Test 1', marks_obtained: 88, total_marks: 100, percentage: 88, grade: 'A', assessment_date: '2026-01-12' },
+          { subject: 'Data Structures', assessment_type: 'Quiz', marks_obtained: 78, total_marks: 100, percentage: 78, grade: 'B+', assessment_date: '2026-01-08' },
+          { subject: 'Database Management', assessment_type: 'Internal Test 1', marks_obtained: 82, total_marks: 100, percentage: 82, grade: 'A', assessment_date: '2026-01-14' },
+          { subject: 'Database Management', assessment_type: 'Practical', marks_obtained: 90, total_marks: 100, percentage: 90, grade: 'A+', assessment_date: '2026-01-09' },
+          { subject: 'Computer Networks', assessment_type: 'Internal Test 1', marks_obtained: 75, total_marks: 100, percentage: 75, grade: 'B+', assessment_date: '2026-01-13' },
+          { subject: 'Computer Networks', assessment_type: 'Assignment', marks_obtained: 88, total_marks: 100, percentage: 88, grade: 'A', assessment_date: '2026-01-11' },
+          { subject: 'Operating Systems', assessment_type: 'Internal Test 1', marks_obtained: 80, total_marks: 100, percentage: 80, grade: 'A', assessment_date: '2026-01-16' },
+          { subject: 'Operating Systems', assessment_type: 'Quiz', marks_obtained: 85, total_marks: 100, percentage: 85, grade: 'A', assessment_date: '2026-01-07' },
+          { subject: 'Software Engineering', assessment_type: 'Internal Test 1', marks_obtained: 78, total_marks: 100, percentage: 78, grade: 'B+', assessment_date: '2026-01-17' },
+          { subject: 'Software Engineering', assessment_type: 'Project', marks_obtained: 95, total_marks: 100, percentage: 95, grade: 'A+', assessment_date: '2026-01-06' }
+        ];
+        setPerformance(staticPerformance);
+      } else {
+        setPerformance(performanceData);
+      }
+
+      // Use static attendance if no records
+      if (attendanceData.length === 0) {
+        const staticAttendance = Array(35).fill(null).map((_, i) => ({
+          id: `static-${i}`,
+          student_id: student.id,
+          is_present: i % 5 !== 0 // 80% attendance pattern
+        }));
+        setAttendance(staticAttendance);
+      } else {
+        setAttendance(attendanceData);
+      }
+
+      // Static sessions
+      const staticSessions = sessionData.length === 0 ? Array(45).fill(null).map((_, i) => ({
+        id: `session-${i}`,
+        batch_id: student.batch_id
+      })) : sessionData;
+      setSessions(staticSessions);
+
+      // Static assignments
+      if (assignmentData.length === 0) {
+        const staticAssignments = [
+          { status: 'Evaluated', is_late: false },
+          { status: 'Evaluated', is_late: false },
+          { status: 'Submitted', is_late: false },
+          { status: 'Submitted', is_late: true },
+          { status: 'Evaluated', is_late: false }
+        ];
+        setAssignments(staticAssignments);
+      } else {
+        setAssignments(assignmentData);
+      }
     } catch (error) {
       console.error("Error fetching analysis data:", error);
     }

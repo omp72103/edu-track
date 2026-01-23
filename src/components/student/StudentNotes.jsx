@@ -21,7 +21,75 @@ export default function StudentNotes({ student }) {
       const notesList = await base44.entities.Note.filter({
         batch_id: student.batch_id
       }, '-created_date');
-      setNotes(notesList);
+      
+      // Use static notes if no data
+      if (notesList.length === 0) {
+        const staticNotes = [
+          {
+            id: '1',
+            title: 'Machine Learning - Neural Networks',
+            description: 'Comprehensive notes on neural network architectures, backpropagation, and activation functions.',
+            subject: 'Machine Learning',
+            file_type: 'PDF',
+            file_url: '#',
+            created_date: '2026-01-15',
+            uploaded_by_name: 'Dr. Anil Kumar'
+          },
+          {
+            id: '2',
+            title: 'Data Structures - Trees and Graphs',
+            description: 'Complete coverage of tree data structures including BST, AVL, and graph traversal algorithms.',
+            subject: 'Data Structures',
+            file_type: 'PDF',
+            file_url: '#',
+            created_date: '2026-01-14',
+            uploaded_by_name: 'Prof. Priya Sharma'
+          },
+          {
+            id: '3',
+            title: 'DBMS - SQL Query Optimization',
+            description: 'Advanced SQL queries, indexing strategies, and query optimization techniques.',
+            subject: 'Database Management',
+            file_type: 'PDF',
+            file_url: '#',
+            created_date: '2026-01-13',
+            uploaded_by_name: 'Dr. Rajesh Patil'
+          },
+          {
+            id: '4',
+            title: 'Computer Networks - TCP/IP Protocol',
+            description: 'Detailed notes on TCP/IP protocol suite, OSI model, and network security fundamentals.',
+            subject: 'Computer Networks',
+            file_type: 'PDF',
+            file_url: '#',
+            created_date: '2026-01-12',
+            uploaded_by_name: 'Prof. Sneha Desai'
+          },
+          {
+            id: '5',
+            title: 'Operating Systems - Process Scheduling',
+            description: 'Process management, CPU scheduling algorithms, and deadlock prevention strategies.',
+            subject: 'Operating Systems',
+            file_type: 'PDF',
+            file_url: '#',
+            created_date: '2026-01-11',
+            uploaded_by_name: 'Dr. Amit Joshi'
+          },
+          {
+            id: '6',
+            title: 'ML - Python Libraries Reference',
+            description: 'Quick reference guide for NumPy, Pandas, Scikit-learn, and TensorFlow.',
+            subject: 'Machine Learning',
+            file_type: 'Link',
+            file_url: '#',
+            created_date: '2026-01-10',
+            uploaded_by_name: 'Dr. Anil Kumar'
+          }
+        ];
+        setNotes(staticNotes);
+      } else {
+        setNotes(notesList);
+      }
     } catch (error) {
       console.error("Error fetching notes:", error);
     }

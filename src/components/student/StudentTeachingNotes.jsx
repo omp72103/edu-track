@@ -24,7 +24,60 @@ export default function StudentTeachingNotes({ student }) {
       const notesList = await base44.entities.TeachingNote.filter({
         batch_id: student.batch_id
       }, '-session_date');
-      setNotes(notesList);
+      
+      // Use static teaching notes if no data
+      if (notesList.length === 0) {
+        const staticNotes = [
+          {
+            id: '1',
+            title: 'ML Lecture 5 - Deep Learning Fundamentals',
+            subject: 'Machine Learning',
+            topic: 'Introduction to Deep Neural Networks',
+            faculty_name: 'Dr. Anil Kumar',
+            session_date: '2026-01-20',
+            excalidraw_data: JSON.stringify({ elements: [], appState: {} })
+          },
+          {
+            id: '2',
+            title: 'DS Tutorial - Binary Search Trees',
+            subject: 'Data Structures',
+            topic: 'BST Operations and Balancing',
+            faculty_name: 'Prof. Priya Sharma',
+            session_date: '2026-01-19',
+            excalidraw_data: JSON.stringify({ elements: [], appState: {} })
+          },
+          {
+            id: '3',
+            title: 'DBMS Session - Normalization',
+            subject: 'Database Management',
+            topic: 'Database Normalization (1NF to BCNF)',
+            faculty_name: 'Dr. Rajesh Patil',
+            session_date: '2026-01-18',
+            excalidraw_data: JSON.stringify({ elements: [], appState: {} })
+          },
+          {
+            id: '4',
+            title: 'CN Lecture - Network Layer',
+            subject: 'Computer Networks',
+            topic: 'IP Addressing and Subnetting',
+            faculty_name: 'Prof. Sneha Desai',
+            session_date: '2026-01-17',
+            excalidraw_data: JSON.stringify({ elements: [], appState: {} })
+          },
+          {
+            id: '5',
+            title: 'OS Lecture - Memory Management',
+            subject: 'Operating Systems',
+            topic: 'Paging and Segmentation',
+            faculty_name: 'Dr. Amit Joshi',
+            session_date: '2026-01-16',
+            excalidraw_data: JSON.stringify({ elements: [], appState: {} })
+          }
+        ];
+        setNotes(staticNotes);
+      } else {
+        setNotes(notesList);
+      }
     } catch (error) {
       console.error("Error fetching teaching notes:", error);
     }

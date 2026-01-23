@@ -23,7 +23,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import CreateBatchModal from "../components/batches/CreateBatchModal"; // New import for CreateBatchModal
+import CreateBatchModal from "../components/batches/CreateBatchModal";
+import BulkEmailUploadModal from "../components/batches/BulkEmailUploadModal";
 
 const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 const colleges = [
@@ -54,7 +55,8 @@ export default function BatchesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [exportingId, setExportingId] = useState(null);
-  const [isCreateModalOpen, setCreateModalOpen] = useState(false); // State to manage CreateBatchModal visibility
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [isEmailUploadModalOpen, setEmailUploadModalOpen] = useState(false);
 
   useEffect(() => {
     loadBatches();
@@ -207,6 +209,10 @@ export default function BatchesPage() {
             <p className="text-gray-700 mt-1">View, export, and manage AIML classes</p>
           </div>
           <div className="flex gap-3">
+            <Button onClick={() => setEmailUploadModalOpen(true)} variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50">
+              <Upload className="w-4 h-4 mr-2" />
+              Bulk Email Upload
+            </Button>
             <Button onClick={() => navigate(createPageUrl("Upload"))} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 shadow-lg">
               <Upload className="w-4 h-4 mr-2" />
               Bulk Upload Students
@@ -478,7 +484,13 @@ export default function BatchesPage() {
       <CreateBatchModal
         isOpen={isCreateModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onBatchCreated={loadBatches} // Reload batches after a new one is created
+        onBatchCreated={loadBatches}
+      />
+
+      <BulkEmailUploadModal
+        isOpen={isEmailUploadModalOpen}
+        onClose={() => setEmailUploadModalOpen(false)}
+        onSuccess={loadBatches}
       />
 
       <style jsx>{`

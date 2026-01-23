@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Calendar, BookOpen, AlertTriangle, FileText, Eye } from "lucide-react";
+import { BarChart3, Plus, Edit, Trash2, Download, TrendingUp, Award, Mail, Calendar, BookOpen, AlertTriangle, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
-import StudentAnalyticsModal from "../components/performance/StudentAnalyticsModal";
 import { jsPDF } from "jspdf";
 
 const assessmentTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Assignment", "Project", "Practical", "Final Exam", "Quiz"];
@@ -31,8 +30,6 @@ export default function PerformancePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [studentDialog, setStudentDialog] = useState(null);
-  const [viewingStudent, setViewingStudent] = useState(null);
-  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   
   const [formData, setFormData] = useState({
     student_id: "",
@@ -510,7 +507,15 @@ export default function PerformancePage() {
                   return (
                     <div 
                       key={perf.id} 
-                      className="border-0 rounded-2xl p-4 backdrop-blur-xl bg-white/80 hover:bg-white/95 shadow-lg hover:shadow-2xl transition-all duration-300"
+                      className="border-0 rounded-2xl p-4 backdrop-blur-xl bg-white/80 hover:bg-white/95 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group"
+                      onClick={() => {
+                        const student = students.find(s => s.id === perf.student_id);
+                        if (student) {
+                          const studentStats = getStudentStats(student.id);
+                          const studentPerfs = performances.filter(p => p.student_id === student.id);
+                          showStudentDialog(student, studentStats, studentPerfs);
+                        }
+                      }}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
@@ -540,26 +545,17 @@ export default function PerformancePage() {
                           </div>
                           {perf.remarks && <p className="text-sm text-gray-500 mt-2 italic">{perf.remarks}</p>}
                         </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                            onClick={() => {
-                              const studentObj = students.find(s => s.id === perf.student_id);
-                              if (studentObj) {
-                                setViewingStudent(studentObj);
-                                setShowAnalyticsModal(true);
-                              }
-                            }}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleEdit(perf)}>
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="icon" onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(perf);
+                          }}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="icon" onClick={() => handleDelete(perf.id)}>
+                          <Button variant="outline" size="icon" onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(perf.id);
+                          }}>
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </Button>
                         </div>
@@ -579,18 +575,6 @@ export default function PerformancePage() {
         students={students}
         onUpdate={loadData}
       />
-
-      {/* Student Analytics Modal */}
-      {viewingStudent && (
-        <StudentAnalyticsModal
-          student={viewingStudent}
-          isOpen={showAnalyticsModal}
-          onClose={() => {
-            setShowAnalyticsModal(false);
-            setViewingStudent(null);
-          }}
-        />
-      )}
 
       {/* Enhanced Student Summary Dialog with Charts */}
       {studentDialog && (

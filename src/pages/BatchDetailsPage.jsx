@@ -125,15 +125,20 @@ export default function BatchDetailsPage() {
     }
     setIsExporting(true);
     try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Attendance Report');
+
       const studentsInBatch = [...students].sort((a,b) => (parseInt(a.roll_no) || 0) - (parseInt(b.roll_no) || 0));
+      
       // Fetch all sessions for this batch
       const sessionsForBatch = await Session.filter({ batch_id: batch.id });
       // Fetch all attendance records for this batch
       const attendanceRecordsForBatch = await AttendanceRecord.filter({ batch_id: batch.id });
 
       const uniqueSessionDates = [...new Set(sessionsForBatch.map(s => s.session_date))]
-        .sort((a,b) => new Date(parseISO(a)) - new Date(parseISO(b))) // Sort using parsed dates
-        .map(dateString => format(parseISO(dateString), 'dd/MM/yy')); // Format sorted dates
+        .sort((a,b) => new Date(parseISO(a)) - new Date(parseISO(b)))
+        .map(dateString => format(parseISO(dateString), 'dd/MM/yy'));
 
       const sessionIdToDateMap = {};
       sessionsForBatch.forEach(session => {
@@ -151,36 +156,178 @@ export default function BatchDetailsPage() {
         }
       });
 
-      const title = `Inacademic Training Attendance (${batch.year} - ${new Date(batch.created_date).getFullYear()}-${new Date(batch.created_date).getFullYear()+1})`;
-      const classInfo = `CLASS - ${batch.branch}`;
+      // Title and Header Section
+      const title = `EDU TRACK - Attendance Report`;
+      const subtitle = `${batch.college_name} - ${batch.branch} (${batch.year})`;
+      const academicYear = `Academic Year: ${new Date(batch.created_date).getFullYear()}-${new Date(batch.created_date).getFullYear()+1}`;
+      
+      // Merge cells for title
+      worksheet.mergeCells('A1:' + String.fromCharCode(67 + uniqueSessionDates.length) + '1');
+      worksheet.getCell('A1').value = title;
+      worksheet.getCell('A1').font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      worksheet.getCell('A1').fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF4F46E5' }
+      };
+      worksheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(1).height = 30;
 
-      const csvRows = [];
-      csvRows.push([title]);
-      csvRows.push([classInfo]);
-      csvRows.push([]);
+      // Subtitle
+      worksheet.mergeCells('A2:' + String.fromCharCode(67 + uniqueSessionDates.length) + '2');
+      worksheet.getCell('A2').value = subtitle;
+      worksheet.getCell('A2').font = { name: 'Calibri', size: 12, bold: true };
+      worksheet.getCell('A2').fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E7FF' }
+      };
+      worksheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(2).height = 25;
 
+      // Academic Year & Generated Date
+      worksheet.mergeCells('A3:' + String.fromCharCode(67 + uniqueSessionDates.length) + '3');
+      worksheet.getCell('A3').value = `${academicYear} | Generated: ${format(new Date(), 'dd MMM yyyy, HH:mm')}`;
+      worksheet.getCell('A3').font = { name: 'Calibri', size: 10, italic: true };
+      worksheet.getCell('A3').alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getRow(3).height = 20;
+
+      // Empty row
+      worksheet.addRow([]);
+
+      // Header Row with session dates
       const headerRow = ['Roll No.', 'PRN', 'Student Name', ...uniqueSessionDates];
-      csvRows.push(headerRow);
+      const excelHeaderRow = worksheet.addRow(headerRow);
+      excelHeaderRow.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      excelHeaderRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF3B82F6' }
+      };
+      excelHeaderRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      excelHeaderRow.height = 25;
+      
+      // Set column widths
+      worksheet.getColumn(1).width = 12;
+      worksheet.getColumn(2).width = 15;
+      worksheet.getColumn(3).width = 30;
+      uniqueSessionDates.forEach((_, index) => {
+        worksheet.getColumn(index + 4).width = 12;
+      });
 
+      // Data rows with colored cells
       studentsInBatch.forEach((student, index) => {
         const row = [
           student.roll_no || (index + 1).toString(),
           student.prn || '',
           student.name || ''
         ];
-        uniqueSessionDates.forEach(date => {
+        
+        const dataRow = worksheet.addRow(row);
+        dataRow.font = { name: 'Calibri', size: 10 };
+        dataRow.alignment = { vertical: 'middle', horizontal: 'left' };
+        
+        // Student info cells with light background
+        dataRow.getCell(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF3F4F6' }
+        };
+        dataRow.getCell(2).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF3F4F6' }
+        };
+        dataRow.getCell(3).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF3F4F6' }
+        };
+
+        // Attendance cells with GREEN (Present) or RED (Absent)
+        uniqueSessionDates.forEach((date, dateIndex) => {
           const isPresent = studentAttendanceMap[student.id] && studentAttendanceMap[student.id][date];
-          row.push(isPresent ? 'A' : '');
+          const cell = dataRow.getCell(dateIndex + 4);
+          
+          if (isPresent) {
+            // GREEN for present
+            cell.value = 'P';
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FF10B981' } // Green
+            };
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          } else {
+            // RED for absent
+            cell.value = 'A';
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFEF4444' } // Red
+            };
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          }
+          
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'thin', color: { argb: 'FF000000' } },
+            bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            right: { style: 'thin', color: { argb: 'FF000000' } }
+          };
         });
-        csvRows.push(row);
+
+        // Add borders to student info cells
+        dataRow.getCell(1).border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        dataRow.getCell(2).border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        dataRow.getCell(3).border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
       });
 
-      const csvContent = csvRows.map(row => row.map(cell => `"${String(cell !== null && cell !== undefined ? cell : '').replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      // Add footer row
+      worksheet.addRow([]);
+      const footerRow = worksheet.addRow(['Legend: P = Present (Green) | A = Absent (Red)']);
+      worksheet.mergeCells(footerRow.number, 1, footerRow.number, 3 + uniqueSessionDates.length);
+      footerRow.getCell(1).font = { name: 'Calibri', size: 9, italic: true };
+      footerRow.getCell(1).alignment = { horizontal: 'center' };
+
+      const watermarkRow = worksheet.addRow(['Generated by EDU TRACK Education Management System']);
+      worksheet.mergeCells(watermarkRow.number, 1, watermarkRow.number, 3 + uniqueSessionDates.length);
+      watermarkRow.getCell(1).font = { name: 'Calibri', size: 8, italic: true, color: { argb: 'FF6B7280' } };
+      watermarkRow.getCell(1).alignment = { horizontal: 'center' };
+
+      // Add borders to header
+      excelHeaderRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF000000' } },
+          left: { style: 'medium', color: { argb: 'FF000000' } },
+          bottom: { style: 'medium', color: { argb: 'FF000000' } },
+          right: { style: 'medium', color: { argb: 'FF000000' } }
+        };
+      });
+
+      // Generate and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const fileName = `${batch.college_name}_${batch.year}_${batch.branch}_Attendance_Report_${format(new Date(), 'dd-MM-yyyy')}.csv`.replace(/\s+/g, '_');
+      const fileName = `${batch.college_name}_${batch.year}_${batch.branch}_Attendance_Report_${format(new Date(), 'dd-MM-yyyy')}.xlsx`.replace(/\s+/g, '_');
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
@@ -223,10 +370,20 @@ export default function BatchDetailsPage() {
         </button>
         <button
           onClick={exportBatchDataDetailed}
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
           disabled={isExporting}
         >
-          {isExporting ? 'Exporting...' : 'Export Detailed Attendance'}
+          {isExporting ? (
+            <>
+              <span className="animate-spin">⏳</span>
+              Generating Professional Report...
+            </>
+          ) : (
+            <>
+              <span>📊</span>
+              Export Professional Attendance Report (Excel)
+            </>
+          )}
         </button>
       </div>
 

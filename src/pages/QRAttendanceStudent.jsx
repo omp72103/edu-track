@@ -134,7 +134,7 @@ export default function QRAttendanceStudent() {
     validateQRCode();
   }, [session_id, timestamp, batch_type]);
 
-  // Get user's location and log portal access
+  // Get user's location with HIGH ACCURACY and log portal access
   useEffect(() => {
     if (status === "ready") {
       if ("geolocation" in navigator) {
@@ -145,6 +145,15 @@ export default function QRAttendanceStudent() {
               longitude: position.coords.longitude,
               accuracy: position.coords.accuracy
             };
+            
+            // CRITICAL: Reject if accuracy is poor (> 20 meters)
+            if (position.coords.accuracy > 20) {
+              setLocationError(`⚠️ GPS accuracy too low (±${Math.round(position.coords.accuracy)}m). Please move to an area with better GPS signal.`);
+              setStatus("error");
+              setMessage(`📍 GPS accuracy insufficient (±${Math.round(position.coords.accuracy)}m). Minimum required: ±20m. Please:\n1. Move outdoors or near a window\n2. Enable high-accuracy mode in device settings\n3. Refresh and try again`);
+              return;
+            }
+            
             setGpsLocation(locationData);
             setLocationError("");
           },
@@ -154,7 +163,11 @@ export default function QRAttendanceStudent() {
             setStatus("error");
             setMessage("📍 Location access is required to mark attendance. Please enable GPS in your browser settings and refresh the page.");
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          { 
+            enableHighAccuracy: true, // CRITICAL: Force high accuracy
+            timeout: 15000, 
+            maximumAge: 0 
+          }
         );
       } else {
         setLocationError("⚠️ GPS not supported on this device");
@@ -186,7 +199,7 @@ export default function QRAttendanceStudent() {
     return () => clearInterval(timer);
   }, [timestamp, status]);
 
-  // GPS Heartbeat - Send location every 5 seconds after PRN submission
+  // GPS Heartbeat - Send HIGH-ACCURACY location every 5 seconds after PRN submission
   useEffect(() => {
     if (!heartbeatActive || !session_id || !deviceFingerprint) return;
 
@@ -209,7 +222,11 @@ export default function QRAttendanceStudent() {
           (error) => {
             console.error("Location error during heartbeat:", error);
           },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          { 
+            enableHighAccuracy: true, // CRITICAL: High accuracy mode
+            timeout: 5000, 
+            maximumAge: 0 
+          }
         );
       }
     };

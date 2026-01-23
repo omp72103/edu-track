@@ -12,6 +12,7 @@ import { createPageUrl } from "@/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import LiveTrackingMap from "@/components/attendance/LiveTrackingMap";
+import LiveTrackingMap3D from "@/components/attendance/LiveTrackingMap3D";
 import FacultyAlerts from "@/components/attendance/FacultyAlerts";
 
 const QR_EXPIRY_SECONDS = 120;
@@ -306,10 +307,10 @@ export default function QRAttendancePage() {
               <CardHeader>
                 <CardTitle className="text-xl flex items-center gap-2">
                   <MapIcon className="w-6 h-6" />
-                  Real-Time Student Location Tracking
+                  Real-Time 3D Student Location Tracking
                 </CardTitle>
                 <p className="text-sm text-gray-600">
-                  Live GPS tracking • Green markers = Inside zone • Red markers = Outside zone
+                  🌐 Live GPS tracking in 3D • Green markers = Inside zone • Red markers = Outside zone
                 </p>
               </CardHeader>
               <CardContent>
@@ -333,16 +334,31 @@ export default function QRAttendancePage() {
                     </p>
                   </div>
                 </div>
-                
-                <LiveTrackingMap geoFence={geoFence} activeStudents={activeStudents} />
-                
+
+                {/* 3D Map with toggle option */}
+                <div className="mb-4">
+                  <Tabs defaultValue="3d" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="3d">🌐 3D View</TabsTrigger>
+                      <TabsTrigger value="2d">🗺️ 2D View</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="3d">
+                      <LiveTrackingMap3D geoFence={geoFence} activeStudents={activeStudents} />
+                    </TabsContent>
+                    <TabsContent value="2d">
+                      <LiveTrackingMap geoFence={geoFence} activeStudents={activeStudents} />
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
                   <p className="font-semibold mb-1">📍 Map Legend:</p>
                   <div className="space-y-1">
-                    <p>• <span className="text-blue-600 font-medium">Blue circle</span> = Classroom geo-fence boundary</p>
+                    <p>• <span className="text-blue-600 font-medium">Blue circle</span> = Classroom geo-fence boundary (3D extrusion in 3D view)</p>
                     <p>• <span className="text-green-600 font-medium">Green markers</span> = Students inside the geo-fence (eligible for attendance)</p>
                     <p>• <span className="text-red-600 font-medium">Red markers</span> = Students outside the geo-fence (flagged)</p>
-                    <p>• Click on any marker to see student details</p>
+                    <p>• Click on any marker to see student details with GPS accuracy</p>
+                    <p>• <span className="font-medium">3D Mode:</span> Drag with right-click to rotate and tilt the map</p>
                   </div>
                 </div>
               </CardContent>

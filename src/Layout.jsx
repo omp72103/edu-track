@@ -267,6 +267,9 @@ export default function Layout({ children, currentPageName }) {
   // User is logged in - show full app (authorization happens automatically)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex">
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72`}>
         {/* Glassmorphism Sidebar */}

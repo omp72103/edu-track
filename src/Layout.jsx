@@ -22,7 +22,8 @@ import {
   Megaphone,
   Sparkles,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MapPin
 } from "lucide-react";
 
 const mainNavItems = [
@@ -37,6 +38,8 @@ const mainNavItems = [
   { name: "Announcements", label: "Announcements", icon: Megaphone },
   { name: "Messages", label: "Messages", icon: MessageSquare },
   { name: "AITimetableGenerator", label: "AI Timetable", icon: Sparkles },
+  { name: "ProxyDetection", label: "Proxy Detection", icon: AlertCircle },
+  { name: "GeoFenceManagement", label: "Geo-Fencing", icon: MapPin },
 ];
 
 const adminNavItems = [

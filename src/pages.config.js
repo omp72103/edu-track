@@ -21,6 +21,8 @@ import StudentPerformance from './pages/StudentPerformance';
 import StudentPortal from './pages/StudentPortal';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
+import ProxyDetection from './pages/ProxyDetection';
+import GeoFenceManagement from './pages/GeoFenceManagement';
 import __Layout from './Layout.jsx';
 
 
@@ -48,6 +50,8 @@ export const PAGES = {
     "StudentPortal": StudentPortal,
     "TimeTable": TimeTable,
     "Upload": Upload,
+    "ProxyDetection": ProxyDetection,
+    "GeoFenceManagement": GeoFenceManagement,
 }
 
 export const pagesConfig = {

@@ -26,6 +26,8 @@ import Upload from './pages/Upload';
 import ExcalidrawTeacher from './pages/ExcalidrawTeacher';
 import ExcalidrawNotesList from './pages/ExcalidrawNotesList';
 import ExcalidrawViewer from './pages/ExcalidrawViewer';
+import TeachingNotes from './pages/TeachingNotes';
+import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import __Layout from './Layout.jsx';
 
 
@@ -58,6 +60,8 @@ export const PAGES = {
     "ExcalidrawTeacher": ExcalidrawTeacher,
     "ExcalidrawNotesList": ExcalidrawNotesList,
     "ExcalidrawViewer": ExcalidrawViewer,
+    "TeachingNotes": TeachingNotes,
+    "TeachingNoteEditor": TeachingNoteEditor,
 }
 
 export const pagesConfig = {

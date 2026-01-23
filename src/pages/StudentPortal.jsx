@@ -28,6 +28,7 @@ import StudentAttendance from "../components/student/StudentAttendance";
 import StudentTimetable from "../components/student/StudentTimetable";
 import StudentAssignments from "../components/student/StudentAssignments";
 import StudentNotes from "../components/student/StudentNotes";
+import StudentTeachingNotes from "../components/student/StudentTeachingNotes";
 import StudentAnalysis from "../components/student/StudentAnalysis";
 import StudentFeedback from "../components/student/StudentFeedback";
 import StudentComplaints from "../components/student/StudentComplaints";

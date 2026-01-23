@@ -18,7 +18,7 @@ export default function QRAttendanceStudent() {
   const [message, setMessage] = useState("");
   const [timeRemaining, setTimeRemaining] = useState(45);
   const [successData, setSuccessData] = useState(null);
-  const [location, setLocation] = useState(null);
+  const [gpsLocation, setGpsLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
 
   // Get parameters from URL
@@ -134,7 +134,7 @@ export default function QRAttendanceStudent() {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            setLocation({
+            setGpsLocation({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
               accuracy: position.coords.accuracy
@@ -192,7 +192,7 @@ export default function QRAttendanceStudent() {
       return;
     }
 
-    if (!location) {
+    if (!gpsLocation) {
       setMessage("📍 Waiting for GPS location. Please ensure location is enabled.");
       return;
     }
@@ -207,9 +207,9 @@ export default function QRAttendanceStudent() {
         timestamp,
         student_identifier: studentIdentifier.trim(),
         batch_type,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        gps_accuracy: location.accuracy,
+        latitude: gpsLocation.latitude,
+        longitude: gpsLocation.longitude,
+        gps_accuracy: gpsLocation.accuracy,
         user_agent: navigator.userAgent
       });
 
@@ -357,10 +357,10 @@ export default function QRAttendanceStudent() {
               </div>
             )}
 
-            {location && (
+            {gpsLocation && (
               <div className="p-3 rounded-lg bg-green-50 text-green-700 border border-green-200 flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-sm">📍 Location verified (±{Math.round(location.accuracy)}m accuracy)</span>
+                <span className="text-sm">📍 Location verified (±{Math.round(gpsLocation.accuracy)}m accuracy)</span>
               </div>
             )}
 
@@ -374,7 +374,7 @@ export default function QRAttendanceStudent() {
 
             <Button 
               onClick={handleSubmitAttendance} 
-              disabled={isSubmitting || !studentIdentifier.trim() || timeRemaining <= 0 || status !== "ready" || !location}
+              disabled={isSubmitting || !studentIdentifier.trim() || timeRemaining <= 0 || status !== "ready" || !gpsLocation}
               className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-lg py-6"
             >
               {isSubmitting ? (

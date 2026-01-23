@@ -9,20 +9,20 @@ import ConsolidatedReport from './pages/ConsolidatedReport';
 import CreateSession from './pages/CreateSession';
 import Dashboard from './pages/Dashboard';
 import FacultyReport from './pages/FacultyReport';
+import GeoFenceManagement from './pages/GeoFenceManagement';
 import Home from './pages/Home';
 import ManageColleges from './pages/ManageColleges';
 import ManageFaculty from './pages/ManageFaculty';
 import ManageTimeTable from './pages/ManageTimeTable';
 import Messages from './pages/Messages';
 import Performance from './pages/Performance';
+import ProxyDetection from './pages/ProxyDetection';
 import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
 import StudentPerformance from './pages/StudentPerformance';
 import StudentPortal from './pages/StudentPortal';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import ProxyDetection from './pages/ProxyDetection';
-import GeoFenceManagement from './pages/GeoFenceManagement';
 import __Layout from './Layout.jsx';
 
 
@@ -38,20 +38,20 @@ export const PAGES = {
     "CreateSession": CreateSession,
     "Dashboard": Dashboard,
     "FacultyReport": FacultyReport,
+    "GeoFenceManagement": GeoFenceManagement,
     "Home": Home,
     "ManageColleges": ManageColleges,
     "ManageFaculty": ManageFaculty,
     "ManageTimeTable": ManageTimeTable,
     "Messages": Messages,
     "Performance": Performance,
+    "ProxyDetection": ProxyDetection,
     "QRAttendance": QRAttendance,
     "QRAttendanceStudent": QRAttendanceStudent,
     "StudentPerformance": StudentPerformance,
     "StudentPortal": StudentPortal,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "ProxyDetection": ProxyDetection,
-    "GeoFenceManagement": GeoFenceManagement,
 }
 
 export const pagesConfig = {

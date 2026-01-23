@@ -142,18 +142,8 @@ export default function QRAttendanceStudent() {
             setGpsLocation(locationData);
             setLocationError("");
 
-            // Log that student opened the portal
-            try {
-              await base44.functions.invoke('logQRPortalAccess', {
-                session_id,
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
-                gps_accuracy: locationData.accuracy,
-                device_fingerprint: btoa(navigator.userAgent).substring(0, 32)
-              });
-            } catch (error) {
-              console.error("Error logging portal access:", error);
-            }
+            // Note: Student will be logged when they submit PRN
+            // No need to log before PRN entry
           },
           (error) => {
             console.error("Location error:", error);
@@ -215,6 +205,21 @@ export default function QRAttendanceStudent() {
     setMessage("");
 
     try {
+      // First, log to active students table
+      try {
+        await base44.functions.invoke('logQRPortalAccess', {
+          session_id,
+          student_identifier: studentIdentifier.trim(),
+          batch_type,
+          latitude: gpsLocation.latitude,
+          longitude: gpsLocation.longitude,
+          gps_accuracy: gpsLocation.accuracy,
+          device_fingerprint: btoa(navigator.userAgent).substring(0, 32)
+        });
+      } catch (logError) {
+        console.error("Error logging to active students:", logError);
+      }
+
       // Call backend function to mark attendance with location data and PRN
       const response = await base44.functions.invoke('markQRAttendance', {
         session_id,
@@ -224,8 +229,7 @@ export default function QRAttendanceStudent() {
         latitude: gpsLocation.latitude,
         longitude: gpsLocation.longitude,
         gps_accuracy: gpsLocation.accuracy,
-        user_agent: navigator.userAgent,
-        prn: studentIdentifier.trim() // Pass PRN for active student tracking
+        user_agent: navigator.userAgent
       });
 
       if (response.data.success) {

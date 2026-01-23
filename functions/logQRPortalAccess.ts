@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         
         const body = await req.json();
-        const { session_id, latitude, longitude, gps_accuracy, device_fingerprint } = body;
+        const { session_id, student_identifier, batch_type, latitude, longitude, gps_accuracy, device_fingerprint } = body;
 
-        if (!session_id || !latitude || !longitude) {
+        if (!session_id || !student_identifier || !latitude || !longitude) {
             return Response.json({ 
                 success: false, 
                 error: "Missing required parameters" 
@@ -38,6 +38,38 @@ Deno.serve(async (req) => {
                 error: "Session not found" 
             }, { status: 404 });
         }
+
+        // Find student by PRN or Roll Number
+        let students = [];
+        if (batch_type === 'private') {
+            students = await base44.asServiceRole.entities.Student.filter({
+                batch_id: sessionData.batch_id,
+                roll_no: student_identifier
+            });
+        } else {
+            // Try PRN first
+            students = await base44.asServiceRole.entities.Student.filter({
+                batch_id: sessionData.batch_id,
+                prn: student_identifier
+            });
+            
+            // If not found by PRN, try roll_no
+            if (students.length === 0) {
+                students = await base44.asServiceRole.entities.Student.filter({
+                    batch_id: sessionData.batch_id,
+                    roll_no: student_identifier
+                });
+            }
+        }
+
+        if (students.length === 0) {
+            return Response.json({ 
+                success: false, 
+                error: "Student not found in this batch" 
+            }, { status: 404 });
+        }
+
+        const student = students[0];
 
         // Check geo-fence
         const geoFenceZones = await base44.asServiceRole.entities.GeoFenceZone.filter({ 
@@ -59,6 +91,7 @@ Deno.serve(async (req) => {
                 
                 if (distance <= zone.radius_meters) {
                     isInsideGeofence = true;
+                    distanceFromGeofence = 0;
                     break;
                 }
                 
@@ -69,26 +102,54 @@ Deno.serve(async (req) => {
         } else {
             // No geo-fence configured, consider inside
             isInsideGeofence = true;
+            distanceFromGeofence = 0;
         }
 
-        // Log as active student (without PRN initially - will be updated on submission)
-        await base44.asServiceRole.entities.QRActiveStudent.create({
+        // Check if student already logged in this session
+        const existing = await base44.asServiceRole.entities.QRActiveStudent.filter({
             session_id,
-            device_fingerprint,
-            latitude,
-            longitude,
-            gps_accuracy,
-            is_inside_geofence: isInsideGeofence,
-            distance_from_geofence: distanceFromGeofence,
-            portal_opened_at: new Date().toISOString(),
-            last_active_at: new Date().toISOString(),
-            status: 'active'
+            prn: student.prn || student.roll_no
         });
+
+        if (existing.length > 0) {
+            // Update existing record
+            await base44.asServiceRole.entities.QRActiveStudent.update(existing[0].id, {
+                student_id: student.id,
+                student_name: student.name,
+                email: student.email,
+                device_fingerprint,
+                latitude,
+                longitude,
+                gps_accuracy,
+                is_inside_geofence: isInsideGeofence,
+                distance_from_geofence: distanceFromGeofence,
+                last_active_at: new Date().toISOString()
+            });
+        } else {
+            // Create new record
+            await base44.asServiceRole.entities.QRActiveStudent.create({
+                session_id,
+                student_id: student.id,
+                prn: student.prn || student.roll_no,
+                student_name: student.name,
+                email: student.email,
+                device_fingerprint,
+                latitude,
+                longitude,
+                gps_accuracy,
+                is_inside_geofence: isInsideGeofence,
+                distance_from_geofence: distanceFromGeofence,
+                portal_opened_at: new Date().toISOString(),
+                last_active_at: new Date().toISOString(),
+                status: 'active'
+            });
+        }
 
         return Response.json({ 
             success: true,
             is_inside_geofence: isInsideGeofence,
-            distance: distanceFromGeofence
+            distance: distanceFromGeofence,
+            student_name: student.name
         });
 
     } catch (error) {

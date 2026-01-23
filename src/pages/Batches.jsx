@@ -343,7 +343,7 @@ export default function BatchesPage() {
                              size="icon"
                              onClick={(e) => {
                                e.stopPropagation();
-                               navigate(createPageUrl(`BatchAnalytics?batch_id=${batch.id}`));
+                               navigate(createPageUrl(`StudentRecordsPage?batch_id=${batch.id}`));
                              }}
                              className="hover:bg-blue-100"
                              title="View Students"

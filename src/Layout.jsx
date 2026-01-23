@@ -334,10 +334,10 @@ export default function Layout({ children, currentPageName }) {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40"></div>
                 <div className="relative flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all cursor-pointer">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
-                    {user.full_name.charAt(0).toUpperCase()}
+                    {user.full_name.trim().charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-gray-800 truncate">{user.full_name}</p>
+                    <p className="font-bold text-sm text-gray-800 truncate">{user.full_name.trim()}</p>
                     <p className="text-xs text-indigo-600 capitalize font-semibold flex items-center gap-1">
                       {user.role === 'admin' ? 'Admin' : 'Faculty Login'}
                       {user.role === 'admin' && (
@@ -355,8 +355,8 @@ export default function Layout({ children, currentPageName }) {
               >
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-30 hover:opacity-60 transition-opacity"></div>
-                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={user.full_name}>
-                    {user.full_name.charAt(0).toUpperCase()}
+                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={user.full_name.trim()}>
+                    {user.full_name.trim().charAt(0).toUpperCase()}
                   </div>
                 </div>
               </button>

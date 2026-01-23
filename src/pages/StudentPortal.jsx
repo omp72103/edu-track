@@ -33,6 +33,7 @@ import StudentAnalysis from "../components/student/StudentAnalysis";
 import StudentFeedback from "../components/student/StudentFeedback";
 import StudentComplaints from "../components/student/StudentComplaints";
 import StudentNotifications from "../components/student/StudentNotifications";
+import StudentProfile from "../components/student/StudentProfile";
 
 const studentMenuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -112,6 +113,8 @@ export default function StudentPortal() {
         return <StudentComplaints {...pageProps} />;
       case 'notifications':
         return <StudentNotifications {...pageProps} setUnreadCount={setUnreadCount} />;
+      case 'profile':
+        return <StudentProfile {...pageProps} onLogout={handleLogout} />;
       default:
         return <StudentDashboard {...pageProps} onNavigate={setActivePage} />;
     }
@@ -199,21 +202,6 @@ export default function StudentPortal() {
             </button>
           </div>
 
-          {/* Student Info */}
-          {!isSidebarCollapsed && (
-            <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                  {student.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{student.name}</p>
-                  <p className="text-xs text-gray-600">{student.roll_no}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Menu Items */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {studentMenuItems.map((item) => {
@@ -247,16 +235,36 @@ export default function StudentPortal() {
             })}
           </nav>
 
-          {/* Logout Button */}
-          <div className="p-4 border-t">
-            <button
-              onClick={handleLogout}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors ${isSidebarCollapsed ? 'lg:justify-center' : ''}`}
-              title={isSidebarCollapsed ? 'Logout' : ''}
-            >
-              <LogOut className="w-5 h-5 flex-shrink-0" />
-              {!isSidebarCollapsed && <span className="font-medium">Logout</span>}
-            </button>
+          {/* Student Profile Info - Bottom */}
+          <div className="p-4 border-t bg-gradient-to-r from-slate-50 to-blue-50">
+            {student && !isSidebarCollapsed && (
+              <button 
+                onClick={() => setActivePage('profile')}
+                className="w-full hover:scale-102 transition-transform duration-300"
+              >
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/90 backdrop-blur-md border border-white/50 shadow-lg hover:shadow-xl transition-all cursor-pointer">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
+                    {student.name.trim().charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-gray-800 truncate">{student.name.trim()}</p>
+                    <p className="text-xs text-indigo-600 capitalize font-semibold">Student</p>
+                  </div>
+                </div>
+              </button>
+            )}
+            {student && isSidebarCollapsed && (
+              <button
+                onClick={() => setActivePage('profile')}
+                className="flex justify-center w-full"
+              >
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg ring-2 ring-white hover:scale-110 transition-transform cursor-pointer" title={student.name.trim()}>
+                    {student.name.trim().charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>

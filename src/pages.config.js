@@ -27,11 +27,11 @@ import QRAttendance from './pages/QRAttendance';
 import QRAttendanceStudent from './pages/QRAttendanceStudent';
 import StudentPerformance from './pages/StudentPerformance';
 import StudentPortal from './pages/StudentPortal';
+import StudentRecordsPage from './pages/StudentRecordsPage';
 import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import StudentRecordsPage from './pages/StudentRecordsPage';
 import __Layout from './Layout.jsx';
 
 
@@ -65,11 +65,11 @@ export const PAGES = {
     "QRAttendanceStudent": QRAttendanceStudent,
     "StudentPerformance": StudentPerformance,
     "StudentPortal": StudentPortal,
+    "StudentRecordsPage": StudentRecordsPage,
     "TeachingNoteEditor": TeachingNoteEditor,
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "StudentRecordsPage": StudentRecordsPage,
 }
 
 export const pagesConfig = {

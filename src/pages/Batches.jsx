@@ -343,7 +343,7 @@ export default function BatchesPage() {
                              size="icon"
                              onClick={(e) => {
                                e.stopPropagation();
-                               navigate(createPageUrl(`BatchDetailsPage?batch_id=${batch.id}`));
+                               navigate(createPageUrl(`StudentRecordsPage?batch_id=${batch.id}`));
                              }}
                              className="hover:bg-blue-100"
                              title="View Students"
@@ -466,7 +466,7 @@ export default function BatchesPage() {
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(createPageUrl(`BatchDetailsPage?batch_id=${batch.id}`));
+                              navigate(createPageUrl(`StudentRecordsPage?batch_id=${batch.id}`));
                             }}
                             className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
                           >

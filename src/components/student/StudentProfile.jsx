@@ -23,11 +23,11 @@ export default function StudentProfile({ student, user, onLogout }) {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
               <span className="text-3xl font-bold text-blue-600">
-                {(student.name && student.name.trim() ? student.name.trim() : (user.email ? user.email.split('@')[0] : 'S')).charAt(0).toUpperCase()}
+                {student.name.trim().charAt(0).toUpperCase()}
               </span>
             </div>
             <div>
-              <CardTitle className="text-2xl">{student.name && student.name.trim() ? student.name.trim() : (user.email ? user.email.split('@')[0] : 'Student')}</CardTitle>
+              <CardTitle className="text-2xl">{student.name.trim() || (user.email ? user.email.split('@')[0] : 'Student')}</CardTitle>
               <p className="text-blue-100 text-sm">Student Profile</p>
             </div>
           </div>
@@ -38,7 +38,7 @@ export default function StudentProfile({ student, user, onLogout }) {
               <User className="w-5 h-5 text-blue-600" />
               <div>
                 <p className="text-xs text-gray-500">Full Name</p>
-                <p className="font-semibold text-gray-900">{student.name && student.name.trim() ? student.name.trim() : (user.email ? user.email.split('@')[0] : 'Student')}</p>
+                <p className="font-semibold text-gray-900">{student.name.trim() || (user.email ? user.email.split('@')[0] : 'Student')}</p>
               </div>
             </div>
             

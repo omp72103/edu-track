@@ -117,17 +117,30 @@ export default function QRAttendancePage() {
   useEffect(() => {
     if (!session_id) return;
 
-    // Initial load
+    // Initial load - include both active and submitted students
     const loadActiveStudents = async () => {
       try {
-        const students = await base44.entities.QRActiveStudent.filter({ 
-          session_id,
-          status: 'active'
+        // Get all students who are either active or recently submitted (within last 5 minutes)
+        const allStudents = await base44.entities.QRActiveStudent.filter({ 
+          session_id
         });
         
-        setActiveStudents(students);
-        setInsideGeofence(students.filter(s => s.is_inside_geofence === true));
-        setOutsideGeofence(students.filter(s => s.is_inside_geofence === false));
+        // Filter active students (either 'active' or 'submitted' status within last 5 minutes)
+        const now = new Date();
+        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+        
+        const activeStudents = allStudents.filter(s => {
+          if (s.status === 'active') return true;
+          if (s.status === 'submitted') {
+            const lastActive = new Date(s.last_active_at);
+            return lastActive > fiveMinutesAgo;
+          }
+          return false;
+        });
+        
+        setActiveStudents(activeStudents);
+        setInsideGeofence(activeStudents.filter(s => s.is_inside_geofence === true));
+        setOutsideGeofence(activeStudents.filter(s => s.is_inside_geofence === false));
       } catch (error) {
         console.error("Error loading active students:", error);
       }

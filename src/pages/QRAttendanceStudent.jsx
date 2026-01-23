@@ -277,24 +277,33 @@ export default function QRAttendanceStudent() {
         user_agent: navigator.userAgent
       });
 
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         setStatus("success");
         setMessage(response.data.message);
         setSuccessData(response.data);
         setHeartbeatActive(false); // Stop heartbeat on success
       } else {
-        if (response.data.expired) {
+        if (response.data && response.data.expired) {
           setStatus("expired");
         } else {
           setStatus("error");
         }
-        setMessage(response.data.error);
+        setMessage(response.data?.error || "Error marking attendance");
       }
 
     } catch (error) {
       console.error("Error marking attendance:", error);
       setStatus("error");
-      setMessage("❌ Error marking attendance. Please try again or contact your faculty.");
+      
+      // Better error messaging
+      let errorMsg = "Error marking attendance. Please try again or contact your faculty.";
+      if (error.response?.data?.error) {
+        errorMsg = error.response.data.error;
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      setMessage(errorMsg);
     }
 
     setIsSubmitting(false);

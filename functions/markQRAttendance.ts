@@ -441,6 +441,8 @@ Deno.serve(async (req) => {
                 latitude,
                 longitude,
                 gps_accuracy,
+                is_inside_geofence: insideGeoFence,
+                distance_from_geofence: distanceFromGeoFence,
                 status: 'submitted',
                 last_active_at: new Date().toISOString()
             });
@@ -456,8 +458,8 @@ Deno.serve(async (req) => {
                 latitude,
                 longitude,
                 gps_accuracy,
-                is_inside_geofence: isInsideGeofence,
-                distance_from_geofence: distanceFromGeofence,
+                is_inside_geofence: insideGeoFence,
+                distance_from_geofence: distanceFromGeoFence,
                 portal_opened_at: new Date().toISOString(),
                 last_active_at: new Date().toISOString(),
                 status: 'submitted'

@@ -23,11 +23,38 @@ Deno.serve(async (req) => {
         const body = await req.json();
         const { session_id, device_fingerprint, latitude, longitude, gps_accuracy } = body;
 
-        if (!session_id || !device_fingerprint || !latitude || !longitude) {
+        // Validate required parameters
+        if (!session_id || !device_fingerprint) {
             return Response.json({ 
                 success: false, 
-                error: "Missing required parameters" 
+                error: "Missing session_id or device_fingerprint" 
             }, { status: 400 });
+        }
+
+        // Validate GPS coordinates
+        if (latitude === null || longitude === null || latitude === undefined || longitude === undefined) {
+            return Response.json({ 
+                success: false, 
+                error: "GPS location is required" 
+            }, { status: 400 });
+        }
+
+        // Validate GPS are valid numbers
+        if (typeof latitude !== 'number' || typeof longitude !== 'number' || isNaN(latitude) || isNaN(longitude)) {
+            return Response.json({ 
+                success: false, 
+                error: "Invalid GPS coordinates" 
+            }, { status: 400 });
+        }
+
+        // Validate session exists first
+        const sessions = await base44.asServiceRole.entities.Session.filter({ id: session_id });
+        
+        if (sessions.length === 0) {
+            return Response.json({ 
+                success: false, 
+                error: "Session not found" 
+            }, { status: 404 });
         }
 
         // Find active student record by device fingerprint and session
@@ -40,7 +67,7 @@ Deno.serve(async (req) => {
         if (activeStudents.length === 0) {
             return Response.json({ 
                 success: false, 
-                error: "No active session found for this device" 
+                error: "No active session found. Please submit your PRN first." 
             }, { status: 404 });
         }
 

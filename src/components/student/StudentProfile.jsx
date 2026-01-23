@@ -27,7 +27,7 @@ export default function StudentProfile({ student, user, onLogout }) {
               </span>
             </div>
             <div>
-              <CardTitle className="text-2xl">{student.name.trim()}</CardTitle>
+              <CardTitle className="text-2xl">{student.name.trim() || (user.email ? user.email.split('@')[0] : 'Student')}</CardTitle>
               <p className="text-blue-100 text-sm">Student Profile</p>
             </div>
           </div>
@@ -38,7 +38,7 @@ export default function StudentProfile({ student, user, onLogout }) {
               <User className="w-5 h-5 text-blue-600" />
               <div>
                 <p className="text-xs text-gray-500">Full Name</p>
-                <p className="font-semibold text-gray-900">{student.name.trim()}</p>
+                <p className="font-semibold text-gray-900">{student.name.trim() || (user.email ? user.email.split('@')[0] : 'Student')}</p>
               </div>
             </div>
             

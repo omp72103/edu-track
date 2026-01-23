@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Clock, CheckCircle, AlertCircle, Calendar } from "lucide-react";
+import { FileText, Upload, Clock, CheckCircle, AlertCircle, Calendar, BookOpen } from "lucide-react";
+import QuizTaker from "../assignment/QuizTaker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, differenceInDays, isPast } from "date-fns";
 
@@ -14,6 +15,8 @@ export default function StudentAssignments({ student }) {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [submissionText, setSubmissionText] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [isQuizMode, setIsQuizMode] = useState(false);
 
   useEffect(() => {
     fetchAssignments();
@@ -35,6 +38,82 @@ export default function StudentAssignments({ student }) {
       console.error("Error fetching assignments:", error);
     }
     setLoading(false);
+  };
+
+  const handleStartQuiz = async (assignment) => {
+    try {
+      const questions = await base44.entities.QuizQuestion.filter({
+        assignment_id: assignment.id
+      }, 'order');
+      
+      setQuizQuestions(questions);
+      setSelectedAssignment(assignment);
+      setIsQuizMode(true);
+    } catch (error) {
+      console.error("Error loading quiz:", error);
+    }
+  };
+
+  const handleQuizSubmit = async (answers) => {
+    try {
+      const deadline = new Date(selectedAssignment.deadline);
+      const isLate = isPast(deadline);
+
+      // Calculate auto-graded marks
+      let autoMarks = 0;
+      const responses = [];
+
+      for (const question of quizQuestions) {
+        const studentAnswer = answers[question.id];
+        const isCorrect = question.question_type === 'MCQ' && 
+                          studentAnswer === question.correct_answer;
+        
+        if (isCorrect) {
+          autoMarks += question.marks;
+        }
+
+        responses.push({
+          assignment_id: selectedAssignment.id,
+          student_id: student.id,
+          student_name: student.name,
+          student_email: student.email,
+          prn: student.prn,
+          roll_no: student.roll_no,
+          question_id: question.id,
+          student_answer: studentAnswer || '',
+          is_correct: isCorrect,
+          marks_awarded: isCorrect ? question.marks : 0,
+          submitted_at: new Date().toISOString()
+        });
+      }
+
+      // Create responses
+      await Promise.all(responses.map(r => base44.entities.QuizResponse.create(r)));
+
+      // Create submission
+      await base44.entities.AssignmentSubmission.create({
+        assignment_id: selectedAssignment.id,
+        student_id: student.id,
+        student_name: student.name,
+        student_email: student.email,
+        prn: student.prn,
+        roll_no: student.roll_no,
+        submitted_at: new Date().toISOString(),
+        is_late: isLate,
+        status: 'Evaluated',
+        auto_graded_marks: autoMarks,
+        marks_obtained: autoMarks,
+        quiz_completed: true,
+        attempt_number: 1
+      });
+
+      await fetchAssignments();
+      setSelectedAssignment(null);
+      setIsQuizMode(false);
+      setQuizQuestions([]);
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+    }
   };
 
   const handleSubmit = async () => {
@@ -155,6 +234,9 @@ export default function StudentAssignments({ student }) {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-bold text-gray-900">{assignment.title}</h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${assignment.content_type === 'QUIZ' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {assignment.content_type === 'QUIZ' ? '📝 QUIZ' : '📄 FILE'}
+                      </span>
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${status.color} flex items-center gap-1`}>
                         <StatusIcon className="w-3 h-3" />
                         {status.label}
@@ -199,11 +281,23 @@ export default function StudentAssignments({ student }) {
                   <div className="flex-shrink-0">
                     {!submission && (
                       <Button 
-                        onClick={() => setSelectedAssignment(assignment)}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                        onClick={() => assignment.content_type === 'QUIZ' ? handleStartQuiz(assignment) : setSelectedAssignment(assignment)}
+                        className={assignment.content_type === 'QUIZ' ? 
+                          'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' :
+                          'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                        }
                       >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Submit
+                        {assignment.content_type === 'QUIZ' ? (
+                          <>
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            Start Quiz
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Submit
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
@@ -221,8 +315,8 @@ export default function StudentAssignments({ student }) {
         )}
       </div>
 
-      {/* Submission Dialog */}
-      <Dialog open={selectedAssignment !== null} onOpenChange={() => setSelectedAssignment(null)}>
+      {/* Submission Dialog - File Based */}
+      <Dialog open={selectedAssignment !== null && !isQuizMode} onOpenChange={() => setSelectedAssignment(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Submit Assignment</DialogTitle>
@@ -260,6 +354,31 @@ export default function StudentAssignments({ student }) {
                 </Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quiz Taking Dialog */}
+      <Dialog open={isQuizMode} onOpenChange={() => {
+        setIsQuizMode(false);
+        setSelectedAssignment(null);
+        setQuizQuestions([]);
+      }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedAssignment?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedAssignment && quizQuestions.length > 0 && (
+            <QuizTaker 
+              questions={quizQuestions}
+              timeLimit={selectedAssignment.quiz_time_limit}
+              onSubmit={handleQuizSubmit}
+              onCancel={() => {
+                setIsQuizMode(false);
+                setSelectedAssignment(null);
+                setQuizQuestions([]);
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>

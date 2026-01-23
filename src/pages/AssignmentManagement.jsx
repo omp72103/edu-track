@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Eye, FileText, Upload, Download, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, FileText, Upload, Download, Clock, CheckCircle, AlertCircle, BookOpen } from "lucide-react";
+import QuizBuilder from "../components/assignment/QuizBuilder";
 import { format, isPast } from "date-fns";
 import { toast } from "sonner";
 
@@ -22,6 +23,8 @@ export default function AssignmentManagement() {
   const [isEvaluateModalOpen, setIsEvaluateModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [submissions, setSubmissions] = useState([]);
+  const [contentType, setContentType] = useState("FILE");
+  const [quizQuestions, setQuizQuestions] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -29,8 +32,11 @@ export default function AssignmentManagement() {
     batch_id: "",
     deadline: "",
     max_marks: 100,
-    assignment_type: "Individual",
-    attachment_url: ""
+    assignment_category: "Individual",
+    attachment_url: "",
+    quiz_time_limit: null,
+    quiz_shuffle_questions: false,
+    quiz_attempt_limit: 1
   });
 
   useEffect(() => {
@@ -59,15 +65,40 @@ export default function AssignmentManagement() {
     try {
       const selectedBatch = batches.find(b => b.batch_id === formData.batch_id);
       
-      await base44.entities.Assignment.create({
+      const assignmentData = {
         ...formData,
+        content_type: contentType,
         faculty_email: user.email,
         faculty_name: user.full_name,
         college_name: selectedBatch?.college_name || "KIT's College of Engineering, Kolhapur",
         year: selectedBatch?.year || "",
         branch: selectedBatch?.branch || "Artificial Intelligence & Machine Learning",
         status: 'active'
-      });
+      };
+
+      // Calculate max_marks for QUIZ type
+      if (contentType === "QUIZ") {
+        assignmentData.max_marks = quizQuestions.reduce((sum, q) => sum + q.marks, 0);
+      }
+
+      const newAssignment = await base44.entities.Assignment.create(assignmentData);
+
+      // Create quiz questions if QUIZ type
+      if (contentType === "QUIZ" && quizQuestions.length > 0) {
+        await Promise.all(
+          quizQuestions.map((q, index) =>
+            base44.entities.QuizQuestion.create({
+              assignment_id: newAssignment.id,
+              question_text: q.question_text,
+              question_type: q.question_type,
+              marks: q.marks,
+              options: q.options || [],
+              correct_answer: q.correct_answer,
+              order: index + 1
+            })
+          )
+        );
+      }
 
       await fetchData();
       setIsCreateModalOpen(false);
@@ -134,9 +165,14 @@ export default function AssignmentManagement() {
       batch_id: "",
       deadline: "",
       max_marks: 100,
-      assignment_type: "Individual",
-      attachment_url: ""
+      assignment_category: "Individual",
+      attachment_url: "",
+      quiz_time_limit: null,
+      quiz_shuffle_questions: false,
+      quiz_attempt_limit: 1
     });
+    setContentType("FILE");
+    setQuizQuestions([]);
   };
 
   const getSubmissionStats = (assignmentId) => {
@@ -187,6 +223,9 @@ export default function AssignmentManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-xl font-bold text-gray-900">{assignment.title}</h3>
+                        <Badge className={assignment.content_type === 'QUIZ' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}>
+                          {assignment.content_type === 'QUIZ' ? '📝 QUIZ' : '📄 FILE'}
+                        </Badge>
                         <Badge className={assignment.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
                           {assignment.status}
                         </Badge>
@@ -208,8 +247,14 @@ export default function AssignmentManagement() {
                           <span>Max Marks: {assignment.max_marks}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span>Type: {assignment.assignment_type}</span>
+                          <span>Category: {assignment.assignment_category}</span>
                         </div>
+                        {assignment.content_type === 'QUIZ' && assignment.quiz_time_limit && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            <span>Time: {assignment.quiz_time_limit} min</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -250,11 +295,38 @@ export default function AssignmentManagement() {
 
         {/* Create Assignment Modal */}
         <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Assignment</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Assignment Type Selector */}
+              <div>
+                <Label>Assignment Type *</Label>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <Card 
+                    className={`cursor-pointer border-2 transition-all ${contentType === 'FILE' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                    onClick={() => setContentType('FILE')}
+                  >
+                    <CardContent className="p-6 text-center">
+                      <FileText className={`w-12 h-12 mx-auto mb-3 ${contentType === 'FILE' ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <h4 className="font-bold mb-1">File-Based Assignment</h4>
+                      <p className="text-xs text-gray-600">Students upload files (PDF, DOC, etc.)</p>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card 
+                    className={`cursor-pointer border-2 transition-all ${contentType === 'QUIZ' ? 'border-purple-600 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}
+                    onClick={() => setContentType('QUIZ')}
+                  >
+                    <CardContent className="p-6 text-center">
+                      <BookOpen className={`w-12 h-12 mx-auto mb-3 ${contentType === 'QUIZ' ? 'text-purple-600' : 'text-gray-400'}`} />
+                      <h4 className="font-bold mb-1">Quiz-Based Assignment</h4>
+                      <p className="text-xs text-gray-600">MCQ & Short Answer questions</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
               <div>
                 <Label>Title *</Label>
                 <Input
@@ -322,8 +394,8 @@ export default function AssignmentManagement() {
               </div>
 
               <div>
-                <Label>Assignment Type</Label>
-                <Select value={formData.assignment_type} onValueChange={(value) => setFormData({...formData, assignment_type: value})}>
+                <Label>Assignment Category</Label>
+                <Select value={formData.assignment_category} onValueChange={(value) => setFormData({...formData, assignment_category: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -336,13 +408,51 @@ export default function AssignmentManagement() {
                 </Select>
               </div>
 
+              {/* Quiz Settings */}
+              {contentType === 'QUIZ' && (
+                <>
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold mb-3">Quiz Settings</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Time Limit (minutes)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={formData.quiz_time_limit || ''}
+                          onChange={(e) => setFormData({...formData, quiz_time_limit: e.target.value ? parseInt(e.target.value) : null})}
+                          placeholder="Leave empty for no limit"
+                        />
+                      </div>
+                      <div>
+                        <Label>Attempt Limit</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={formData.quiz_attempt_limit}
+                          onChange={(e) => setFormData({...formData, quiz_attempt_limit: parseInt(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <QuizBuilder 
+                    questions={quizQuestions} 
+                    onQuestionsChange={setQuizQuestions}
+                  />
+                </>
+              )}
+
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleCreateAssignment}
-                  disabled={!formData.title || !formData.subject || !formData.batch_id || !formData.deadline}
+                  disabled={
+                    !formData.title || !formData.subject || !formData.batch_id || !formData.deadline ||
+                    (contentType === 'QUIZ' && quizQuestions.length === 0)
+                  }
                 >
                   Create Assignment
                 </Button>

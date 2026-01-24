@@ -374,15 +374,22 @@ export default function StudentAssignments({ student }) {
 
                     {submission && (
                       <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-sm text-gray-700"><strong>Submitted on:</strong> {format(new Date(submission.submitted_at), 'PPP')}</p>
-                        {submission.marks_obtained && (
+                        <p className="text-sm text-gray-700">
+                          <strong>✅ Submitted on:</strong> {format(new Date(submission.submitted_at), 'PPP')}
+                        </p>
+                        {submission.submission_file_url && (
                           <p className="text-sm text-gray-700 mt-1">
-                            <strong>Marks:</strong> {submission.marks_obtained} / {assignment.max_marks}
+                            <strong>📄 Type:</strong> PDF Submission
+                          </p>
+                        )}
+                        {submission.marks_obtained !== undefined && submission.marks_obtained !== null && (
+                          <p className="text-sm text-gray-700 mt-1">
+                            <strong>📊 Marks:</strong> {submission.marks_obtained} / {assignment.max_marks}
                           </p>
                         )}
                         {submission.faculty_remarks && (
                           <p className="text-sm text-gray-700 mt-1">
-                            <strong>Remarks:</strong> {submission.faculty_remarks}
+                            <strong>💬 Remarks:</strong> {submission.faculty_remarks}
                           </p>
                         )}
                       </div>

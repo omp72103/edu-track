@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { College } from "@/entities/all";
 import { base44 } from "@/api/base44Client";
 import { UploadFile, ExtractDataFromUploadedFile, InvokeLLM } from "@/integrations/Core";
+import { parseAttendanceFile } from "@/functions/parseAttendanceFile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1283,59 +1284,65 @@ export default function AdvancedAnalysis() {
     try {
       let headers, data;
 
-      // Handle HTML files
-      if (selectedFile.type === 'text/html' || selectedFile.name.endsWith('.html') || selectedFile.name.endsWith('.htm')) {
-        setMessage({ type: "info", text: "📄 Reading HTML attendance report..." });
-
-        const reader = new FileReader();
-        await new Promise((resolve) => {
-          reader.onload = (e) => {
-            const htmlContent = e.target.result;
-
-            // Parse HTML content
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlContent, 'text/html');
-
-            // Try to find the attendance table
-            const tables = doc.querySelectorAll('table');
-            let foundTable = null;
-
-            // Look for table with attendance data
-            for (const table of tables) {
-              const headerRow = table.querySelector('tr');
-              if (headerRow && headerRow.textContent.match(/PRN|Student|Roll|Name/i)) {
-                foundTable = table;
-                break;
-              }
-            }
-
-            if (!foundTable) {
-              throw new Error("Could not find attendance table in HTML file");
-            }
-
-            const rows = Array.from(foundTable.querySelectorAll('tr'));
-            const headerRow = rows[0];
-            headers = Array.from(headerRow.querySelectorAll('th, td')).map(cell => cell.textContent.trim());
-
-            data = rows.slice(1).map(row => {
-              const cells = Array.from(row.querySelectorAll('td'));
-              const rowData = {};
-              headers.forEach((header, index) => {
-                if (cells[index]) {
-                  rowData[header] = cells[index].textContent.trim();
-                }
-              });
-              return rowData;
-            }).filter(row => Object.values(row).some(val => val && val.length > 0));
-
-            console.log('HTML Parsed:', { headers, dataLength: data.length, firstRow: data[0] });
-            resolve();
-          };
-          reader.readAsText(selectedFile);
-        });
+      // Use backend function for all file types (CSV, Excel, PDF)
+      setMessage({ type: "info", text: "📄 Uploading file for robust parsing..." });
+      
+      const { file_url } = await UploadFile({ file: selectedFile });
+      
+      // Determine file type
+      let fileType = 'csv';
+      if (selectedFile.name.match(/\.(xlsx?|xls)$/i)) fileType = 'excel';
+      else if (selectedFile.name.endsWith('.pdf')) fileType = 'pdf';
+      else if (selectedFile.type === 'text/html' || selectedFile.name.match(/\.html?$/i)) fileType = 'html';
+      
+      setMessage({ type: "info", text: `🔍 Analyzing ${fileType.toUpperCase()} file with enhanced parser...` });
+      
+      const parseResult = await parseAttendanceFile({ file_url, file_type: fileType });
+      
+      if (!parseResult.data.success || !parseResult.data.students || parseResult.data.students.length === 0) {
+        throw new Error(parseResult.data.error || "No student data found in file");
       }
-      // Handle PDF files with OCR
-      else if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+      
+      const parsedStudents = parseResult.data.students;
+      console.log('✅ Backend parsed:', parsedStudents.length, 'students');
+      
+      // Convert backend result to frontend format
+      headers = ['SL NO', 'PRN', 'STUDENT NAME'];
+      
+      // Get unique dates from attendance records
+      const allDates = new Set();
+      parsedStudents.forEach(s => {
+        if (s.attendance_records) {
+          s.attendance_records.forEach(r => allDates.add(r.date));
+        }
+      });
+      const dateColumns = Array.from(allDates);
+      headers.push(...dateColumns);
+      
+      // Build data rows
+      data = parsedStudents.map(s => {
+        const row = {
+          'SL NO': s.roll_no,
+          'PRN': s.prn,
+          'STUDENT NAME': s.name
+        };
+        
+        // Map attendance records to date columns
+        dateColumns.forEach(date => {
+          const record = s.attendance_records?.find(r => r.date === date);
+          row[date] = record ? (record.status === 'present' ? 'P' : 'A') : '';
+        });
+        
+        return row;
+      });
+      
+      console.log('✅ Converted to analysis format:', { headers: headers.length, students: data.length });
+      setMessage({ type: "success", text: `✅ Parsed ${data.length} students with ${dateColumns.length} sessions!` });
+      
+      // Skip the old parsing logic
+      if (false) {
+      // Handle PDF files with OCR (OLD LOGIC - SKIPPED)
+      if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
         setMessage({ type: "info", text: "📄 Uploading PDF for OCR analysis..." });
 
         const { file_url } = await UploadFile({ file: selectedFile });
@@ -1448,20 +1455,7 @@ export default function AdvancedAnalysis() {
         }
 
         setMessage({ type: "info", text: `✅ Extracted ${data.length} students with ${dateColumns.length} attendance sessions!` });
-        } else {
-        // Handle CSV files
-        const reader = new FileReader();
-        await new Promise((resolve) => {
-          reader.onload = (e) => {
-            const text = e.target.result;
-            const parsed = parseCSV(text);
-            headers = parsed.headers;
-            data = parsed.data;
-            console.log('CSV Parsed:', { headers, dataLength: data.length, firstRow: data[0] });
-            resolve();
-          };
-          reader.readAsText(selectedFile);
-        });
+        }
       }
 
       if (data.length === 0) {

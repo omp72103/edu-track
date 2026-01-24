@@ -9,27 +9,16 @@ const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function StudentTimetableGrid({ student }) {
   const [timetable, setTimetable] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterBatch, setFilterBatch] = useState('');
+  const [filterBatch, setFilterBatch] = useState('all');
   const [filterDay, setFilterDay] = useState('all');
 
   useEffect(() => {
     fetchTimetable();
   }, [student]);
 
-  useEffect(() => {
-    if (student?.batch_id) {
-      setFilterBatch(student.batch_id);
-    }
-  }, [student]);
-
   const fetchTimetable = async () => {
     try {
-      // Fetch all batches for filtering
-      const batchData = await base44.entities.Batch.list();
-      setBatches(batchData);
-
       const schedules = await base44.entities.TimeTable.filter({
         batch_id: student.batch_id
       });
@@ -58,7 +47,7 @@ export default function StudentTimetableGrid({ student }) {
 
   // Get all unique time slots
   const getTimeSlots = () => {
-    const slots = [...new Set(filteredTimetable.map(t => t.time_slot))];
+    const slots = [...new Set(timetable.map(t => t.time_slot))];
     return slots.sort((a, b) => {
       const timeA = a.split('-')[0];
       const timeB = b.split('-')[0];
@@ -68,11 +57,10 @@ export default function StudentTimetableGrid({ student }) {
 
   // Get entry for specific day and time
   const getEntryForDayTime = (day, timeSlot) => {
-    return filteredTimetable.find(t => t.day_of_week === day && t.time_slot === timeSlot);
+    return timetable.find(t => t.day_of_week === day && t.time_slot === timeSlot);
   };
 
   const filteredTimetable = timetable.filter(t => {
-    if (filterBatch && filterBatch !== 'all' && t.batch_id !== filterBatch) return false;
     if (filterDay !== 'all' && t.day_of_week !== filterDay) return false;
     return true;
   });
@@ -99,17 +87,6 @@ export default function StudentTimetableGrid({ student }) {
               <Filter className="w-4 h-4 text-gray-500" />
               <span className="text-sm font-semibold text-gray-700">Filters:</span>
             </div>
-            <Select value={filterBatch} onValueChange={setFilterBatch}>
-              <SelectTrigger className="w-52">
-                <SelectValue placeholder="Select Batch" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Batches</SelectItem>
-                {batches.map(batch => (
-                  <SelectItem key={batch.id} value={batch.id}>{batch.batch_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={filterDay} onValueChange={setFilterDay}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All Days" />

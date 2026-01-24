@@ -19,7 +19,6 @@ import GeoFenceManagement from './pages/GeoFenceManagement';
 import Home from './pages/Home';
 import ManageColleges from './pages/ManageColleges';
 import ManageFaculty from './pages/ManageFaculty';
-import ManageTimeTable from './pages/ManageTimeTable';
 import Messages from './pages/Messages';
 import Performance from './pages/Performance';
 import PredictiveAnalysis from './pages/PredictiveAnalysis';
@@ -34,7 +33,7 @@ import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import FacultyTimetable from './pages/FacultyTimetable';
+import ManageTimeTable from './pages/ManageTimeTable';
 import __Layout from './Layout.jsx';
 
 
@@ -60,7 +59,6 @@ export const PAGES = {
     "Home": Home,
     "ManageColleges": ManageColleges,
     "ManageFaculty": ManageFaculty,
-    "ManageTimeTable": ManageTimeTable,
     "Messages": Messages,
     "Performance": Performance,
     "PredictiveAnalysis": PredictiveAnalysis,
@@ -75,7 +73,7 @@ export const PAGES = {
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "FacultyTimetable": FacultyTimetable,
+    "ManageTimeTable": ManageTimeTable,
 }
 
 export const pagesConfig = {

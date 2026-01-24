@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, FileText, TrendingUp, Bell, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import AlertPanel from "../dashboard/AlertPanel";
+import StudentFacultyAllocation from "./StudentFacultyAllocation";
 
 export default function StudentDashboard({ student, onNavigate }) {
   const [stats, setStats] = useState({
@@ -222,6 +223,9 @@ export default function StudentDashboard({ student, onNavigate }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Faculty & Subject Allocation Widget */}
+      <StudentFacultyAllocation student={student} />
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

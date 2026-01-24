@@ -144,45 +144,61 @@ export default function StudentNotifications({ student, setUnreadCount }) {
         )}
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {['all', 'Academic', 'Assignment', 'Exam', 'General', 'Event', 'Alert'].map(cat => (
-          <button
-            key={cat}
-            onClick={() => setFilter(cat)}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm whitespace-nowrap ${
-              filter === cat
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                : 'bg-white text-gray-700 border hover:bg-blue-50'
-            }`}
-          >
-            {cat === 'all' ? 'All' : cat}
-          </button>
-        ))}
+      {/* Filter - Mobile Optimized with Swipe */}
+      <div className="relative">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory touch-pan-x">
+          {['all', 'Academic', 'Assignment', 'Exam', 'General', 'Event', 'Alert'].map(cat => (
+            <button
+              key={cat}
+              onClick={() => setFilter(cat)}
+              className={`flex-shrink-0 snap-start px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition-all ${
+                filter === cat
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:border-blue-300'
+              } ${deviceType === 'mobile' ? 'min-h-[44px] px-5' : ''}`}
+            >
+              {cat === 'all' ? 'All' : cat}
+            </button>
+          ))}
+        </div>
+        <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none" />
       </div>
+      
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
 
-      {/* Notifications List - Device Aware */}
-      <div className="space-y-3">
+      {/* Notifications List - Fully Mobile Optimized */}
+      <div className="space-y-2 sm:space-y-3">
         {filteredNotifications.map(notif => (
           <Card 
             key={notif.id} 
-            className={`border-0 shadow-lg transition-all ${
-              notif.is_read ? 'opacity-60' : 'border-l-4 border-blue-500'
-            } ${deviceType === 'mobile' ? 'active:scale-98' : ''}`}
+            className={`border-0 shadow-md hover:shadow-lg transition-all ${
+              notif.is_read ? 'opacity-60 bg-gray-50' : 'border-l-4 border-blue-500 bg-white'
+            } ${deviceType === 'mobile' ? 'active:scale-[0.98]' : ''}`}
           >
-            <CardContent className={deviceType === 'mobile' ? 'p-4' : 'p-6'}>
-              <div className={`flex ${deviceType === 'mobile' ? 'flex-col' : 'items-start justify-between'} gap-3 sm:gap-4`}>
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
+            <CardContent className={deviceType === 'mobile' ? 'p-3' : 'p-4 sm:p-6'}>
+              <div className="space-y-3">
+                {/* Header with Title and Badges */}
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
                     {!notif.is_read && (
-                      <div className={`${deviceType === 'mobile' ? 'w-3 h-3' : 'w-2 h-2'} bg-blue-600 rounded-full animate-pulse`}></div>
+                      <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-blue-600 rounded-full animate-pulse mt-1.5 flex-shrink-0" />
                     )}
-                    <h3 className={`font-bold text-gray-900 ${deviceType === 'mobile' ? 'text-base' : 'text-lg'}`}>
+                    <h3 className={`font-bold text-gray-900 flex-1 ${deviceType === 'mobile' ? 'text-sm leading-tight' : 'text-base sm:text-lg'}`}>
                       {notif.title}
                     </h3>
                   </div>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                  
+                  {/* Badges Row */}
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-full font-semibold ${
                       notif.priority === 'Urgent' ? 'bg-red-100 text-red-700' :
                       notif.priority === 'High' ? 'bg-orange-100 text-orange-700' :
                       notif.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
@@ -190,28 +206,34 @@ export default function StudentNotifications({ student, setUnreadCount }) {
                     }`}>
                       {notif.priority}
                     </span>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold">
+                    <span className="px-2 py-0.5 sm:py-1 bg-blue-100 text-blue-700 text-[10px] sm:text-xs rounded-full font-semibold">
                       {notif.category}
                     </span>
                   </div>
-                  <p className={`text-gray-700 mb-2 ${deviceType === 'mobile' ? 'text-sm leading-relaxed' : ''}`}>
-                    {notif.message}
-                  </p>
-                  <p className="text-xs text-gray-500">
+                </div>
+
+                {/* Message */}
+                <p className={`text-gray-700 ${deviceType === 'mobile' ? 'text-xs leading-relaxed' : 'text-sm'}`}>
+                  {notif.message}
+                </p>
+
+                {/* Footer with Date and Action */}
+                <div className={`flex ${deviceType === 'mobile' ? 'flex-col gap-2' : 'items-center justify-between gap-3'} pt-2 border-t border-gray-100`}>
+                  <p className="text-[10px] sm:text-xs text-gray-500">
                     {format(new Date(notif.created_date), deviceType === 'mobile' ? 'MMM d, h:mm a' : 'PPP p')}
                   </p>
+                  {!notif.is_read && (
+                    <Button 
+                      onClick={() => markAsRead(notif.id)} 
+                      size="sm"
+                      variant="outline"
+                      className={`${deviceType === 'mobile' ? 'w-full h-10 text-xs' : 'h-8'} border-blue-300 text-blue-600 hover:bg-blue-50`}
+                    >
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                      {deviceType === 'mobile' ? 'Mark as Read' : 'Read'}
+                    </Button>
+                  )}
                 </div>
-                {!notif.is_read && (
-                  <Button 
-                    onClick={() => markAsRead(notif.id)} 
-                    size={deviceType === 'mobile' ? 'sm' : 'default'}
-                    variant="outline"
-                    className={deviceType === 'mobile' ? 'w-full' : ''}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    {deviceType === 'mobile' ? 'Mark Read' : 'Mark as Read'}
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>

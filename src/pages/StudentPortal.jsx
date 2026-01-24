@@ -3,6 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Student } from "@/entities/all";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { Toaster } from "@/components/ui/sonner";
+import StudentNotificationListener from "@/components/notifications/StudentNotificationListener";
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -172,6 +174,10 @@ export default function StudentPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex">
+      {/* Real-time notification listener */}
+      <StudentNotificationListener studentEmail={user?.email} />
+      <Toaster position="top-right" richColors />
+      
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72 bg-white shadow-2xl`}>
         <div className="flex flex-col h-full">

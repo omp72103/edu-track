@@ -58,8 +58,13 @@ export default function PredictiveAnalysis() {
   };
 
   const parseCSV = (text) => {
+    console.log('📄 Starting CSV parsing...');
     const lines = text.trim().split(/\r?\n/).filter(line => line.trim());
-    if (lines.length < 2) return { headers: [], data: [] };
+    
+    if (lines.length < 2) {
+      console.error('❌ CSV has less than 2 lines (header + data required)');
+      return { headers: [], data: [] };
+    }
 
     const parseLine = (line) => {
       const result = [];
@@ -80,104 +85,208 @@ export default function PredictiveAnalysis() {
       return result;
     };
 
-    const headers = parseLine(lines[0]).map(h => h.trim()).filter(h => h.length > 0);
-    const data = lines.slice(1).map(line => {
-      const values = parseLine(line);
+    // Smart header detection - skip empty lines and title rows
+    let headerRowIndex = 0;
+    let headers = [];
+    
+    const headerKeywords = ['ROLL', 'NAME', 'STUDENT', 'ATTENDANCE', 'TOTAL', 'PRESENT', 'ABSENT', '%', 'DAYS'];
+    
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
+      const parsed = parseLine(lines[i]);
+      const lineUpper = lines[i].toUpperCase();
+      
+      const keywordCount = headerKeywords.filter(k => lineUpper.includes(k)).length;
+      
+      if (keywordCount >= 2 && parsed.length >= 3) {
+        headerRowIndex = i;
+        headers = parsed.map(h => h.trim()).filter(h => h.length > 0);
+        console.log(`✅ Found header row at line ${i}:`, headers);
+        break;
+      }
+    }
+    
+    if (headers.length === 0) {
+      console.log('⚠️ No header detected, using first line');
+      headers = parseLine(lines[0]).map(h => h.trim()).filter(h => h.length > 0);
+    }
+
+    // Parse data rows and validate
+    const data = [];
+    for (let i = headerRowIndex + 1; i < lines.length; i++) {
+      const values = parseLine(lines[i]);
+      
+      // Skip completely empty rows
+      if (!values.some(v => v && v.trim())) continue;
+      
       const row = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || '';
       });
-      return row;
-    }).filter(row => Object.values(row).some(val => val && val.length > 0));
+      
+      // Only include rows with at least 3 non-empty values
+      const nonEmptyCount = Object.values(row).filter(v => v && v.trim().length > 0).length;
+      if (nonEmptyCount >= 3) {
+        data.push(row);
+      }
+    }
+
+    console.log('✅ CSV Parsing complete:', { 
+      totalLines: lines.length, 
+      headerIndex: headerRowIndex,
+      headers: headers.length, 
+      validDataRows: data.length,
+      sampleHeaders: headers.slice(0, 5),
+      firstDataRow: data[0]
+    });
 
     return { headers, data };
   };
 
   const analyzeAttendanceData = (data) => {
+    console.log('📊 Starting attendance analysis with', data.length, 'rows');
     const students = [];
     
+    // Intelligent column detection with multiple keyword variations
     const findColumn = (keywords) => {
-      for (const row of data) {
-        for (const key of Object.keys(row)) {
-          const upper = key.toUpperCase().trim();
-          if (keywords.some(k => upper.includes(k) || upper === k)) {
-            return key;
-          }
+      // Check headers first
+      if (data.length === 0) return null;
+      
+      const firstRow = data[0];
+      for (const key of Object.keys(firstRow)) {
+        const upper = key.toUpperCase().trim();
+        if (keywords.some(k => upper.includes(k) || upper === k)) {
+          console.log(`✅ Mapped column "${key}" for keywords:`, keywords);
+          return key;
         }
       }
       return null;
     };
     
-    const rollNoCol = findColumn(['ROLL NO', 'ROLL', 'SL NO', 'SR NO']);
-    const nameCol = findColumn(['STUDENT NAME', 'NAME', 'STUDENT']);
-    const totalDaysCol = findColumn(['TOTAL DAYS', 'TOTAL']);
-    const presentCol = findColumn(['DAYS PRESENT', 'PRESENT']);
-    const absentCol = findColumn(['DAYS ABSENT', 'ABSENT']);
-    const percentCol = findColumn(['ATTENDANCE %', 'ATTENDANCE', '%', 'PERCENT']);
+    // Enhanced column mapping with comprehensive keyword variations
+    const rollNoCol = findColumn(['ROLL NO', 'ROLL', 'ROLLNUMBER', 'SL NO', 'SR NO', 'SERIAL NO', 'SL.NO', 'SR.NO', 'ROLL NUMBER']);
+    const nameCol = findColumn(['STUDENT NAME', 'NAME', 'STUDENT', 'FULL NAME', 'NAME OF STUDENT', 'STUDENTS NAME']);
+    const totalDaysCol = findColumn(['TOTAL DAYS', 'TOTAL', 'TOTAL CLASSES', 'NO OF DAYS', 'TOTAL SESSIONS']);
+    const presentCol = findColumn(['DAYS PRESENT', 'PRESENT', 'ATTENDED', 'CLASSES ATTENDED', 'PRESENT DAYS']);
+    const absentCol = findColumn(['DAYS ABSENT', 'ABSENT', 'ABSENTEES', 'CLASSES MISSED', 'ABSENT DAYS']);
+    const percentCol = findColumn(['ATTENDANCE %', 'ATTENDANCE', '%', 'PERCENT', 'ATTENDANCE PERCENTAGE', 'PERCENTAGE']);
 
-    data.forEach(row => {
+    console.log('🔍 Column mapping:', {
+      rollNoCol,
+      nameCol, 
+      totalDaysCol,
+      presentCol,
+      absentCol,
+      percentCol
+    });
+
+    // Validate that we found at least name column
+    if (!nameCol) {
+      console.error('❌ Could not find Student Name column. Detected columns:', Object.keys(data[0] || {}));
+      throw new Error('Could not detect Student Name column in CSV. Please ensure the file has a "Student Name" or "Name" column.');
+    }
+
+    // Process each row
+    let validStudentCount = 0;
+    let skippedRows = 0;
+
+    data.forEach((row, rowIndex) => {
       const name = row[nameCol] || '';
       const rollNo = row[rollNoCol] || '';
-      const totalDays = parseInt(row[totalDaysCol]) || 0;
-      const daysPresent = parseInt(row[presentCol]) || 0;
-      const daysAbsent = parseInt(row[absentCol]) || 0;
       
+      // Parse numeric values safely
+      const parseNumber = (value) => {
+        if (!value) return 0;
+        const str = value.toString().replace(/[^\d.-]/g, ''); // Remove non-numeric except . and -
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : num;
+      };
+      
+      const totalDays = parseNumber(row[totalDaysCol]);
+      const daysPresent = parseNumber(row[presentCol]);
+      const daysAbsent = parseNumber(row[absentCol]);
+      
+      // Calculate percentage intelligently
       let percentage = 0;
       if (percentCol && row[percentCol]) {
-        percentage = parseFloat(row[percentCol].toString().replace('%', '').trim()) || 0;
-      } else if (totalDays > 0) {
-        percentage = ((daysPresent / totalDays) * 100);
+        const percentValue = row[percentCol].toString().replace('%', '').replace(/\s/g, '').trim();
+        percentage = parseNumber(percentValue);
+      } else if (totalDays > 0 && daysPresent > 0) {
+        percentage = (daysPresent / totalDays) * 100;
+      } else if (totalDays > 0 && daysAbsent >= 0) {
+        const calculatedPresent = totalDays - daysAbsent;
+        percentage = (calculatedPresent / totalDays) * 100;
       }
 
-      if (name.trim().length > 0) {
-        const absenceRatio = totalDays > 0 ? (daysAbsent / totalDays) : 0;
-        
-        let riskLevel = 'low';
-        let riskScore = 0;
-        if (percentage >= 85) {
-          riskLevel = 'low';
-          riskScore = 20 + (100 - percentage) * 0.5;
-        } else if (percentage >= 70) {
-          riskLevel = 'moderate';
-          riskScore = 40 + (85 - percentage) * 2;
-        } else {
-          riskLevel = 'high';
-          riskScore = 70 + (70 - percentage) * 0.5;
-        }
-
-        let academicImpact = '';
-        let predictedGradeDrop = '';
-        if (percentage >= 90) {
-          academicImpact = 'Excellent academic continuity - No impact expected';
-          predictedGradeDrop = 'No drop';
-        } else if (percentage >= 75) {
-          academicImpact = 'Moderate risk - May affect performance slightly';
-          predictedGradeDrop = '1 grade point';
-        } else {
-          academicImpact = 'High academic risk - Significant performance impact';
-          predictedGradeDrop = '2-3 grade points';
-        }
-
-        const trendFactor = absenceRatio > 0.15 ? -2 : absenceRatio > 0.1 ? -1 : 0;
-        const predictedFinal = Math.max(0, Math.min(100, percentage + trendFactor));
-
-        students.push({
-          name: name.trim(),
-          rollNo: rollNo.toString().trim(),
-          totalDays,
-          daysPresent,
-          daysAbsent,
-          percentage: percentage.toFixed(1),
-          absenceRatio: absenceRatio.toFixed(2),
-          riskLevel,
-          riskScore: riskScore.toFixed(0),
-          predictedFinalAttendance: predictedFinal.toFixed(1),
-          academicImpact,
-          predictedGradeDrop,
-          interventionPriority: riskLevel === 'high' ? 'immediate' : riskLevel === 'moderate' ? 'soon' : 'monitor',
-          recommendations: generateRecommendations(percentage, absenceRatio, riskLevel)
-        });
+      // Validate student record - must have name and some attendance data
+      const hasValidName = name.trim().length >= 2 && /[a-zA-Z]/.test(name);
+      const hasAttendanceData = percentage > 0 || totalDays > 0 || daysPresent > 0;
+      
+      if (!hasValidName || !hasAttendanceData) {
+        skippedRows++;
+        console.log(`⚠️ Skipping invalid row ${rowIndex + 1}:`, { name, percentage, totalDays, daysPresent });
+        return;
       }
+
+      validStudentCount++;
+      const absenceRatio = totalDays > 0 ? (daysAbsent / totalDays) : 0;
+      
+      // Risk Level Classification (STRICT THRESHOLDS)
+      let riskLevel = 'low';
+      let riskScore = 0;
+      if (percentage >= 85) {
+        riskLevel = 'low';
+        riskScore = 20 + (100 - percentage) * 0.5;
+      } else if (percentage >= 70) {
+        riskLevel = 'moderate';
+        riskScore = 40 + (85 - percentage) * 2;
+      } else {
+        riskLevel = 'high';
+        riskScore = 70 + (70 - percentage) * 0.5;
+      }
+
+      // Academic Impact Assessment
+      let academicImpact = '';
+      let predictedGradeDrop = '';
+      if (percentage >= 90) {
+        academicImpact = 'Excellent academic continuity - No impact expected';
+        predictedGradeDrop = 'No drop';
+      } else if (percentage >= 75) {
+        academicImpact = 'Moderate risk - May affect performance slightly';
+        predictedGradeDrop = '1 grade point';
+      } else {
+        academicImpact = 'High academic risk - Significant performance impact';
+        predictedGradeDrop = '2-3 grade points';
+      }
+
+      // Predictive trend calculation
+      const trendFactor = absenceRatio > 0.15 ? -2 : absenceRatio > 0.1 ? -1 : 0;
+      const predictedFinal = Math.max(0, Math.min(100, percentage + trendFactor));
+
+      students.push({
+        name: name.trim(),
+        rollNo: rollNo.toString().trim() || `Student-${validStudentCount}`,
+        totalDays,
+        daysPresent,
+        daysAbsent,
+        percentage: percentage.toFixed(1),
+        absenceRatio: absenceRatio.toFixed(2),
+        riskLevel,
+        riskScore: riskScore.toFixed(0),
+        predictedFinalAttendance: predictedFinal.toFixed(1),
+        academicImpact,
+        predictedGradeDrop,
+        interventionPriority: riskLevel === 'high' ? 'immediate' : riskLevel === 'moderate' ? 'soon' : 'monitor',
+        recommendations: generateRecommendations(percentage, absenceRatio, riskLevel)
+      });
+    });
+
+    console.log('✅ Analysis complete:', {
+      totalRowsProcessed: data.length,
+      validStudents: validStudentCount,
+      skippedRows: skippedRows,
+      highRisk: students.filter(s => s.riskLevel === 'high').length,
+      moderateRisk: students.filter(s => s.riskLevel === 'moderate').length,
+      lowRisk: students.filter(s => s.riskLevel === 'low').length
     });
 
     return students.sort((a, b) => parseFloat(b.riskScore) - parseFloat(a.riskScore));
@@ -304,42 +413,78 @@ Be specific with dates and realistic with predictions.`;
       const reader = new FileReader();
       
       reader.onload = async (e) => {
-        const text = e.target.result;
-        const { headers, data } = parseCSV(text);
-        
-        if (data.length === 0) {
-          setMessage({ type: "error", text: "No valid data found in CSV" });
-          setIsProcessing(false);
-          return;
-        }
-
-        setMessage({ type: "info", text: "📊 Analyzing attendance patterns..." });
-
-        const students = analyzeAttendanceData(data);
-        
-        const highRisk = students.filter(s => s.riskLevel === 'high').length;
-        const moderateRisk = students.filter(s => s.riskLevel === 'moderate').length;
-        const lowRisk = students.filter(s => s.riskLevel === 'low').length;
-
-        const result = {
-          students,
-          summary: {
-            totalStudents: students.length,
-            highRisk,
-            moderateRisk,
-            lowRisk,
-            avgAttendance: students.length > 0 ? (students.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / students.length).toFixed(1) : 0
-          },
-          batchInfo: {
-            year: formData.year,
-            division: formData.division,
-            analysisDate: new Date().toISOString()
+        try {
+          const text = e.target.result;
+          console.log('📄 CSV file loaded, size:', text.length, 'bytes');
+          
+          const { headers, data } = parseCSV(text);
+          
+          if (data.length === 0) {
+            console.error('❌ No valid data rows found after parsing');
+            console.log('Detected headers:', headers);
+            setMessage({ 
+              type: "error", 
+              text: `No valid data found in CSV. Detected ${headers.length} columns but 0 valid rows. Please check file format.` 
+            });
+            setIsProcessing(false);
+            return;
           }
-        };
 
-        setAnalysisResult(result);
-        setMessage({ type: "success", text: `✅ Analysis complete! ${students.length} students analyzed.` });
-        setIsProcessing(false);
+          console.log(`✅ CSV parsed successfully: ${data.length} valid rows`);
+          setMessage({ type: "info", text: `📊 Analyzing ${data.length} student records...` });
+
+          const students = analyzeAttendanceData(data);
+          
+          if (students.length === 0) {
+            console.error('❌ No students extracted from data');
+            console.log('Sample data row:', data[0]);
+            setMessage({ 
+              type: "error", 
+              text: "Could not extract student data. Please ensure CSV has columns: Roll No, Student Name, and Attendance % (or Total Days + Days Present)" 
+            });
+            setIsProcessing(false);
+            return;
+          }
+          
+          const highRisk = students.filter(s => s.riskLevel === 'high').length;
+          const moderateRisk = students.filter(s => s.riskLevel === 'moderate').length;
+          const lowRisk = students.filter(s => s.riskLevel === 'low').length;
+
+          const result = {
+            students,
+            summary: {
+              totalStudents: students.length,
+              highRisk,
+              moderateRisk,
+              lowRisk,
+              avgAttendance: students.length > 0 ? (students.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / students.length).toFixed(1) : 0
+            },
+            batchInfo: {
+              year: formData.year,
+              division: formData.division,
+              analysisDate: new Date().toISOString()
+            }
+          };
+
+          console.log('✅ Final analysis result:', {
+            students_analyzed: result.summary.totalStudents,
+            high_risk: highRisk,
+            moderate_risk: moderateRisk,
+            low_risk: lowRisk,
+            avg_attendance: result.summary.avgAttendance
+          });
+
+          setAnalysisResult(result);
+          setMessage({ 
+            type: "success", 
+            text: `✅ Analysis complete! ${students.length} students analyzed. High Risk: ${highRisk}, Moderate: ${moderateRisk}, Low: ${lowRisk}` 
+          });
+          setIsProcessing(false);
+        } catch (error) {
+          console.error('❌ CSV Analysis Error:', error);
+          setMessage({ type: "error", text: `Error: ${error.message}` });
+          setIsProcessing(false);
+        }
       };
 
       reader.readAsText(selectedFile);

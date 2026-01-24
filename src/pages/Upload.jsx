@@ -4,7 +4,7 @@ import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, AlertCircle, CheckCircle, Upload as UploadIcon, Users } from "lucide-react";
+import { ArrowLeft, AlertCircle, CheckCircle, Upload as UploadIcon, Users, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -550,7 +550,7 @@ export default function UploadPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <Alert className="bg-blue-50 border-blue-200 mb-4">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <Info className="h-4 w-4 text-blue-600" />
                       <AlertDescription className="text-blue-800">
                         <div className="font-semibold mb-2">🔒 Upload Configuration</div>
                         <div className="text-sm space-y-1">

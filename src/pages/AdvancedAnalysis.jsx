@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, TrendingUp, FileSpreadsheet, Sparkles, Download, Loader2, Send, Zap } from "lucide-react";
+import { Upload, TrendingUp, FileSpreadsheet, Sparkles, Download, Loader2, Send, Zap, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, parse } from "date-fns";
@@ -1691,7 +1691,7 @@ export default function AdvancedAnalysis() {
               </h3>
               {/* Locked Configuration Display */}
               <Alert className="bg-blue-50 border-blue-200 mb-4">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800 text-sm">
                   <div className="font-semibold mb-1">🔒 Analysis Scope</div>
                   <div className="text-xs space-y-0.5">

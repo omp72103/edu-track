@@ -632,8 +632,38 @@ function SubmissionCard({ submission, assignment, onEvaluate }) {
           </div>
         </div>
 
-        <div className="mb-4 p-3 bg-white rounded-lg border">
-          <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.submission_text}</p>
+        {/* Submission Content */}
+        <div className="mb-4">
+          {submission.submission_file_url ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-semibold text-blue-900">PDF Submission</span>
+              </div>
+              {/* Embedded PDF Viewer */}
+              <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                <iframe
+                  src={submission.submission_file_url}
+                  className="w-full h-[600px]"
+                  title="Submission PDF"
+                />
+              </div>
+              <a 
+                href={submission.submission_file_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm"
+              >
+                <Upload className="w-4 h-4" />
+                Open PDF in new tab
+              </a>
+            </div>
+          ) : (
+            <div className="p-3 bg-white rounded-lg border">
+              <p className="text-sm font-semibold text-gray-700 mb-2">Text Submission:</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.submission_text}</p>
+            </div>
+          )}
         </div>
 
         {submission.status !== 'Evaluated' && (

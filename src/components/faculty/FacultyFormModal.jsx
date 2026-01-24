@@ -14,7 +14,7 @@ import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useYearDivisions } from "../hooks/useBatches";
+import { useYearDivisions } from "../utils/useBatches";
 
 export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMember }) {
   const { years, divisions, getDivisionsForYear } = useYearDivisions();

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, BookOpen, Save } from "lucide-react";
 import { toast } from "sonner";
-import { useYearDivisions } from "../../hooks/useBatches";
+import { useYearDivisions } from "../utils/useBatches";
 
 export default function SubjectAllotmentTab({ faculty, onUpdate }) {
   const { years, divisions, getDivisionsForYear } = useYearDivisions();

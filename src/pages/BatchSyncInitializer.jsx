@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { refreshBatches } from '../hooks/useBatches';
+import { refreshBatches } from '../components/utils/useBatches';
 
 // This component initializes the global batch refresh mechanism
 export default function BatchSyncInitializer() {

@@ -9,7 +9,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized', success: false, students: [] }, { status: 401 });
     }
 
-    const { file_url, file_type } = await req.json();
+    const body = await req.json();
+    const { file_url, file_type } = body;
+    
+    if (!file_url) {
+      throw new Error('file_url is required');
+    }
     console.log('📂 Parsing file:', { file_url, file_type });
 
     // Fetch file content
@@ -21,32 +26,42 @@ Deno.serve(async (req) => {
 
     let parsedData = [];
 
-    // CSV Parsing - use AI extraction for reliability
+    // CSV Parsing - try manual first
     if (file_type === 'csv' || file_url.endsWith('.csv')) {
       console.log('📄 Processing CSV file...');
       const csvText = await fileResponse.text();
+      console.log('CSV text length:', csvText.length);
       
-      // Try manual CSV parsing first
       try {
         parsedData = parseCSV(csvText);
         console.log('✅ CSV parsed manually:', parsedData.length, 'students');
       } catch (csvError) {
-        console.log('⚠️ Manual CSV parsing failed, using AI extraction:', csvError.message);
-        // Fallback to AI extraction
-        const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
-          file_url,
-          json_schema: getSimplifiedSchema()
-        });
+        console.log('⚠️ Manual CSV parsing failed:', csvError.message);
+        console.log('Trying AI extraction as fallback...');
         
-        if (extractResult.status === 'success' && extractResult.output) {
-          parsedData = normalizeExtractedData(extractResult.output);
+        try {
+          const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
+            file_url,
+            json_schema: getSimplifiedSchema()
+          });
+          
+          if (extractResult.status === 'success' && extractResult.output) {
+            parsedData = normalizeExtractedData(extractResult.output);
+            console.log('✅ AI extracted:', parsedData.length, 'students');
+          } else {
+            throw new Error('AI extraction also failed: ' + (extractResult.details || 'Unknown error'));
+          }
+        } catch (aiError) {
+          console.error('AI extraction error:', aiError);
+          throw new Error(`Both CSV parsing and AI extraction failed. CSV error: ${csvError.message}`);
         }
       }
     }
     
-    // Excel, PDF, HTML - use AI extraction
+    // Excel, PDF, HTML - use AI extraction only
     else {
       console.log('📊 Using AI extraction for', file_type);
+      
       const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url,
         json_schema: getSimplifiedSchema()
@@ -58,7 +73,9 @@ Deno.serve(async (req) => {
         parsedData = normalizeExtractedData(extractResult.output);
         console.log('✅ AI extracted:', parsedData.length, 'students');
       } else {
-        throw new Error(extractResult.details || 'AI extraction failed to parse file structure');
+        const errorMsg = extractResult.details || extractResult.error || 'Failed to parse file';
+        console.error('❌ Extraction failed:', errorMsg);
+        throw new Error(`Could not parse ${file_type} file: ${errorMsg}`);
       }
     }
 

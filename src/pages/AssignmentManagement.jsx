@@ -641,21 +641,30 @@ function SubmissionCard({ submission, assignment, onEvaluate }) {
                 <span className="font-semibold">PDF Submission:</span>
               </div>
               
-              {/* PDF Viewer */}
-              <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+              {/* PDF Viewer using Google Docs Viewer for better compatibility */}
+              <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-100">
                 <iframe 
-                  src={submission.submission_file_url}
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(submission.submission_file_url)}&embedded=true`}
                   className="w-full h-[500px]"
                   title="Student Submission PDF"
+                  frameBorder="0"
                 />
               </div>
               
-              {/* Download Button */}
-              <div className="flex justify-end">
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2">
                 <a 
                   href={submission.submission_file_url} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-semibold"
+                >
+                  <Eye className="w-4 h-4" />
+                  Open in New Tab
+                </a>
+                <a 
+                  href={submission.submission_file_url} 
+                  download
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
                 >
                   <Download className="w-4 h-4" />

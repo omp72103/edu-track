@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Clock, CheckCircle, AlertCircle, Calendar, BookOpen, File } from "lucide-react";
+import { FileText, Upload, Clock, CheckCircle, AlertCircle, Calendar, BookOpen, File, Eye, Download } from "lucide-react";
 import QuizTaker from "../assignment/QuizTaker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, differenceInDays, isPast } from "date-fns";
@@ -370,6 +370,18 @@ export default function StudentAssignments({ student }) {
                           {getDaysLeft(assignment.deadline)}
                         </span>
                       </div>
+                      {/* View Assignment PDF Button */}
+                      {assignment.content_type === 'FILE' && assignment.attachment_url && (
+                        <a 
+                          href={assignment.attachment_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-semibold"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>View Assignment</span>
+                        </a>
+                      )}
                     </div>
 
                     {submission && (

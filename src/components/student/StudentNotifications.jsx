@@ -4,8 +4,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Bell, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useDeviceType } from "../utils/deviceDetection";
+import { toast } from "sonner";
 
 export default function StudentNotifications({ student, setUnreadCount }) {
+  const deviceType = useDeviceType();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -96,6 +99,11 @@ export default function StudentNotifications({ student, setUnreadCount }) {
         read_at: new Date().toISOString()
       });
       await fetchNotifications();
+      
+      // Device-aware feedback
+      if (deviceType === 'mobile') {
+        toast.success('Marked as read', { duration: 2000 });
+      }
     } catch (error) {
       console.error("Error marking as read:", error);
     }
@@ -122,16 +130,16 @@ export default function StudentNotifications({ student, setUnreadCount }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">🔔 Notifications</h1>
-          <p className="text-gray-600 mt-1">Stay updated with announcements</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🔔 Notifications</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Stay updated with announcements</p>
         </div>
         {notifications.some(n => !n.is_read) && (
-          <Button onClick={markAllAsRead} variant="outline">
+          <Button onClick={markAllAsRead} variant="outline" size={deviceType === 'mobile' ? 'sm' : 'default'}>
             <CheckCircle className="w-4 h-4 mr-2" />
-            Mark All Read
+            {deviceType === 'mobile' ? 'All Read' : 'Mark All Read'}
           </Button>
         )}
       </div>
@@ -153,22 +161,28 @@ export default function StudentNotifications({ student, setUnreadCount }) {
         ))}
       </div>
 
-      {/* Notifications List */}
+      {/* Notifications List - Device Aware */}
       <div className="space-y-3">
         {filteredNotifications.map(notif => (
           <Card 
             key={notif.id} 
-            className={`border-0 shadow-lg transition-all ${notif.is_read ? 'opacity-60' : 'border-l-4 border-blue-500'}`}
+            className={`border-0 shadow-lg transition-all ${
+              notif.is_read ? 'opacity-60' : 'border-l-4 border-blue-500'
+            } ${deviceType === 'mobile' ? 'active:scale-98' : ''}`}
           >
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4">
+            <CardContent className={deviceType === 'mobile' ? 'p-4' : 'p-6'}>
+              <div className={`flex ${deviceType === 'mobile' ? 'flex-col' : 'items-start justify-between'} gap-3 sm:gap-4`}>
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     {!notif.is_read && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      <div className={`${deviceType === 'mobile' ? 'w-3 h-3' : 'w-2 h-2'} bg-blue-600 rounded-full animate-pulse`}></div>
                     )}
-                    <h3 className="font-bold text-gray-900">{notif.title}</h3>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
+                    <h3 className={`font-bold text-gray-900 ${deviceType === 'mobile' ? 'text-base' : 'text-lg'}`}>
+                      {notif.title}
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
                       notif.priority === 'Urgent' ? 'bg-red-100 text-red-700' :
                       notif.priority === 'High' ? 'bg-orange-100 text-orange-700' :
                       notif.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
@@ -176,22 +190,26 @@ export default function StudentNotifications({ student, setUnreadCount }) {
                     }`}>
                       {notif.priority}
                     </span>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-semibold">
                       {notif.category}
                     </span>
                   </div>
-                  <p className="text-gray-700 mb-2">{notif.message}</p>
+                  <p className={`text-gray-700 mb-2 ${deviceType === 'mobile' ? 'text-sm leading-relaxed' : ''}`}>
+                    {notif.message}
+                  </p>
                   <p className="text-xs text-gray-500">
-                    {format(new Date(notif.created_date), 'PPP p')}
+                    {format(new Date(notif.created_date), deviceType === 'mobile' ? 'MMM d, h:mm a' : 'PPP p')}
                   </p>
                 </div>
                 {!notif.is_read && (
                   <Button 
                     onClick={() => markAsRead(notif.id)} 
-                    size="sm"
+                    size={deviceType === 'mobile' ? 'sm' : 'default'}
                     variant="outline"
+                    className={deviceType === 'mobile' ? 'w-full' : ''}
                   >
-                    <CheckCircle className="w-4 h-4" />
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {deviceType === 'mobile' ? 'Mark Read' : 'Mark as Read'}
                   </Button>
                 )}
               </div>

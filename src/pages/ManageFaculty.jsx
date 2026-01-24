@@ -11,6 +11,7 @@ import FacultySessionsTab from "../components/faculty/FacultySessionsTab";
 import FacultyExpensesTab from "../components/faculty/FacultyExpensesTab";
 import FacultyInvoicesTab from "../components/faculty/FacultyInvoicesTab";
 import FacultySummaryTab from "../components/faculty/FacultySummaryTab";
+import SubjectAllotmentTab from "../components/faculty/SubjectAllotmentTab";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -300,8 +301,9 @@ export default function ManageFaculty() {
 
           {selectedFaculty && (
             <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="subjects">Subject Allotment</TabsTrigger>
                 <TabsTrigger value="sessions">Sessions</TabsTrigger>
               </TabsList>
 
@@ -352,6 +354,10 @@ export default function ManageFaculty() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="subjects" className="mt-6">
+                <SubjectAllotmentTab faculty={selectedFaculty} onUpdate={fetchFaculty} />
               </TabsContent>
 
               <TabsContent value="sessions" className="mt-6">

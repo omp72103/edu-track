@@ -35,6 +35,8 @@ export default function TimeTablePage() {
   const [message, setMessage] = useState(null);
   const [filterBatch, setFilterBatch] = useState("");
   const [filterDay, setFilterDay] = useState("");
+  const [suggestedSubjects, setSuggestedSubjects] = useState([]);
+  const [allowManualSubject, setAllowManualSubject] = useState(false);
   
   const [formData, setFormData] = useState({
     batch_id: "",
@@ -68,6 +70,37 @@ export default function TimeTablePage() {
       setMessage({ type: "error", text: "Failed to load data" });
     }
     setIsLoading(false);
+  };
+
+  const loadFacultySubjects = async (facultyEmail, batchId) => {
+    if (!facultyEmail || !batchId) {
+      setSuggestedSubjects([]);
+      return;
+    }
+
+    try {
+      const batch = batches.find(b => b.id === batchId);
+      if (!batch) return;
+
+      const mappings = await base44.entities.FacultySubjectMapping.filter({
+        faculty_email: facultyEmail,
+        year: batch.year,
+        division: batch.division,
+        is_active: true
+      });
+
+      if (mappings.length > 0) {
+        setSuggestedSubjects(mappings);
+        if (mappings.length === 1 && !allowManualSubject) {
+          setFormData(prev => ({ ...prev, subject: mappings[0].subject_name }));
+        }
+      } else {
+        setSuggestedSubjects([]);
+        setAllowManualSubject(true);
+      }
+    } catch (error) {
+      console.error("Error loading faculty subjects:", error);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -247,7 +280,10 @@ export default function TimeTablePage() {
                     </div>
                     <div>
                       <Label>Faculty *</Label>
-                      <Select value={formData.faculty_email} onValueChange={(value) => setFormData({...formData, faculty_email: value})}>
+                      <Select value={formData.faculty_email} onValueChange={(value) => {
+                        setFormData({...formData, faculty_email: value, subject: ""});
+                        loadFacultySubjects(value, formData.batch_id);
+                      }}>
                         <SelectTrigger><SelectValue placeholder="Select faculty"/></SelectTrigger>
                         <SelectContent>
                           {faculties.map(f => (
@@ -279,8 +315,45 @@ export default function TimeTablePage() {
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Subject *</Label>
-                      <Input value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} required />
+                      <Label className="flex items-center justify-between">
+                        <span>Subject *</span>
+                        {suggestedSubjects.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setAllowManualSubject(!allowManualSubject)}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            {allowManualSubject ? '🔒 Use Mapped Only' : '✏️ Manual Entry'}
+                          </button>
+                        )}
+                      </Label>
+                      {suggestedSubjects.length > 0 && !allowManualSubject ? (
+                        <Select value={formData.subject} onValueChange={(value) => setFormData({...formData, subject: value})}>
+                          <SelectTrigger className="mt-1 border-green-300 bg-green-50">
+                            <SelectValue placeholder="Auto-suggested subjects"/>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {suggestedSubjects.map(m => (
+                              <SelectItem key={m.id} value={m.subject_name}>
+                                {m.subject_name} {m.subject_code && `(${m.subject_code})`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input 
+                          value={formData.subject} 
+                          onChange={(e) => setFormData({...formData, subject: e.target.value})} 
+                          required 
+                          placeholder={suggestedSubjects.length > 0 ? "Manual entry mode" : "Enter subject name"}
+                          className={suggestedSubjects.length > 0 && allowManualSubject ? 'border-yellow-300 bg-yellow-50' : ''}
+                        />
+                      )}
+                      {suggestedSubjects.length > 0 && (
+                        <p className="text-xs text-green-700 mt-1">
+                          ✅ {suggestedSubjects.length} subject(s) mapped to this faculty for selected batch
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label>Class Type *</Label>

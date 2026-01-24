@@ -14,11 +14,10 @@ import { base44 } from "@/api/base44Client";
 import { Plus, Trash2, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-
-const years = ["FY", "SY", "TY", "BTech"];
-const divisions = ["AIML-A", "AIML-B", "AIML-C"];
+import { useYearDivisions } from "../hooks/useBatches";
 
 export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMember }) {
+  const { years, divisions, getDivisionsForYear } = useYearDivisions();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,6 +33,7 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
     subject_code: "",
     weekly_lecture_count: 3
   });
+  const [availableDivisions, setAvailableDivisions] = useState([]);
   const [showMappingSection, setShowMappingSection] = useState(false);
 
   useEffect(() => {
@@ -197,14 +197,22 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs">Year *</Label>
-                      <Select value={newMapping.year} onValueChange={(value) => setNewMapping({...newMapping, year: value})}>
+                      <Select 
+                        value={newMapping.year} 
+                        onValueChange={(value) => {
+                          setNewMapping({...newMapping, year: value, division: ""});
+                          setAvailableDivisions(getDivisionsForYear(value));
+                        }}
+                      >
                         <SelectTrigger className="h-9 text-sm">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          {years.map(y => (
+                          {years.length > 0 ? years.map(y => (
                             <SelectItem key={y} value={y}>{y}</SelectItem>
-                          ))}
+                          )) : (
+                            <SelectItem value="no-data" disabled>No years in system</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -215,9 +223,12 @@ export default function FacultyFormModal({ isOpen, onClose, onSave, facultyMembe
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          {divisions.map(d => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
+                          {(newMapping.year ? availableDivisions : divisions).length > 0 ? 
+                            (newMapping.year ? availableDivisions : divisions).map(d => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            )) : (
+                            <SelectItem value="no-data" disabled>Select year first</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

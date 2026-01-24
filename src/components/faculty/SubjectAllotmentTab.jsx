@@ -8,14 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, BookOpen, Save } from "lucide-react";
 import { toast } from "sonner";
-
-const years = ["FY", "SY", "TY", "BTech"];
-const divisions = ["AIML-A", "AIML-B", "AIML-C"];
+import { useYearDivisions } from "../../hooks/useBatches";
 
 export default function SubjectAllotmentTab({ faculty, onUpdate }) {
+  const { years, divisions, getDivisionsForYear } = useYearDivisions();
   const [mappings, setMappings] = useState([]);
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [availableDivisions, setAvailableDivisions] = useState([]);
   const [newMapping, setNewMapping] = useState({
     year: "",
     division: "",

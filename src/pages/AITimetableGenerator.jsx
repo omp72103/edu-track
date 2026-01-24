@@ -34,6 +34,7 @@ export default function AITimetableGenerator() {
     ]
   });
   const [subjectData, setSubjectData] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -52,8 +53,40 @@ export default function AITimetableGenerator() {
     }
   };
 
+  const loadSubjectsForBatch = async (batchId) => {
+    setLoadingSubjects(true);
+    try {
+      const batch = batches.find(b => b.id === batchId);
+      if (!batch) return;
+
+      const mappings = await base44.entities.FacultySubjectMapping.filter({
+        year: batch.year,
+        division: batch.division,
+        is_active: true
+      });
+
+      const subjects = mappings.map(m => ({
+        name: m.subject_name,
+        lectures_per_week: m.weekly_lecture_count || 3,
+        type: m.subject_type || "Theory",
+        faculty_name: m.faculty_name,
+        subject_code: m.subject_code || ""
+      }));
+
+      setSubjectData(subjects);
+      setMessage({ 
+        type: "success", 
+        text: `Loaded ${subjects.length} subjects from faculty allocation for ${batch.batch_name}` 
+      });
+    } catch (error) {
+      console.error("Error loading subjects:", error);
+      setSubjectData([]);
+    }
+    setLoadingSubjects(false);
+  };
+
   const addSubject = () => {
-    setSubjectData([...subjectData, { name: "", lectures_per_week: "", type: "Theory", faculty_name: "" }]);
+    setSubjectData([...subjectData, { name: "", subject_code: "", lectures_per_week: "", type: "Theory", faculty_name: "" }]);
   };
 
   const updateSubject = (index, field, value) => {
@@ -492,7 +525,10 @@ export default function AITimetableGenerator() {
                 {/* Batch Selection */}
                 <div>
                   <Label className="text-base sm:text-lg font-semibold">Select Batch *</Label>
-                  <Select value={selectedBatch} onValueChange={setSelectedBatch}>
+                  <Select value={selectedBatch} onValueChange={(value) => {
+                    setSelectedBatch(value);
+                    loadSubjectsForBatch(value);
+                  }}>
                     <SelectTrigger className="h-10 sm:h-12 text-sm sm:text-base">
                       <SelectValue placeholder="Choose batch (SY, TY, etc.)" />
                     </SelectTrigger>
@@ -504,6 +540,9 @@ export default function AITimetableGenerator() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {loadingSubjects && (
+                    <p className="text-xs text-blue-600 mt-2">Loading subjects from faculty allocation...</p>
+                  )}
                 </div>
 
                 {/* Timetable Structure */}
@@ -563,22 +602,32 @@ export default function AITimetableGenerator() {
                       <Plus className="w-4 h-4 mr-1" /> Add Subject
                     </Button>
                   </div>
+                  {subjectData.length === 0 && !loadingSubjects && selectedBatch && (
+                    <Alert className="mb-3 bg-yellow-50 border-yellow-200">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-yellow-800">
+                        No subjects found in faculty allocation. Add subjects manually or allocate them in Manage Faculty first.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   {subjectData.map((subject, index) => (
                     <div key={index} className="border rounded-lg p-3 bg-gray-50 mb-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-2">
                         <Input placeholder="Subject Name" value={subject.name} onChange={(e) => updateSubject(index, 'name', e.target.value)} />
+                        <Input placeholder="Subject Code" value={subject.subject_code || ""} onChange={(e) => updateSubject(index, 'subject_code', e.target.value)} />
                         <Input type="number" placeholder="Lectures/Week" value={subject.lectures_per_week} onChange={(e) => updateSubject(index, 'lectures_per_week', e.target.value)} />
                         <Select value={subject.type} onValueChange={(v) => updateSubject(index, 'type', v)}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Theory">Theory</SelectItem>
                             <SelectItem value="Practical">Practical</SelectItem>
-                            <SelectItem value="Lab">Lab</SelectItem>
                           </SelectContent>
                         </Select>
                         <Select value={subject.faculty_name} onValueChange={(v) => updateSubject(index, 'faculty_name', v)}>
                           <SelectTrigger><SelectValue placeholder="Select Faculty" /></SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="Guest Faculty">Guest Faculty</SelectItem>
+                            <SelectItem value="Department Training">Department Training</SelectItem>
                             {faculties.map(f => (
                               <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>
                             ))}

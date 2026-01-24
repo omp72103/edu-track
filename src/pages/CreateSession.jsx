@@ -11,18 +11,17 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useYearDivisions, refreshBatches } from "@/components/utils/useBatches";
 
 // SCOPE LOCKED TO KIT KOLHAPUR - AIML ONLY
 const COLLEGE_NAME = "KIT's College of Engineering, Kolhapur";
 const BRANCH_NAME = "Artificial Intelligence & Machine Learning";
 
-const years = ["FY", "SY", "TY", "BTech"];
-const divisions = ["AIML-A", "AIML-B", "AIML-C"];
 const durations = ["1 Hour", "1.5 Hours", "2 Hours", "2.5 Hours", "3 Hours"];
-// Custom batches are now fetched from database
 
 export default function CreateSession() {
   const navigate = useNavigate();
+  const { years, divisions, getDivisionsForYear } = useYearDivisions();
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [colleges, setColleges] = useState([]);
@@ -32,6 +31,7 @@ export default function CreateSession() {
   const [stats, setStats] = useState({ batches: 0, students: 0, faculty: 0 });
   const [batchType, setBatchType] = useState("standard");
   const [error, setError] = useState(null);
+  const [availableDivisions, setAvailableDivisions] = useState([]);
   const [formData, setFormData] = useState({
     session_name: "",
     year: "",
@@ -169,6 +169,7 @@ export default function CreateSession() {
       };
 
       await base44.entities.Session.create(sessionData);
+      refreshBatches(); // Trigger global sync
       navigate(createPageUrl("Dashboard"));
     } catch (err) {
       console.error("Error creating session:", err);
@@ -253,10 +254,19 @@ export default function CreateSession() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="year" className="font-semibold text-slate-700">Academic Year *</Label>
-                    <Select value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})} required>
+                    <Select 
+                      value={formData.year} 
+                      onValueChange={(value) => {
+                        setFormData({...formData, year: value, division: ""});
+                        setAvailableDivisions(getDivisionsForYear(value));
+                      }} 
+                      required
+                    >
                       <SelectTrigger className="mt-2"><SelectValue placeholder="Select year" /></SelectTrigger>
                       <SelectContent>
-                        {years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                        {years.length > 0 ? years.map((y) => <SelectItem key={y} value={y}>{y}</SelectItem>) : (
+                          <SelectItem value="no-data" disabled>No years available</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -265,7 +275,10 @@ export default function CreateSession() {
                     <Select value={formData.division} onValueChange={(value) => setFormData({...formData, division: value})} required>
                       <SelectTrigger className="mt-2"><SelectValue placeholder="Select division" /></SelectTrigger>
                       <SelectContent>
-                        {divisions.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        {(formData.year ? availableDivisions : divisions).length > 0 ? 
+                          (formData.year ? availableDivisions : divisions).map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>) : (
+                          <SelectItem value="no-data" disabled>{formData.year ? 'No divisions for selected year' : 'Select year first'}</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

@@ -34,7 +34,6 @@ import TeachingNoteEditor from './pages/TeachingNoteEditor';
 import TeachingNotes from './pages/TeachingNotes';
 import TimeTable from './pages/TimeTable';
 import Upload from './pages/Upload';
-import BatchSyncInitializer from './pages/BatchSyncInitializer';
 import __Layout from './Layout.jsx';
 
 
@@ -75,7 +74,6 @@ export const PAGES = {
     "TeachingNotes": TeachingNotes,
     "TimeTable": TimeTable,
     "Upload": Upload,
-    "BatchSyncInitializer": BatchSyncInitializer,
 }
 
 export const pagesConfig = {

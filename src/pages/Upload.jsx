@@ -12,24 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import FileUploadSection from "../components/upload/FileUploadSection";
 import StudentDataPreview from "../components/upload/StudentDataPreview";
 
-const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
-const branches = [
-    "Computer Science Engineering", 
-    "Artificial Intelligence & Machine Learning",
-    "Data Science",
-    "Computer Science & Business Systems",
-    "Electronics & Telecommunication",
-    "Information Technology",
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Textile Engineering",
-    "Bio-Technology Engineering",
-    "Chemical Engineering",
-    "Environmental Engineering",
-    "Electrical Engineering",
-    "Production Engineering"
-];
-const divisions = ["A", "B", "C", "D", "Not Applicable"];
+// LOCKED CONFIGURATION FOR KIT KOLHAPUR - AIML ONLY
+const LOCKED_COLLEGE = "KIT's College of Engineering, Kolhapur";
+const LOCKED_BRANCH = "Artificial Intelligence & Machine Learning";
+const LOCKED_COLLEGE_SHORT = "KIT_KOLHAPUR";
+
+const years = ["FE", "SE", "TE", "BE"];
+const divisions = ["A", "B", "C"];
 
 // Custom batches are now fetched from database
 
@@ -48,14 +37,11 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [batchType, setBatchType] = useState("standard");
-  const [colleges, setColleges] = useState(COLLEGES);
   const [privateBatches, setPrivateBatches] = useState([]);
   const [customBatches, setCustomBatches] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [formData, setFormData] = useState({
-    college_name: "",
     year: "",
-    branch: "",
     division: "",
     custom_batch_id: "",
     private_batch_id: ""
@@ -78,23 +64,31 @@ export default function UploadPage() {
     fetchData();
   }, []);
 
+  // Trigger global batch refresh after successful student upload
+  const triggerBatchRefresh = () => {
+    if (typeof window !== 'undefined' && window.refreshBatches) {
+      window.refreshBatches();
+    }
+  };
+
   const handleBatchParametersSubmit = () => {
     let batchData = null;
     
     if (batchType === "standard") {
       if (!formData.year || !formData.division) {
-        setError("Please fill all required fields for standard batch");
+        setError("Please select Academic Year and Division");
         return;
       }
-      const batchId = `kit_kolhapur_${formData.year}_aiml_${formData.division}`.toLowerCase().replace(/[^\w-]+/g, '-');
+      const batchId = `${LOCKED_COLLEGE_SHORT}_${formData.year}_AIML_${formData.division}`.toLowerCase().replace(/[^\w-]+/g, '-');
       
       batchData = {
         batch_type: "standard",
         batch_id: batchId,
-        batch_name: `AIML - Div ${formData.division}`,
-        college_name: "KIT's College of Engineering, Kolhapur",
+        batch_name: `${formData.year} AIML - Div ${formData.division}`,
+        batch_description: `${formData.year} - ${LOCKED_BRANCH} - Division ${formData.division}`,
+        college_name: LOCKED_COLLEGE,
         year: formData.year,
-        branch: "Artificial Intelligence & Machine Learning",
+        branch: LOCKED_BRANCH,
         division: formData.division
       };
     } else if (batchType === "custom") {
@@ -483,6 +477,8 @@ export default function UploadPage() {
       
       setSuccessMessage(`Successfully added ${studentsToCreate.length} new students to batch '${selectedBatch.batch_name}'.`);
       
+      triggerBatchRefresh(); // Sync batches globally
+      
       setTimeout(() => {
         navigate(createPageUrl("Batches"));
       }, 2000);
@@ -502,9 +498,7 @@ export default function UploadPage() {
     setError(null);
     setSuccessMessage(null);
     setFormData({
-      college_name: "",
       year: "",
-      branch: "",
       division: "",
       custom_batch_id: "",
       private_batch_id: ""
@@ -555,12 +549,24 @@ export default function UploadPage() {
                     <CardTitle className="flex items-center gap-2"><Users className="w-5 h-5"/>Select Batch Type</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    <Alert className="bg-blue-50 border-blue-200 mb-4">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-800">
+                        <div className="font-semibold mb-2">🔒 Upload Configuration</div>
+                        <div className="text-sm space-y-1">
+                          <div>📋 <strong>Batch Type:</strong> Standard Batch (Fixed)</div>
+                          <div>🏛️ <strong>College:</strong> KIT Kolhapur (Fixed)</div>
+                          <div>🔬 <strong>Branch:</strong> AIML Department (Fixed)</div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+
                     <div className="space-y-2">
                         <label className="font-semibold text-slate-700">Batch Type</label>
                         <Select value={batchType} onValueChange={setBatchType}>
                             <SelectTrigger><SelectValue/></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="standard">Standard Batch</SelectItem>
+                                <SelectItem value="standard">Standard Batch (KIT AIML)</SelectItem>
                                 <SelectItem value="custom">Custom Batch</SelectItem>
                                 <SelectItem value="private">Private Batch</SelectItem>
                             </SelectContent>

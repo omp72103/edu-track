@@ -40,8 +40,8 @@ export default function AdvancedAnalysis() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
-    division: "",
-    academicYear: ""
+    academicYear: "",
+    division: ""
   });
   const [reportConfig, setReportConfig] = useState({
     includeCharts: true,
@@ -559,7 +559,8 @@ export default function AdvancedAnalysis() {
     const { attendanceByDate, studentAttendance } = analysis;
     
     const csvRows = [];
-    csvRows.push([`Attendance Report - Division ${batchInfo.division}`]);
+    csvRows.push([`Attendance Report - ${batchInfo.academicYear} AIML Division ${batchInfo.division}`]);
+    csvRows.push([`KIT's College of Engineering, Kolhapur`]);
     csvRows.push([]);
     
     // Student attendance data
@@ -580,7 +581,7 @@ export default function AdvancedAnalysis() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Attendance_Report_Div_${batchInfo.division}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
+    link.download = `Attendance_Report_${batchInfo.academicYear}_AIML_Div${batchInfo.division}_${format(new Date(), 'dd-MM-yyyy')}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -662,7 +663,7 @@ export default function AdvancedAnalysis() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Analysis - Division ${batchInfo.division}</title>
+    <title>Attendance Analysis - ${batchInfo.academicYear} AIML Div ${batchInfo.division}</title>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -910,6 +911,18 @@ export default function AdvancedAnalysis() {
         <div class="header">
             <h1>📊 Advanced Attendance Analysis Report</h1>
             <div class="batch-info">
+                <div class="info-item">
+                    <div class="info-label">College</div>
+                    <div class="info-value">KIT Kolhapur</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Branch</div>
+                    <div class="info-value">AIML</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Academic Year</div>
+                    <div class="info-value">${batchInfo.academicYear}</div>
+                </div>
                 <div class="info-item">
                     <div class="info-label">Division</div>
                     <div class="info-value">${batchInfo.division}</div>
@@ -1259,8 +1272,8 @@ export default function AdvancedAnalysis() {
       return;
     }
 
-    if (!formData.division || formData.division.trim() === "") {
-      setMessage({ type: "error", text: "Please enter division" });
+    if (!formData.academicYear || !formData.division) {
+      setMessage({ type: "error", text: "Please select Academic Year and Division" });
       return;
     }
 
@@ -1509,6 +1522,9 @@ export default function AdvancedAnalysis() {
       try {
         const insightsPrompt = `Analyze this attendance data and provide detailed insights and recommendations:
 
+      College: KIT's College of Engineering, Kolhapur
+      Branch: Artificial Intelligence & Machine Learning (AIML)
+      Academic Year: ${formData.academicYear}
       Division: ${formData.division}
       Total Students: ${studentAttendance.length}
       Total Days/Sessions: ${analysis.totalSessions}
@@ -1567,7 +1583,7 @@ export default function AdvancedAnalysis() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Attendance_Analysis_Div_${formData.division}_${format(new Date(), 'dd-MM-yyyy')}.html`;
+    link.download = `Attendance_Analysis_${formData.academicYear}_AIML_Div${formData.division}_${format(new Date(), 'dd-MM-yyyy')}.html`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1589,7 +1605,7 @@ export default function AdvancedAnalysis() {
         const response = await distributeAnalysisReport({
           reportType: "Advanced Attendance Analysis",
           reportHTML: lastReportHTML,
-          reportTitle: `Attendance Analysis - Division ${formData.division}`,
+          reportTitle: `Attendance Analysis - ${formData.academicYear} AIML Division ${formData.division}`,
           batchInfo: formData,
           summary: analysisData.studentAttendance ? {
             totalStudents: analysisData.studentAttendance.length,
@@ -1673,6 +1689,18 @@ export default function AdvancedAnalysis() {
                 <FileSpreadsheet className="w-4 sm:w-5 h-4 sm:h-5" />
                 Step 1: Enter Batch Details
               </h3>
+              {/* Locked Configuration Display */}
+              <Alert className="bg-blue-50 border-blue-200 mb-4">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800 text-sm">
+                  <div className="font-semibold mb-1">🔒 Analysis Scope</div>
+                  <div className="text-xs space-y-0.5">
+                    <div>🏛️ <strong>College:</strong> KIT's College of Engineering, Kolhapur</div>
+                    <div>🔬 <strong>Branch:</strong> AIML Department</div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label className="font-semibold text-sm sm:text-base">Academic Year *</Label>
@@ -1681,7 +1709,7 @@ export default function AdvancedAnalysis() {
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {years.map(year => (
+                      {["FE", "SE", "TE", "BE"].map(year => (
                         <SelectItem key={year} value={year}>{year}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1689,12 +1717,16 @@ export default function AdvancedAnalysis() {
                 </div>
                 <div>
                   <Label className="font-semibold text-sm sm:text-base">Division *</Label>
-                  <Input
-                    placeholder="e.g., A, B, C"
-                    value={formData.division}
-                    onChange={(e) => setFormData({...formData, division: e.target.value})}
-                    className="mt-2"
-                  />
+                  <Select value={formData.division} onValueChange={(value) => setFormData({...formData, division: value})}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select division" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["A", "B", "C"].map(div => (
+                        <SelectItem key={div} value={div}>{div}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

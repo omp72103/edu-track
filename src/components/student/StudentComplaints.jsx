@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { AlertCircle, Clock, CheckCircle, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { sendPushNotification } from "@/components/notifications/PushNotificationManager";
 
 export default function StudentComplaints({ student }) {
   const [complaints, setComplaints] = useState([]);
@@ -79,7 +81,7 @@ export default function StudentComplaints({ student }) {
 
   const handleSubmit = async () => {
     try {
-      await base44.entities.Complaint.create({
+      const complaint = await base44.entities.Complaint.create({
         student_id: student.id,
         student_name: student.name,
         student_email: student.email,
@@ -88,14 +90,29 @@ export default function StudentComplaints({ student }) {
         college_name: student.college_name,
         year: student.year,
         faculty_name: formData.category === 'Faculty' ? formData.faculty_name : null,
+        issue: formData.description,
         ...formData
       });
+
+      // Send push notification to all admins
+      await sendPushNotification({
+        title: `🚨 New Complaint: ${formData.title}`,
+        body: `From: ${student.name} | Category: ${formData.category} | Priority: ${formData.priority}`,
+        targetType: 'admin',
+        data: { 
+          type: 'complaint', 
+          priority: formData.priority,
+          url: '/FeedbackComplaintsAdmin'
+        }
+      });
       
+      toast.success("Complaint submitted successfully!");
       await fetchComplaints();
       setShowForm(false);
       setFormData({ category: 'Faculty', faculty_name: '', title: '', description: '', priority: 'Medium' });
     } catch (error) {
       console.error("Error submitting complaint:", error);
+      toast.error("Failed to submit complaint");
     }
   };
 

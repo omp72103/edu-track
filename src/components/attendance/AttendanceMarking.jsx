@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Session, AttendanceRecord, Student, User } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -249,73 +248,74 @@ export default function AttendanceMarking({ session, students, onComplete, onBac
   const absentCount = localStudents.length - presentCount;
 
   return (
-    <div className="bg-gray-50 p-2 md:p-4 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-4">
+    <div className="bg-gray-50 p-2 sm:p-3 md:p-4 min-h-screen safe-area-inset">
+      <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4">
         {/* Session Info Card */}
-        <Card className="bg-white border border-gray-200">
-          <CardHeader className="bg-blue-600 text-white">
-            <CardTitle className="text-xl flex items-center gap-3">
-              <UserCheck className="w-6 h-6" />
+        <Card className="bg-white border border-gray-200 overflow-hidden">
+          <CardHeader className="bg-blue-600 text-white px-3 py-3 sm:px-4 sm:py-4">
+            <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2 sm:gap-3">
+              <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
               📋 Mark Attendance
             </CardTitle>
-            <div className="mt-3 text-sm space-y-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
-                <p><strong>📖 Session:</strong> {session.session_name}</p>
+            <div className="mt-2 sm:mt-3 text-xs sm:text-sm space-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                <p className="truncate"><strong>📖 Session:</strong> {session.session_name}</p>
                 <p><strong>📅 Date:</strong> {format(new Date(session.session_date), "dd MMM yyyy")}</p>
-                <p><strong>🎯 Topic:</strong> {session.topic_taught}</p>
-                <p><strong>👨‍🏫 Faculty:</strong> {session.faculty_name}</p>
+                <p className="truncate"><strong>🎯 Topic:</strong> {session.topic_taught}</p>
+                <p className="truncate"><strong>👨‍🏫 Faculty:</strong> {session.faculty_name}</p>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4 mb-4">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <CardContent className="p-3 sm:p-4">
+            {/* Stats Badges - Responsive */}
+            <div className="flex flex-wrap gap-2 sm:gap-4 mb-3 sm:mb-4">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs sm:text-sm px-2 py-1">
                 ✅ Present: <strong className="ml-1">{presentCount}</strong>
               </Badge>
-              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs sm:text-sm px-2 py-1">
                 ❌ Absent: <strong className="ml-1">{absentCount}</strong>
               </Badge>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm px-2 py-1">
                 👥 Total: <strong className="ml-1">{localStudents.length}</strong>
               </Badge>
             </div>
             
-            {/* Quick Actions */}
-            <div className="flex flex-wrap gap-3">
+            {/* Quick Actions - Responsive Grid */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
               <Button 
                 onClick={markAllPresent}
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm h-9 sm:h-8 touch-manipulation"
                 size="sm"
               >
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                ✅ Mark All Present
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Mark All Present</span>
               </Button>
               <Button 
                 onClick={markAllAbsent}
                 variant="outline"
-                className="border-red-200 text-red-700 hover:bg-red-50"
+                className="border-red-200 text-red-700 hover:bg-red-50 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation"
                 size="sm"
               >
-                <XCircle className="w-4 h-4 mr-2" />
-                ❌ Mark All Absent
+                <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Mark All Absent</span>
               </Button>
               <Button 
                 onClick={() => setShowAddStudent(true)}
                 variant="outline"
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                className="border-blue-200 text-blue-700 hover:bg-blue-50 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation"
                 size="sm"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                👤 Add Student
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Add Student</span>
               </Button>
               <Button 
                 onClick={handleManualSort}
                 variant="outline"
-                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                className="border-purple-200 text-purple-700 hover:bg-purple-50 text-xs sm:text-sm h-9 sm:h-8 touch-manipulation"
                 size="sm"
               >
-                <ArrowUpDown className="w-4 h-4 mr-2" />
-                🔢 Sort Roll Numbers
+                <ArrowUpDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="truncate">Sort Roll No.</span>
               </Button>
             </div>
           </CardContent>
@@ -387,29 +387,29 @@ export default function AttendanceMarking({ session, students, onComplete, onBac
             </div>
 
             {/* Mobile View - Also properly sorted */}
-            <div className="md:hidden space-y-3 p-4">
+            <div className="md:hidden space-y-2 sm:space-y-3 p-2 sm:p-4">
               {localStudents.map((student) => (
                 <Card key={student.id} className={`border-2 transition-all duration-200 ${
                   attendance[student.id] ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
                 }`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-bold text-gray-800">👤 {student.name}</p>
-                        <p className="text-xs text-gray-500">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-800 text-sm sm:text-base truncate">👤 {student.name}</p>
+                        <p className="text-xs text-gray-500 truncate">
                           🆔 PRN: {student.prn} | 📝 Roll: <strong>{student.roll_no}</strong>
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge className={attendance[student.id] ? "bg-green-500 text-white" : "bg-red-500 text-white"}>
+                        <div className="flex items-center gap-2 mt-1.5 sm:mt-2">
+                          <Badge className={`text-xs ${attendance[student.id] ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
                             {attendance[student.id] ? '✅ Present' : '❌ Absent'}
                           </Badge>
                         </div>
                       </div>
-                      <div className="ml-4">
+                      <div className="flex-shrink-0">
                         <Switch
                           checked={attendance[student.id] || false}
                           onCheckedChange={() => toggleAttendance(student.id)}
-                          className="data-[state=checked]:bg-green-600"
+                          className="data-[state=checked]:bg-green-600 touch-manipulation"
                         />
                       </div>
                     </div>
@@ -420,19 +420,19 @@ export default function AttendanceMarking({ session, students, onComplete, onBac
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col md:flex-row gap-4 pt-4">
-          <Button variant="outline" onClick={onBack} className="flex-1 h-12 text-base">
-            <ArrowLeft className="w-5 h-5 mr-2" />
+        {/* Action Buttons - Sticky on mobile for better UX */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 pt-2 sm:pt-4 sticky bottom-0 bg-gray-50 pb-2 sm:pb-0 sm:static">
+          <Button variant="outline" onClick={onBack} className="w-full sm:flex-1 h-11 sm:h-12 text-sm sm:text-base touch-manipulation">
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
             🔙 Back to Sessions
           </Button>
           <Button 
             onClick={handleSaveAttendance}
             disabled={isLoading}
-            className="flex-1 h-12 text-base bg-green-600 hover:bg-green-700"
+            className="w-full sm:flex-1 h-11 sm:h-12 text-sm sm:text-base bg-green-600 hover:bg-green-700 touch-manipulation"
           >
-            <Save className="w-5 h-5 mr-2" />
-            {isLoading ? "Saving..." : "💾 Save Attendance & Generate Report"}
+            <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
+            {isLoading ? "Saving..." : "💾 Save & Generate Report"}
           </Button>
         </div>
       </div>

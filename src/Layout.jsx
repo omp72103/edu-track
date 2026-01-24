@@ -4,6 +4,7 @@ import { User, Faculty, Student } from "@/entities/all";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { refreshBatches } from "@/components/utils/useBatches";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -65,6 +66,18 @@ export default function Layout({ children, currentPageName }) {
   const [authError, setAuthError] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isPWAInstalled, setIsPWAInstalled] = useState(false);
+
+  // Initialize global batch refresh
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.refreshBatches = refreshBatches;
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.refreshBatches;
+      }
+    };
+  }, []);
 
   // Register service worker
   useEffect(() => {

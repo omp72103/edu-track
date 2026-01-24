@@ -127,23 +127,25 @@ export default function SessionSelector({ onSessionSelect, onQRSessionSelect, is
                     </p>
                   </div>
                   
-                  {/* Action buttons - stack on mobile, side by side on larger screens */}
-                  <div className="flex flex-col sm:flex-row gap-2 pt-3 mt-auto">
+                  {/* Action buttons - always side by side with icon-only QR on small screens */}
+                  <div className="flex gap-2 pt-3 mt-auto">
                     <Button
                       onClick={() => onSessionSelect(session)}
                       disabled={isLoading}
-                      className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-2.5 sm:py-2 h-auto min-h-[40px] sm:min-h-[36px] touch-manipulation"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-2 h-auto min-h-[40px] touch-manipulation"
                     >
                       📝 Manual Attendance
                     </Button>
                     
+                    {/* QR Button - Icon only on small cards, full text on larger */}
                     <Button
                       onClick={() => onQRSessionSelect(session)}
                       disabled={isLoading}
-                      className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm py-2.5 sm:py-2 h-auto min-h-[40px] sm:min-h-[36px] touch-manipulation"
+                      className="bg-green-600 hover:bg-green-700 text-white h-auto min-h-[40px] touch-manipulation px-3 sm:px-4"
+                      title="QR Attendance"
                     >
-                      <QrCode className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" />
-                      QR Attendance
+                      <QrCode className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                      <span className="hidden sm:inline ml-1.5 text-xs sm:text-sm">QR Attendance</span>
                     </Button>
                   </div>
                 </CardContent>

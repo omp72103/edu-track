@@ -5,6 +5,8 @@ import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { refreshBatches } from "@/components/utils/useBatches";
+import { Toaster } from "@/components/ui/sonner";
+import AdminNotificationListener from "@/components/notifications/AdminNotificationListener";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -280,6 +282,10 @@ export default function Layout({ children, currentPageName }) {
   // User is logged in - show full app (authorization happens automatically)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex">
+      {/* Real-time notification listener */}
+      <AdminNotificationListener userEmail={user?.email} isAdmin={user?.role === 'admin'} />
+      <Toaster position="top-right" richColors />
+
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />
 

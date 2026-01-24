@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { TimeTable, Batch, Faculty } from "@/entities/all";
+import { TimeTable, Batch, Faculty, FacultySubjectMapping } from "@/entities/all";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 
 const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const classTypes = ["Theory", "Practical", "Tutorial"];
+const classTypes = ["Theory", "Practical"];
 
 export default function ManageTimeTable() {
   const [timetable, setTimetable] = useState([]);
@@ -19,6 +19,8 @@ export default function ManageTimeTable() {
   const [selectedBatch, setSelectedBatch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [subjectMappings, setSubjectMappings] = useState([]);
   const [formData, setFormData] = useState({
     batch_id: "",
     batch_name: "",
@@ -45,12 +47,14 @@ export default function ManageTimeTable() {
   }, [selectedBatch]);
 
   const loadData = async () => {
-    const [batchData, facultyData] = await Promise.all([
+    const [batchData, facultyData, mappings] = await Promise.all([
       Batch.list(),
-      Faculty.list()
+      Faculty.list(),
+      FacultySubjectMapping.list()
     ]);
     setBatches(batchData);
     setFaculties(facultyData);
+    setSubjectMappings(mappings);
   };
 
   const loadTimetableForBatch = async (batchId) => {
@@ -74,12 +78,49 @@ export default function ManageTimeTable() {
   const handleBatchChange = (batchId) => {
     const batch = batches.find(b => b.id === batchId);
     if (batch) {
-      setFormData({...formData, batch_id: batchId, batch_name: batch.batch_name});
+      // Get available subjects for this batch
+      const batchSubjects = subjectMappings.filter(m => 
+        m.year === batch.year && m.division === batch.division && m.is_active
+      );
+      setAvailableSubjects(batchSubjects);
+      setFormData({...formData, batch_id: batchId, batch_name: batch.batch_name, subject_name: "", faculty_email: "", faculty_name: ""});
+    }
+  };
+
+  const handleSubjectChange = (subjectName) => {
+    // Find the mapping for this subject
+    const mapping = availableSubjects.find(m => m.subject_name === subjectName);
+    if (mapping) {
+      setFormData({
+        ...formData, 
+        subject_name: subjectName,
+        faculty_email: mapping.faculty_email,
+        faculty_name: mapping.faculty_name,
+        class_type: mapping.subject_type || "Theory"
+      });
+    } else {
+      // Manual entry
+      setFormData({...formData, subject_name: subjectName});
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Check for slot conflicts
+    const conflictingEntry = timetable.find(entry => 
+      entry.id !== editingEntry?.id &&
+      entry.batch_id === formData.batch_id &&
+      entry.day_of_week === formData.day_of_week &&
+      entry.start_time === formData.start_time &&
+      entry.end_time === formData.end_time
+    );
+    
+    if (conflictingEntry) {
+      alert(`This time slot is already occupied by ${conflictingEntry.subject_name}. Please choose a different time.`);
+      return;
+    }
+    
     if (editingEntry) {
       await TimeTable.update(editingEntry.id, formData);
     } else {
@@ -92,6 +133,13 @@ export default function ManageTimeTable() {
 
   const handleEdit = (entry) => {
     setEditingEntry(entry);
+    const batch = batches.find(b => b.id === entry.batch_id);
+    if (batch) {
+      const batchSubjects = subjectMappings.filter(m => 
+        m.year === batch.year && m.division === batch.division && m.is_active
+      );
+      setAvailableSubjects(batchSubjects);
+    }
     setFormData(entry);
     setIsDialogOpen(true);
   };
@@ -150,7 +198,7 @@ export default function ManageTimeTable() {
                 <DialogTitle>{editingEntry ? "Edit Class" : "Add New Class"}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className={editingEntry ? "grid gap-4" : "grid grid-cols-2 gap-4"}>
                   <div>
                     <Label>Batch *</Label>
                     <Select value={formData.batch_id} onValueChange={handleBatchChange} required>
@@ -162,15 +210,17 @@ export default function ManageTimeTable() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Day of Week *</Label>
-                    <Select value={formData.day_of_week} onValueChange={(v) => setFormData({...formData, day_of_week: v})} required>
-                      <SelectTrigger><SelectValue/></SelectTrigger>
-                      <SelectContent>
-                        {daysOfWeek.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {!editingEntry && (
+                    <div>
+                      <Label>Day of Week *</Label>
+                      <Select value={formData.day_of_week} onValueChange={(v) => setFormData({...formData, day_of_week: v})} required>
+                        <SelectTrigger><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                          {daysOfWeek.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -183,34 +233,58 @@ export default function ManageTimeTable() {
                   </div>
                 </div>
                 <div>
-                  <Label>Subject Name *</Label>
-                  <Input value={formData.subject_name} onChange={(e) => setFormData({...formData, subject_name: e.target.value})} required />
+                  <Label>Subject *</Label>
+                  {availableSubjects.length > 0 ? (
+                    <Select value={formData.subject_name} onValueChange={handleSubjectChange} required>
+                      <SelectTrigger><SelectValue placeholder="Select subject"/></SelectTrigger>
+                      <SelectContent>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">Available Subjects</div>
+                        {availableSubjects.map(m => (
+                          <SelectItem key={m.id} value={m.subject_name}>
+                            {m.subject_name} - {m.faculty_name} ({m.subject_type})
+                          </SelectItem>
+                        ))}
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 border-t mt-1">Other</div>
+                        <SelectItem value="__custom__">Enter Other Subject...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input 
+                      value={formData.subject_name} 
+                      onChange={(e) => setFormData({...formData, subject_name: e.target.value})} 
+                      placeholder="Enter subject name"
+                      required 
+                    />
+                  )}
+                  {formData.subject_name === "__custom__" && (
+                    <Input 
+                      value={formData.subject_name !== "__custom__" ? formData.subject_name : ""} 
+                      onChange={(e) => setFormData({...formData, subject_name: e.target.value})} 
+                      placeholder="Enter custom subject name"
+                      className="mt-2"
+                      required 
+                    />
+                  )}
                 </div>
                 <div>
                   <Label>Faculty *</Label>
                   <Select value={formData.faculty_email} onValueChange={handleFacultyChange} required>
                     <SelectTrigger><SelectValue placeholder="Select faculty"/></SelectTrigger>
                     <SelectContent>
-                      {faculties.map(f => (
+                      {faculties.filter(f => f.status === 'active').map(f => (
                         <SelectItem key={f.id} value={f.email}>{f.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Room Number</Label>
-                    <Input value={formData.room_number} onChange={(e) => setFormData({...formData, room_number: e.target.value})} />
-                  </div>
-                  <div>
-                    <Label>Class Type</Label>
-                    <Select value={formData.class_type} onValueChange={(v) => setFormData({...formData, class_type: v})}>
-                      <SelectTrigger><SelectValue/></SelectTrigger>
-                      <SelectContent>
-                        {classTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label>Class Type *</Label>
+                  <Select value={formData.class_type} onValueChange={(v) => setFormData({...formData, class_type: v})} required>
+                    <SelectTrigger><SelectValue/></SelectTrigger>
+                    <SelectContent>
+                      {classTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

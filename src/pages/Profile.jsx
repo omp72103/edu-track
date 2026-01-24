@@ -183,7 +183,7 @@ export default function ProfilePage() {
                   </p>
                   <Badge className="mt-2 bg-white/20 text-white border-white/30 text-sm px-3 py-1">
                     <Shield className="w-3 h-3 mr-1" />
-                    {userRole === "admin" ? "Administrator" : userRole === "faculty" ? "Faculty" : "Student"}
+                    {user.role === "admin" ? "Administrator" : userRole === "faculty" ? "Faculty" : "Student"}
                   </Badge>
                 </div>
               </div>

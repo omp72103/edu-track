@@ -377,10 +377,10 @@ export default function Layout({ children, currentPageName }) {
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white">
                     {user.full_name.trim().charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-gray-800 truncate">{user.full_name.trim()}</p>
-                    <p className="text-xs text-indigo-600 capitalize font-semibold flex items-center gap-1">
-                      {user.role === 'admin' ? 'Admin' : 'Faculty Login'}
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-bold text-sm text-gray-800 truncate leading-snug">{user.full_name.trim()}</p>
+                    <p className="text-xs text-indigo-600 capitalize font-semibold flex items-center gap-1 leading-snug">
+                      {user.role === 'admin' ? 'Admin' : 'Faculty'}
                       {user.role === 'admin' && (
                         <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs rounded-full">✨</span>
                       )}

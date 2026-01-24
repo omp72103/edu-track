@@ -5,13 +5,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, BookOpen, Award, Calendar, TrendingUp, CheckCircle, AlertTriangle } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-// Professional static demo data
-const DEMO_ATTENDANCE = {
-  totalSessions: 48,
-  present: 45,
-  absent: 3,
-  percentage: 93.75
+// Generate realistic attendance data
+const generateAttendanceData = () => {
+  const totalSessions = Math.floor(Math.random() * 20) + 40; // 40-60 sessions
+  const present = Math.floor(totalSessions * (0.75 + Math.random() * 0.2)); // 75-95% attendance
+  const absent = totalSessions - present;
+  const percentage = parseFloat(((present / totalSessions) * 100).toFixed(2));
+  return { totalSessions, present, absent, percentage };
 };
+
+const DEMO_ATTENDANCE = generateAttendanceData();
 
 const DEMO_PERFORMANCE = [
   { subject: "Machine Learning", percentage: 92, grade: "A+", marks: "92/100" },

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Toaster } from "@/components/ui/sonner";
 import StudentNotificationListener from "@/components/notifications/StudentNotificationListener";
+import PushNotificationManager from "@/components/notifications/PushNotificationManager";
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -177,6 +178,15 @@ export default function StudentPortal() {
       {/* Real-time notification listener */}
       <StudentNotificationListener studentEmail={user?.email} />
       <Toaster position="top-right" richColors />
+      
+      {/* Push notification enable button - shown in mobile header */}
+      <div className="fixed bottom-4 right-4 z-50 lg:hidden">
+        <PushNotificationManager 
+          userEmail={user?.email} 
+          userType="student" 
+          userRole="user" 
+        />
+      </div>
       
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'} w-72 bg-white shadow-2xl`}>

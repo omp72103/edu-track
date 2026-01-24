@@ -7,6 +7,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { refreshBatches } from "@/components/utils/useBatches";
 import { Toaster } from "@/components/ui/sonner";
 import AdminNotificationListener from "@/components/notifications/AdminNotificationListener";
+import PushNotificationManager from "@/components/notifications/PushNotificationManager";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -285,6 +286,15 @@ export default function Layout({ children, currentPageName }) {
       {/* Real-time notification listener */}
       <AdminNotificationListener userEmail={user?.email} isAdmin={user?.role === 'admin'} />
       <Toaster position="top-right" richColors />
+
+      {/* Push notification enable button */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <PushNotificationManager 
+          userEmail={user?.email} 
+          userType={user?.role === 'admin' ? 'admin' : 'faculty'} 
+          userRole={user?.role} 
+        />
+      </div>
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />

@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { sendPushNotification } from "@/components/notifications/PushNotificationManager";
 
 const priorities = ["Low", "Medium", "High", "Urgent"];
 const categories = ["General", "Assessment", "Timetable", "Event", "Holiday", "Other"];
@@ -82,9 +83,18 @@ export default function AnnouncementsPage() {
 
       // Create notifications for all recipients
       if (recipients.length > 0) {
+        // Get student emails for push notifications
+        const students = formData.recipient_type === "Batch" && formData.batch_id
+          ? await Student.filter({ batch_id: formData.batch_id })
+          : await Student.list();
+        
+        const studentEmails = students.map(s => s.email).filter(Boolean);
+
+        // Create in-app notifications
         await Promise.all(recipients.map(recipient =>
           base44.entities.StudentNotification.create({
             student_id: recipient.student_id,
+            student_email: students.find(s => s.id === recipient.student_id)?.email,
             batch_id: recipient.batch_id,
             title: announcement.title,
             message: announcement.message,
@@ -93,9 +103,21 @@ export default function AnnouncementsPage() {
             is_read: false
           })
         ));
+
+        // Send push notifications to all students
+        await sendPushNotification({
+          title: `${formData.priority === 'Urgent' ? '🚨 URGENT: ' : '📢 '}${announcement.title}`,
+          body: announcement.message.substring(0, 200),
+          targetEmails: studentEmails,
+          data: { 
+            type: 'announcement', 
+            priority: formData.priority,
+            category: formData.category 
+          }
+        });
       }
       
-      setMessage({ type: "success", text: `Announcement sent to ${recipients.length} students!` });
+      setMessage({ type: "success", text: `Announcement sent to ${recipients.length} students with push notifications!` });
       await loadData();
       resetForm();
       setShowAddModal(false);

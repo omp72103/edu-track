@@ -3,10 +3,12 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Upload, Clock, CheckCircle, AlertCircle, Calendar, BookOpen } from "lucide-react";
+import { FileText, Upload, Clock, CheckCircle, AlertCircle, Calendar, BookOpen, File } from "lucide-react";
 import QuizTaker from "../assignment/QuizTaker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format, differenceInDays, isPast } from "date-fns";
+import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 export default function StudentAssignments({ student }) {
   const [assignments, setAssignments] = useState([]);
@@ -176,42 +178,45 @@ export default function StudentAssignments({ student }) {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type - accept PDF only
+    // Validate file type - only PDF
     if (file.type !== 'application/pdf') {
-      alert("Please upload a PDF file only");
+      toast.error("Please upload a PDF file only");
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB");
+      toast.error("File size must be less than 10MB");
       return;
     }
 
+    setSubmissionFile(file);
+    
+    // Upload file
     setUploadingFile(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       setSubmissionFileUrl(file_url);
-      setSubmissionFile(file);
+      toast.success("PDF uploaded successfully!");
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Failed to upload file");
+      toast.error("Failed to upload file");
+      setSubmissionFile(null);
     }
     setUploadingFile(false);
   };
 
   const handleSubmit = async () => {
-    // Validate submission based on type
     if (submissionType === 'text' && !submissionText.trim()) {
-      alert("Please enter your submission text");
+      toast.error("Please enter your submission text");
       return;
     }
     if (submissionType === 'file' && !submissionFileUrl) {
-      alert("Please upload a PDF file");
+      toast.error("Please upload a PDF file");
       return;
     }
     
@@ -235,19 +240,19 @@ export default function StudentAssignments({ student }) {
       });
 
       await fetchAssignments();
-      
-      // Show success alert
-      alert("✅ Assignment submitted successfully!");
-      
-      // Reset form
       setSelectedAssignment(null);
       setSubmissionText('');
-      setSubmissionFileUrl('');
       setSubmissionFile(null);
+      setSubmissionFileUrl('');
       setSubmissionType('text');
+      
+      // Success notification
+      toast.success("Assignment submitted successfully! 🎉", {
+        description: "Your submission has been recorded and sent to the faculty."
+      });
     } catch (error) {
       console.error("Error submitting assignment:", error);
-      alert("Failed to submit assignment. Please try again.");
+      toast.error("Failed to submit assignment. Please try again.");
     }
     setUploading(false);
   };
@@ -421,12 +426,12 @@ export default function StudentAssignments({ student }) {
         )}
       </div>
 
-      {/* Submission Dialog - File Based */}
+      {/* Submission Dialog - Text or File Based */}
       <Dialog open={selectedAssignment !== null && !isQuizMode} onOpenChange={() => {
         setSelectedAssignment(null);
         setSubmissionText('');
-        setSubmissionFileUrl('');
         setSubmissionFile(null);
+        setSubmissionFileUrl('');
         setSubmissionType('text');
       }}>
         <DialogContent className="max-w-2xl">
@@ -441,35 +446,39 @@ export default function StudentAssignments({ student }) {
               </div>
               
               {/* Submission Type Selector */}
-              <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-                <button
-                  onClick={() => setSubmissionType('text')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                    submissionType === 'text' 
-                      ? 'bg-white text-blue-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  📝 Text Submission
-                </button>
-                <button
-                  onClick={() => setSubmissionType('file')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
-                    submissionType === 'file' 
-                      ? 'bg-white text-blue-600 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  📄 PDF Upload
-                </button>
+              <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
+                <Label className="text-sm font-semibold mb-3 block">Choose Submission Method</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setSubmissionType('text')}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      submissionType === 'text' 
+                        ? 'border-blue-600 bg-blue-50' 
+                        : 'border-gray-300 bg-white hover:border-gray-400'
+                    }`}
+                  >
+                    <FileText className={`w-6 h-6 mx-auto mb-1 ${submissionType === 'text' ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <p className={`text-xs font-semibold ${submissionType === 'text' ? 'text-blue-900' : 'text-gray-600'}`}>Text Submission</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setSubmissionType('file')}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      submissionType === 'file' 
+                        ? 'border-green-600 bg-green-50' 
+                        : 'border-gray-300 bg-white hover:border-gray-400'
+                    }`}
+                  >
+                    <File className={`w-6 h-6 mx-auto mb-1 ${submissionType === 'file' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <p className={`text-xs font-semibold ${submissionType === 'file' ? 'text-green-900' : 'text-gray-600'}`}>Upload PDF</p>
+                  </button>
+                </div>
               </div>
-
+              
               {/* Text Submission */}
               {submissionType === 'text' && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Your Submission
-                  </label>
+                  <Label className="mb-2">Your Submission</Label>
                   <Textarea
                     value={submissionText}
                     onChange={(e) => setSubmissionText(e.target.value)}
@@ -480,32 +489,30 @@ export default function StudentAssignments({ student }) {
                 </div>
               )}
 
-              {/* PDF Upload */}
+              {/* File Upload */}
               {submissionType === 'file' && (
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Upload PDF File
-                  </label>
+                  <Label className="mb-2 block">Upload PDF File</Label>
                   {submissionFileUrl ? (
                     <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                      <FileText className="w-8 h-8 text-green-600" />
+                      <File className="w-8 h-8 text-green-600" />
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-green-900">✅ {submissionFile?.name}</p>
-                        <p className="text-xs text-green-700">PDF uploaded successfully</p>
+                        <p className="text-sm font-semibold text-green-900">PDF uploaded successfully!</p>
+                        <p className="text-xs text-green-700">{submissionFile?.name}</p>
                       </div>
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          setSubmissionFileUrl('');
                           setSubmissionFile(null);
+                          setSubmissionFileUrl('');
                         }}
                       >
                         Remove
                       </Button>
                     </div>
                   ) : (
-                    <label className="cursor-pointer flex flex-col items-center gap-2 w-full">
+                    <label className="cursor-pointer flex flex-col items-center gap-2">
                       <Upload className="w-12 h-12 text-gray-400" />
                       <div className="text-center">
                         <p className="text-sm font-semibold text-gray-700">
@@ -516,7 +523,7 @@ export default function StudentAssignments({ student }) {
                       <input
                         type="file"
                         accept=".pdf"
-                        onChange={handleFileUpload}
+                        onChange={handleFileChange}
                         disabled={uploadingFile}
                         className="hidden"
                       />
@@ -529,8 +536,8 @@ export default function StudentAssignments({ student }) {
                 <Button variant="outline" onClick={() => {
                   setSelectedAssignment(null);
                   setSubmissionText('');
-                  setSubmissionFileUrl('');
                   setSubmissionFile(null);
+                  setSubmissionFileUrl('');
                   setSubmissionType('text');
                 }}>
                   Cancel
@@ -538,9 +545,10 @@ export default function StudentAssignments({ student }) {
                 <Button 
                   onClick={handleSubmit} 
                   disabled={
-                    (submissionType === 'text' && !submissionText.trim()) || 
-                    (submissionType === 'file' && !submissionFileUrl) || 
-                    uploading
+                    uploading || 
+                    uploadingFile ||
+                    (submissionType === 'text' && !submissionText.trim()) ||
+                    (submissionType === 'file' && !submissionFileUrl)
                   }
                   className="bg-gradient-to-r from-blue-600 to-indigo-600"
                 >

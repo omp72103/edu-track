@@ -22,6 +22,7 @@ export default function SubjectAllotmentTab({ faculty, onUpdate }) {
     batch_id: "",
     subject_name: "",
     subject_code: "",
+    subject_type: "Theory",
     weekly_lecture_count: 3
   });
   const [isAdding, setIsAdding] = useState(false);
@@ -62,6 +63,7 @@ export default function SubjectAllotmentTab({ faculty, onUpdate }) {
         batch_id: newMapping.batch_id || null,
         subject_name: newMapping.subject_name,
         subject_code: newMapping.subject_code || null,
+        subject_type: newMapping.subject_type || "Theory",
         weekly_lecture_count: newMapping.weekly_lecture_count || 3,
         is_active: true
       });
@@ -74,6 +76,7 @@ export default function SubjectAllotmentTab({ faculty, onUpdate }) {
         batch_id: "",
         subject_name: "",
         subject_code: "",
+        subject_type: "Theory",
         weekly_lecture_count: 3
       });
       if (onUpdate) onUpdate();
@@ -177,6 +180,18 @@ export default function SubjectAllotmentTab({ faculty, onUpdate }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <Label className="font-semibold">Subject Type *</Label>
+              <Select value={newMapping.subject_type} onValueChange={(value) => setNewMapping({...newMapping, subject_type: value})}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Theory">Theory</SelectItem>
+                  <SelectItem value="Practical">Practical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label className="font-semibold">Weekly Lectures</Label>
               <Input
                 type="number"
@@ -187,23 +202,24 @@ export default function SubjectAllotmentTab({ faculty, onUpdate }) {
                 className="mt-1"
               />
             </div>
-            <div>
-              <Label className="font-semibold">Linked Batch (Optional)</Label>
-              <Select value={newMapping.batch_id} onValueChange={(value) => setNewMapping({...newMapping, batch_id: value})}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Link to specific batch" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={null}>None</SelectItem>
-                  {batches.filter(b => 
-                    b.year === newMapping.year && 
-                    b.division === newMapping.division
-                  ).map(b => (
-                    <SelectItem key={b.id} value={b.batch_id}>{b.batch_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          <div>
+            <Label className="font-semibold">Linked Batch (Optional)</Label>
+            <Select value={newMapping.batch_id} onValueChange={(value) => setNewMapping({...newMapping, batch_id: value})}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Link to specific batch" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={null}>None</SelectItem>
+                {batches.filter(b => 
+                  b.year === newMapping.year && 
+                  b.division === newMapping.division
+                ).map(b => (
+                  <SelectItem key={b.id} value={b.batch_id}>{b.batch_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button 
@@ -247,11 +263,14 @@ export default function SubjectAllotmentTab({ faculty, onUpdate }) {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-bold text-gray-900 text-lg">{mapping.subject_name}</h4>
                         {mapping.subject_code && (
                           <Badge variant="outline" className="font-mono">{mapping.subject_code}</Badge>
                         )}
+                        <Badge className={mapping.subject_type === 'Practical' ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}>
+                          {mapping.subject_type || 'Theory'}
+                        </Badge>
                         <Badge className={mapping.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}>
                           {mapping.is_active ? 'Active' : 'Inactive'}
                         </Badge>

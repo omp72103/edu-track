@@ -82,21 +82,19 @@ export default function UploadPage() {
     let batchData = null;
     
     if (batchType === "standard") {
-      if (!formData.college_name || !formData.year || !formData.branch || !formData.division) {
+      if (!formData.year || !formData.division) {
         setError("Please fill all required fields for standard batch");
         return;
       }
-      const selectedCollege = colleges.find(c => c.college_name === formData.college_name);
-      const collegeShortName = selectedCollege ? selectedCollege.short_name : formData.college_name;
-      const batchId = `${collegeShortName}_${formData.year}_${formData.branch}_${formData.division}`.toLowerCase().replace(/[^\w-]+/g, '-');
+      const batchId = `kit_kolhapur_${formData.year}_aiml_${formData.division}`.toLowerCase().replace(/[^\w-]+/g, '-');
       
       batchData = {
         batch_type: "standard",
         batch_id: batchId,
-        batch_name: `${formData.branch} - Div ${formData.division}`,
-        college_name: formData.college_name,
+        batch_name: `AIML - Div ${formData.division}`,
+        college_name: "KIT's College of Engineering, Kolhapur",
         year: formData.year,
-        branch: formData.branch,
+        branch: "Artificial Intelligence & Machine Learning",
         division: formData.division
       };
     } else if (batchType === "custom") {

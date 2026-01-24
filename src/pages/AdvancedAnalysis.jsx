@@ -40,7 +40,8 @@ export default function AdvancedAnalysis() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState(null);
   const [formData, setFormData] = useState({
-    division: ""
+    division: "",
+    academicYear: ""
   });
   const [reportConfig, setReportConfig] = useState({
     includeCharts: true,
@@ -1672,7 +1673,20 @@ export default function AdvancedAnalysis() {
                 <FileSpreadsheet className="w-4 sm:w-5 h-4 sm:h-5" />
                 Step 1: Enter Batch Details
               </h3>
-              <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label className="font-semibold text-sm sm:text-base">Academic Year *</Label>
+                  <Select value={formData.academicYear} onValueChange={(value) => setFormData({...formData, academicYear: value})}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map(year => (
+                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div>
                   <Label className="font-semibold text-sm sm:text-base">Division *</Label>
                   <Input

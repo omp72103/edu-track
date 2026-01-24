@@ -38,7 +38,7 @@ const facultyNavItems = [
   { name: "Attendance", label: "Take Attendance", icon: CalendarCheck, facultyOnly: true },
   { name: "AssignmentManagement", label: "Assignments", icon: FileText, facultyOnly: true },
   { name: "TeachingNotes", label: "Teaching Notes", icon: FileText, facultyOnly: true },
-  { name: "Batches", label: "Manage Classes", icon: Users },
+  { name: "Batches", label: "Manage Classes", icon: Users, adminOnly: true },
   { name: "TimeTable", label: "Timetable", icon: Calendar },
   { name: "Performance", label: "Performance", icon: TrendingUp },
   { name: "Announcements", label: "Announcements", icon: Megaphone },
@@ -314,8 +314,9 @@ export default function Layout({ children, currentPageName }) {
           <div className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto custom-scrollbar">
             {/* All menu items in a single flat list */}
             {facultyNavItems.map((item) => {
-              // Hide faculty-only items for admin
+              // Hide faculty-only items for admin, hide admin-only items for faculty
               if (user?.role === 'admin' && item.facultyOnly) return null;
+              if (user?.role !== 'admin' && item.adminOnly) return null;
               
               const isActive = location.pathname.startsWith(createPageUrl(item.name));
               return (

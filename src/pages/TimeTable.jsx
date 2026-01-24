@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { TimeTable, Batch, Faculty, User } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,8 @@ export default function TimeTablePage() {
   const [filterDay, setFilterDay] = useState("");
   const [suggestedSubjects, setSuggestedSubjects] = useState([]);
   const [allowManualSubject, setAllowManualSubject] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const [formData, setFormData] = useState({
     batch_id: "",
@@ -57,6 +60,10 @@ export default function TimeTablePage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      const currentUser = await User.me();
+      setUser(currentUser);
+      setIsAdmin(currentUser.role === 'admin');
+      
       const [ttData, batchData, facultyData] = await Promise.all([
         TimeTable.list("-created_date", 500),
         Batch.list(),
@@ -241,14 +248,17 @@ export default function TimeTablePage() {
             <p className="text-gray-600">Manage and view class schedules</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => window.location.href = createPageUrl("AITimetableGenerator")} variant="outline" className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600">
-              <Calendar className="w-4 h-4" />
-              <span className="hidden sm:inline">AI Timetable</span>
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => window.location.href = createPageUrl("AITimetableGenerator")} variant="outline" className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600">
+                <Calendar className="w-4 h-4" />
+                <span className="hidden sm:inline">AI Timetable</span>
+              </Button>
+            )}
             <Button onClick={exportToCSV} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
+            {isAdmin && (
             <Dialog open={showAddModal} onOpenChange={(open) => {
               setShowAddModal(open);
               if (!open) resetForm();
@@ -384,6 +394,7 @@ export default function TimeTablePage() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
@@ -476,7 +487,8 @@ export default function TimeTablePage() {
                                   <div className="text-xs text-gray-600">{entry.room_number}</div>
                                   <Badge className="mt-1 text-xs bg-blue-500 text-white">{entry.class_type}</Badge>
                                   
-                                  {/* Edit/Delete buttons on hover */}
+                                  {/* Edit/Delete buttons on hover - admin only */}
+                                  {isAdmin && (
                                   <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                     <Button 
                                       variant="ghost" 
@@ -495,6 +507,7 @@ export default function TimeTablePage() {
                                       <Trash2 className="w-3 h-3" />
                                     </Button>
                                   </div>
+                                  )}
                                 </div>
                               </td>
                             );

@@ -14,9 +14,13 @@ export default function StudentAssignments({ student }) {
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [submissionText, setSubmissionText] = useState('');
+  const [submissionFile, setSubmissionFile] = useState(null);
+  const [submissionFileUrl, setSubmissionFileUrl] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [isQuizMode, setIsQuizMode] = useState(false);
+  const [submissionType, setSubmissionType] = useState('text'); // 'text' or 'file'
 
   useEffect(() => {
     fetchAssignments();
@@ -172,8 +176,44 @@ export default function StudentAssignments({ student }) {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type - accept PDF only
+    if (file.type !== 'application/pdf') {
+      alert("Please upload a PDF file only");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size must be less than 10MB");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setSubmissionFileUrl(file_url);
+      setSubmissionFile(file);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Failed to upload file");
+    }
+    setUploadingFile(false);
+  };
+
   const handleSubmit = async () => {
-    if (!submissionText.trim()) return;
+    // Validate submission based on type
+    if (submissionType === 'text' && !submissionText.trim()) {
+      alert("Please enter your submission text");
+      return;
+    }
+    if (submissionType === 'file' && !submissionFileUrl) {
+      alert("Please upload a PDF file");
+      return;
+    }
     
     setUploading(true);
     try {
@@ -187,17 +227,27 @@ export default function StudentAssignments({ student }) {
         student_email: student.email,
         prn: student.prn,
         roll_no: student.roll_no,
-        submission_text: submissionText,
+        submission_text: submissionType === 'text' ? submissionText : '',
+        submission_file_url: submissionType === 'file' ? submissionFileUrl : '',
         submitted_at: new Date().toISOString(),
         is_late: isLate,
         status: 'Submitted'
       });
 
       await fetchAssignments();
+      
+      // Show success alert
+      alert("✅ Assignment submitted successfully!");
+      
+      // Reset form
       setSelectedAssignment(null);
       setSubmissionText('');
+      setSubmissionFileUrl('');
+      setSubmissionFile(null);
+      setSubmissionType('text');
     } catch (error) {
       console.error("Error submitting assignment:", error);
+      alert("Failed to submit assignment. Please try again.");
     }
     setUploading(false);
   };
@@ -372,7 +422,13 @@ export default function StudentAssignments({ student }) {
       </div>
 
       {/* Submission Dialog - File Based */}
-      <Dialog open={selectedAssignment !== null && !isQuizMode} onOpenChange={() => setSelectedAssignment(null)}>
+      <Dialog open={selectedAssignment !== null && !isQuizMode} onOpenChange={() => {
+        setSelectedAssignment(null);
+        setSubmissionText('');
+        setSubmissionFileUrl('');
+        setSubmissionFile(null);
+        setSubmissionType('text');
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Submit Assignment</DialogTitle>
@@ -384,26 +440,108 @@ export default function StudentAssignments({ student }) {
                 <p className="text-sm text-gray-600">{selectedAssignment.description}</p>
               </div>
               
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Your Submission
-                </label>
-                <Textarea
-                  value={submissionText}
-                  onChange={(e) => setSubmissionText(e.target.value)}
-                  placeholder="Enter your assignment submission text here..."
-                  rows={8}
-                  className="w-full"
-                />
+              {/* Submission Type Selector */}
+              <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setSubmissionType('text')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                    submissionType === 'text' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📝 Text Submission
+                </button>
+                <button
+                  onClick={() => setSubmissionType('file')}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-semibold transition-all ${
+                    submissionType === 'file' 
+                      ? 'bg-white text-blue-600 shadow-sm' 
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  📄 PDF Upload
+                </button>
               </div>
 
+              {/* Text Submission */}
+              {submissionType === 'text' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Your Submission
+                  </label>
+                  <Textarea
+                    value={submissionText}
+                    onChange={(e) => setSubmissionText(e.target.value)}
+                    placeholder="Enter your assignment submission text here..."
+                    rows={8}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+              {/* PDF Upload */}
+              {submissionType === 'file' && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Upload PDF File
+                  </label>
+                  {submissionFileUrl ? (
+                    <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                      <FileText className="w-8 h-8 text-green-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-green-900">✅ {submissionFile?.name}</p>
+                        <p className="text-xs text-green-700">PDF uploaded successfully</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSubmissionFileUrl('');
+                          setSubmissionFile(null);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex flex-col items-center gap-2 w-full">
+                      <Upload className="w-12 h-12 text-gray-400" />
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-gray-700">
+                          {uploadingFile ? 'Uploading...' : 'Click to upload PDF'}
+                        </p>
+                        <p className="text-xs text-gray-500">PDF only (Max 10MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileUpload}
+                        disabled={uploadingFile}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setSelectedAssignment(null)}>
+                <Button variant="outline" onClick={() => {
+                  setSelectedAssignment(null);
+                  setSubmissionText('');
+                  setSubmissionFileUrl('');
+                  setSubmissionFile(null);
+                  setSubmissionType('text');
+                }}>
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleSubmit} 
-                  disabled={!submissionText.trim() || uploading}
+                  disabled={
+                    (submissionType === 'text' && !submissionText.trim()) || 
+                    (submissionType === 'file' && !submissionFileUrl) || 
+                    uploading
+                  }
                   className="bg-gradient-to-r from-blue-600 to-indigo-600"
                 >
                   {uploading ? 'Submitting...' : 'Submit Assignment'}

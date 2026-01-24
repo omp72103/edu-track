@@ -222,18 +222,16 @@ export default function ManageTimeTable() {
                     </div>
                   )}
                 </div>
-                {!editingEntry && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Start Time *</Label>
-                      <Input type="time" value={formData.start_time} onChange={(e) => setFormData({...formData, start_time: e.target.value})} required />
-                    </div>
-                    <div>
-                      <Label>End Time *</Label>
-                      <Input type="time" value={formData.end_time} onChange={(e) => setFormData({...formData, end_time: e.target.value})} required />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Start Time *</Label>
+                    <Input type="time" value={formData.start_time} onChange={(e) => setFormData({...formData, start_time: e.target.value})} required />
                   </div>
-                )}
+                  <div>
+                    <Label>End Time *</Label>
+                    <Input type="time" value={formData.end_time} onChange={(e) => setFormData({...formData, end_time: e.target.value})} required />
+                  </div>
+                </div>
                 <div>
                   <Label>Subject *</Label>
                   {availableSubjects.length > 0 ? (

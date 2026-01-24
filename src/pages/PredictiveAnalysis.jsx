@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { base44 } from "@/api/base44Client";
 import { InvokeLLM } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,12 @@ import {
   TrendingUp,
   CheckCircle,
   Calendar,
-  Clock
+  Clock,
+  Send,
+  Zap
 } from "lucide-react";
 import { format, addMonths } from "date-fns";
+import { distributeAnalysisReport } from "@/functions/distributeAnalysisReport";
 
 const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 
@@ -46,6 +50,8 @@ export default function PredictiveAnalysis() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [isDistributing, setIsDistributing] = useState(false);
+  const [lastReportHTML, setLastReportHTML] = useState(null);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -499,6 +505,8 @@ Be specific with dates and realistic with predictions.`;
     if (!analysisResult) return;
 
     const { students, summary, batchInfo } = analysisResult;
+    
+    console.log('📊 Generating HTML report for distribution...');
 
     const riskDistributionData = `['High Risk', ${summary.highRisk}], ['Moderate Risk', ${summary.moderateRisk}], ['Low Risk', ${summary.lowRisk}]`;
     const studentChartData = students.slice(0, 20).map(s => 
@@ -905,6 +913,8 @@ Be specific with dates and realistic with predictions.`;
 </body>
 </html>`;
 
+    setLastReportHTML(html);
+    
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -916,6 +926,41 @@ Be specific with dates and realistic with predictions.`;
     URL.revokeObjectURL(url);
 
     setMessage({ type: "success", text: "✅ HTML Report downloaded!" });
+  };
+
+  const handleAutoDistribute = async () => {
+    if (!analysisResult || !lastReportHTML) {
+      setMessage({ type: "error", text: "Please generate HTML report first" });
+      return;
+    }
+
+    setIsDistributing(true);
+    setMessage({ type: "info", text: "🤖 AI analyzing report sensitivity and determining distribution..." });
+
+    try {
+      const response = await distributeAnalysisReport({
+        reportType: "Predictive Attendance Analysis",
+        reportHTML: lastReportHTML,
+        reportTitle: `Predictive Analysis - ${formData.division}`,
+        batchInfo: formData,
+        summary: analysisResult.summary
+      });
+
+      if (response.data.success) {
+        const { distribution, ai_decision } = response.data;
+        setMessage({ 
+          type: "success", 
+          text: `✅ Report distributed! ${distribution.emails_sent} emails sent via ${ai_decision.distribution_method}. AI: ${ai_decision.reason}` 
+        });
+      } else {
+        setMessage({ type: "error", text: "Distribution failed: " + response.data.error });
+      }
+    } catch (error) {
+      console.error('Distribution error:', error);
+      setMessage({ type: "error", text: "Failed to distribute: " + error.message });
+    }
+
+    setIsDistributing(false);
   };
 
   const getRiskColor = (risk) => {
@@ -1279,8 +1324,31 @@ Be specific with dates and realistic with predictions.`;
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 sm:p-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      {analysisResult.students.map((student, idx) => (
+                   {lastReportHTML && (
+                     <div className="mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-2 border-indigo-200">
+                       <div className="flex items-center gap-2 mb-2">
+                         <Zap className="w-5 h-5 text-indigo-600" />
+                         <h4 className="font-bold text-indigo-900">🤖 AI-Powered Distribution</h4>
+                       </div>
+                       <p className="text-sm text-indigo-800 mb-3">
+                         AI will analyze sensitivity, determine recipients (admin/faculty), and choose the best distribution channel.
+                       </p>
+                       <Button
+                         onClick={handleAutoDistribute}
+                         disabled={isDistributing}
+                         className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                       >
+                         {isDistributing ? (
+                           <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI Distributing...</>
+                         ) : (
+                           <><Send className="w-4 h-4 mr-2" /> Auto-Distribute Report with AI</>
+                         )}
+                       </Button>
+                     </div>
+                   )}
+
+                   <div className="space-y-3 sm:space-y-4">
+                     {analysisResult.students.map((student, idx) => (
                         <div 
                           key={idx} 
                           className={`border rounded-xl p-3 sm:p-4 ${

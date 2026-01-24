@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { College } from "@/entities/all";
+import { base44 } from "@/api/base44Client";
 import { UploadFile, ExtractDataFromUploadedFile, InvokeLLM } from "@/integrations/Core";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, TrendingUp, FileSpreadsheet, Sparkles, Download, Loader2 } from "lucide-react";
+import { Upload, TrendingUp, FileSpreadsheet, Sparkles, Download, Loader2, Send, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, parse } from "date-fns";
+import { distributeAnalysisReport } from "@/functions/distributeAnalysisReport";
 
 const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 const branches = [
@@ -50,6 +52,8 @@ export default function AdvancedAnalysis() {
   });
   const [showReportSettings, setShowReportSettings] = useState(false);
   const [analysisData, setAnalysisData] = useState(null);
+  const [isDistributing, setIsDistributing] = useState(false);
+  const [lastReportHTML, setLastReportHTML] = useState(null);
 
   React.useEffect(() => {
     const loadColleges = async () => {
@@ -1556,6 +1560,8 @@ export default function AdvancedAnalysis() {
     if (!analysisData) return;
 
     const htmlReport = generateHTMLReport(analysisData, formData, reportConfig);
+    setLastReportHTML(htmlReport);
+    
     const blob = new Blob([htmlReport], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1567,6 +1573,47 @@ export default function AdvancedAnalysis() {
     URL.revokeObjectURL(url);
 
     setMessage({ type: "success", text: "HTML report downloaded!" });
+    };
+
+    const handleAutoDistribute = async () => {
+      if (!analysisData || !lastReportHTML) {
+        setMessage({ type: "error", text: "Please generate HTML report first" });
+        return;
+      }
+
+      setIsDistributing(true);
+      setMessage({ type: "info", text: "🤖 AI analyzing report and determining distribution strategy..." });
+
+      try {
+        const response = await distributeAnalysisReport({
+          reportType: "Advanced Attendance Analysis",
+          reportHTML: lastReportHTML,
+          reportTitle: `Attendance Analysis - Division ${formData.division}`,
+          batchInfo: formData,
+          summary: analysisData.studentAttendance ? {
+            totalStudents: analysisData.studentAttendance.length,
+            avgAttendance: analysisData.studentAttendance.length > 0 
+              ? (analysisData.studentAttendance.reduce((sum, s) => sum + parseFloat(s.percentage), 0) / analysisData.studentAttendance.length).toFixed(1)
+              : 0,
+            below75: analysisData.studentAttendance.filter(s => parseFloat(s.percentage) < 75).length
+          } : {}
+        });
+
+        if (response.data.success) {
+          const { distribution, ai_decision } = response.data;
+          setMessage({ 
+            type: "success", 
+            text: `✅ Report distributed! ${distribution.emails_sent} emails sent. AI Reason: ${ai_decision.reason}` 
+          });
+        } else {
+          setMessage({ type: "error", text: "Distribution failed: " + response.data.error });
+        }
+      } catch (error) {
+        console.error('Distribution error:', error);
+        setMessage({ type: "error", text: "Failed to distribute report: " + error.message });
+      }
+
+      setIsDistributing(false);
     };
 
     const handleExportCSV = () => {
@@ -1811,6 +1858,35 @@ export default function AdvancedAnalysis() {
                   New Analysis
                 </Button>
               </div>
+
+              {lastReportHTML && (
+                <div className="border-t pt-4 mt-4">
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border-2 border-indigo-200">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Zap className="w-5 h-5 text-indigo-600" />
+                          <h4 className="font-bold text-indigo-900">🤖 AI-Powered Auto-Distribution</h4>
+                        </div>
+                        <p className="text-sm text-indigo-800 mb-3">
+                          Let AI analyze report sensitivity and automatically distribute to the right people via email or notifications.
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleAutoDistribute}
+                      disabled={isDistributing}
+                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    >
+                      {isDistributing ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI Distributing Report...</>
+                      ) : (
+                        <><Send className="w-4 h-4 mr-2" /> Auto-Distribute Report with AI</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
             </Card>
             )}

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Eye, FileText, Upload, Download, Clock, CheckCircle, AlertCircle, BookOpen } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, FileText, Upload, Download, Clock, CheckCircle, AlertCircle, BookOpen, File } from "lucide-react";
 import QuizBuilder from "../components/assignment/QuizBuilder";
 import { format, isPast } from "date-fns";
 import { toast } from "sonner";
@@ -632,35 +632,39 @@ function SubmissionCard({ submission, assignment, onEvaluate }) {
           </div>
         </div>
 
-        {/* Submission Content */}
+        {/* Display submission - Text or File */}
         <div className="mb-4">
           {submission.submission_file_url ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <FileText className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-900">PDF Submission</span>
+              <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                <File className="w-4 h-4" />
+                <span className="font-semibold">PDF Submission:</span>
               </div>
-              {/* Embedded PDF Viewer */}
+              
+              {/* PDF Viewer */}
               <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
-                <iframe
+                <iframe 
                   src={submission.submission_file_url}
-                  className="w-full h-[600px]"
-                  title="Submission PDF"
+                  className="w-full h-[500px]"
+                  title="Student Submission PDF"
                 />
               </div>
-              <a 
-                href={submission.submission_file_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm"
-              >
-                <Upload className="w-4 h-4" />
-                Open PDF in new tab
-              </a>
+              
+              {/* Download Button */}
+              <div className="flex justify-end">
+                <a 
+                  href={submission.submission_file_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </a>
+              </div>
             </div>
           ) : (
             <div className="p-3 bg-white rounded-lg border">
-              <p className="text-sm font-semibold text-gray-700 mb-2">Text Submission:</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.submission_text}</p>
             </div>
           )}

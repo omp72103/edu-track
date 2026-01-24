@@ -24,8 +24,9 @@ import { Button } from "@/components/ui/button";
 
 // Student Pages
 import StudentDashboard from "../components/student/StudentDashboard";
-import StudentAttendance from "../components/student/StudentAttendance";
-import StudentTimetable from "../components/student/StudentTimetable";
+import StudentAttendanceEnhanced from "../components/student/StudentAttendanceEnhanced";
+import StudentTimetableGrid from "../components/student/StudentTimetableGrid";
+import StudentCoursesAndFaculty from "../components/student/StudentCoursesAndFaculty";
 import StudentAssignments from "../components/student/StudentAssignments";
 import StudentNotes from "../components/student/StudentNotes";
 import StudentTeachingNotes from "../components/student/StudentTeachingNotes";
@@ -39,6 +40,7 @@ const studentMenuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: Calendar },
   { id: 'timetable', label: 'Timetable', icon: ClipboardList },
+  { id: 'courses', label: 'Courses & Faculty', icon: BookOpen },
   { id: 'assignments', label: 'Assignments', icon: FileText },
   { id: 'notes', label: 'Notes', icon: BookOpen },
   { id: 'teachingnotes', label: 'Teaching Notes', icon: FileText },
@@ -96,9 +98,11 @@ export default function StudentPortal() {
       case 'dashboard':
         return <StudentDashboard {...pageProps} onNavigate={setActivePage} />;
       case 'attendance':
-        return <StudentAttendance {...pageProps} />;
+        return <StudentAttendanceEnhanced {...pageProps} />;
       case 'timetable':
-        return <StudentTimetable {...pageProps} />;
+        return <StudentTimetableGrid {...pageProps} />;
+      case 'courses':
+        return <StudentCoursesAndFaculty {...pageProps} />;
       case 'assignments':
         return <StudentAssignments {...pageProps} />;
       case 'notes':

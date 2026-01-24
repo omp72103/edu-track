@@ -170,6 +170,19 @@ export default function StudentNotificationListener({ studentEmail }) {
       }
     });
 
+    // Subscribe to StudentNotification for low attendance alerts
+    const unsubscribeStudentNotif = base44.entities.StudentNotification.subscribe((event) => {
+      if (event.type === 'create' && event.data.student_email === studentEmail) {
+        const isUrgent = event.data.category === 'Attendance' && 
+                        (event.data.priority === 'Urgent' || event.data.priority === 'High');
+        showNotification(
+          event.data.title,
+          event.data.message,
+          { urgent: isUrgent, data: { type: event.data.category.toLowerCase(), priority: event.data.priority } }
+        );
+      }
+    });
+
     return () => {
       unsubscribeNotifications();
       unsubscribeAnnouncements();
@@ -177,6 +190,7 @@ export default function StudentNotificationListener({ studentEmail }) {
       unsubscribeAssignments();
       unsubscribeSessions();
       unsubscribePerformance();
+      unsubscribeStudentNotif();
     };
   }, [studentEmail, showNotification]);
 

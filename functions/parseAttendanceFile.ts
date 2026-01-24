@@ -6,58 +6,74 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'Unauthorized', success: false, students: [] }, { status: 401 });
     }
 
     const { file_url, file_type } = await req.json();
+    console.log('📂 Parsing file:', { file_url, file_type });
 
     // Fetch file content
     const fileResponse = await fetch(file_url);
     
     if (!fileResponse.ok) {
-      return Response.json({ 
-        success: false, 
-        error: 'Failed to fetch file',
-        students: []
-      }, { status: 400 });
+      throw new Error('Failed to fetch file from URL');
     }
 
     let parsedData = [];
 
-    // CSV Parsing
+    // CSV Parsing - use AI extraction for reliability
     if (file_type === 'csv' || file_url.endsWith('.csv')) {
+      console.log('📄 Processing CSV file...');
       const csvText = await fileResponse.text();
-      parsedData = parseCSV(csvText);
-    }
-    
-    // Excel Parsing (delegate to ExtractDataFromUploadedFile with smart schema)
-    else if (file_type === 'excel' || file_url.match(/\.(xlsx?|xls)$/i)) {
-      const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
-        json_schema: getAttendanceSchema()
-      });
       
-      if (extractResult.status === 'success' && extractResult.output) {
-        parsedData = normalizeExtractedData(extractResult.output);
+      // Try manual CSV parsing first
+      try {
+        parsedData = parseCSV(csvText);
+        console.log('✅ CSV parsed manually:', parsedData.length, 'students');
+      } catch (csvError) {
+        console.log('⚠️ Manual CSV parsing failed, using AI extraction:', csvError.message);
+        // Fallback to AI extraction
+        const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url,
+          json_schema: getSimplifiedSchema()
+        });
+        
+        if (extractResult.status === 'success' && extractResult.output) {
+          parsedData = normalizeExtractedData(extractResult.output);
+        }
       }
     }
     
-    // PDF Parsing
-    else if (file_type === 'pdf' || file_url.endsWith('.pdf')) {
+    // Excel, PDF, HTML - use AI extraction
+    else {
+      console.log('📊 Using AI extraction for', file_type);
       const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url,
-        json_schema: getAttendanceSchema()
+        json_schema: getSimplifiedSchema()
       });
+      
+      console.log('🔍 Extraction result:', extractResult.status);
       
       if (extractResult.status === 'success' && extractResult.output) {
         parsedData = normalizeExtractedData(extractResult.output);
+        console.log('✅ AI extracted:', parsedData.length, 'students');
+      } else {
+        throw new Error(extractResult.details || 'AI extraction failed to parse file structure');
       }
     }
 
     // Validate parsed data
-    const validStudents = parsedData.filter(s => 
-      s.roll_no && s.name && (s.attendance_records || s.attendance_percentage !== undefined)
-    );
+    const validStudents = parsedData.filter(s => {
+      const hasIdentity = s.roll_no || s.prn;
+      const hasName = s.name && s.name.length > 2;
+      return hasIdentity && hasName;
+    });
+
+    console.log('✅ Final valid students:', validStudents.length);
+
+    if (validStudents.length === 0) {
+      throw new Error('No valid student records detected. Please ensure file has Roll No/PRN and Student Name columns.');
+    }
 
     return Response.json({
       success: true,
@@ -67,66 +83,84 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Parse error:', error);
+    console.error('❌ Parse error:', error);
     return Response.json({ 
       success: false, 
-      error: error.message,
+      error: error.message || 'Failed to parse attendance file',
       students: []
-    }, { status: 500 });
+    }, { status: 200 }); // Return 200 to avoid frontend error
   }
 });
 
 // CSV Parser with dynamic column detection
 function parseCSV(csvText) {
-  const lines = csvText.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+  const lines = csvText.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error('CSV file has insufficient data');
 
-  // Find header row (look for "Roll" or "Name" keywords)
+  console.log('📄 Parsing CSV with', lines.length, 'lines');
+
+  // Find header row
   let headerIndex = -1;
   let headers = [];
   
-  for (let i = 0; i < Math.min(10, lines.length); i++) {
-    const row = lines[i].split(',').map(c => c.trim().toLowerCase());
-    if (row.some(col => /roll|student.*name|name/i.test(col))) {
+  for (let i = 0; i < Math.min(15, lines.length); i++) {
+    const testHeaders = parseCSVLine(lines[i]);
+    const headerText = testHeaders.join('|').toUpperCase();
+    
+    if (headerText.includes('ROLL') || headerText.includes('NAME') || headerText.includes('STUDENT')) {
       headerIndex = i;
-      headers = lines[i].split(',').map(c => c.trim());
+      headers = testHeaders.map(h => h.trim());
+      console.log('✅ Found header at line', i, ':', headers.slice(0, 5));
       break;
     }
   }
 
-  if (headerIndex === -1) {
-    // Assume first row is header
-    headerIndex = 0;
-    headers = lines[0].split(',').map(c => c.trim());
+  if (headerIndex === -1 || headers.length < 2) {
+    throw new Error('Could not detect header row with Roll/Name columns');
   }
 
-  // Identify column mappings
-  const rollIndex = headers.findIndex(h => /roll.*no|roll.*number|roll/i.test(h));
-  const nameIndex = headers.findIndex(h => /student.*name|name/i.test(h));
+  // Identify column indices
+  const rollIndex = headers.findIndex(h => /roll|serial|sl|sr/i.test(h));
+  const nameIndex = headers.findIndex(h => /student.*name|name|student/i.test(h) && !/college/i.test(h));
   const prnIndex = headers.findIndex(h => /prn|registration/i.test(h));
   
-  // Find date columns (session dates)
+  if (rollIndex === -1 || nameIndex === -1) {
+    throw new Error('Could not find Roll No and Student Name columns');
+  }
+  
+  console.log('📌 Column mapping:', { rollIndex, nameIndex, prnIndex });
+  
+  // Find date/session columns (exclude metadata columns)
   const dateColumns = [];
   headers.forEach((h, idx) => {
-    if (idx > nameIndex && /\d{1,2}[\/\-]\d{1,2}|\d{4}|session|date/i.test(h)) {
-      dateColumns.push({ index: idx, date: h });
+    const isMetadata = idx === rollIndex || idx === nameIndex || idx === prnIndex;
+    if (!isMetadata && h && h.trim().length > 0) {
+      // Check if it looks like a date or session
+      if (/\d{1,2}[.\/\-]\d{1,2}|\d{4}|session|date/i.test(h) || idx > nameIndex) {
+        dateColumns.push({ index: idx, date: h.trim() });
+      }
     }
   });
+
+  console.log('📅 Found', dateColumns.length, 'date/session columns');
 
   const students = [];
   
   // Parse student rows
   for (let i = headerIndex + 1; i < lines.length; i++) {
     const line = lines[i].trim();
-    if (!line || line.startsWith('Total') || line.startsWith('Average')) continue;
+    if (!line) continue;
+    
+    // Skip summary rows
+    if (/^(total|average|grand|sum)/i.test(line)) continue;
     
     const cells = parseCSVLine(line);
-    if (cells.length < 2) continue;
+    if (cells.length < Math.max(rollIndex, nameIndex) + 1) continue;
 
     const rollNo = cells[rollIndex]?.trim();
     const name = cells[nameIndex]?.trim();
     
-    if (!rollNo || !name || name.length < 2) continue;
+    if (!name || name.length < 2) continue;
 
     // Parse attendance marks
     const attendanceRecords = [];
@@ -136,35 +170,34 @@ function parseCSV(csvText) {
     dateColumns.forEach(({ index, date }) => {
       if (cells[index]) {
         const mark = cells[index].trim().toUpperCase();
-        if (mark === 'P' || mark === 'PRESENT') {
+        if (['P', 'PRESENT', '✓', '✔', 'Y', 'YES', '1'].includes(mark)) {
           attendanceRecords.push({ date, status: 'present' });
           presentCount++;
           totalSessions++;
-        } else if (mark === 'A' || mark === 'ABSENT') {
+        } else if (['A', 'ABSENT', 'X', '✗', 'N', 'NO', '0', '-'].includes(mark)) {
           attendanceRecords.push({ date, status: 'absent' });
-          totalSessions++;
-        } else if (mark !== 'N/A' && mark !== '' && mark !== '-') {
-          // Treat any other mark as present
-          attendanceRecords.push({ date, status: 'present' });
-          presentCount++;
           totalSessions++;
         }
       }
     });
 
-    const attendancePercentage = totalSessions > 0 
-      ? parseFloat(((presentCount / totalSessions) * 100).toFixed(2))
-      : 0;
-
     students.push({
-      roll_no: rollNo,
+      roll_no: rollNo || (students.length + 1).toString(),
       name: name.toUpperCase(),
       prn: cells[prnIndex]?.trim() || '',
       attendance_records: attendanceRecords,
       present_count: presentCount,
       total_sessions: totalSessions,
-      attendance_percentage: attendancePercentage
+      attendance_percentage: totalSessions > 0 
+        ? parseFloat(((presentCount / totalSessions) * 100).toFixed(2))
+        : 0
     });
+  }
+
+  console.log('✅ CSV parsed:', students.length, 'students');
+  
+  if (students.length === 0) {
+    throw new Error('No valid student records found in CSV');
   }
 
   return students;
@@ -192,91 +225,101 @@ function parseCSVLine(line) {
   return cells;
 }
 
-// Schema for AI extraction
-function getAttendanceSchema() {
+// Simplified schema for AI extraction - more flexible
+function getSimplifiedSchema() {
   return {
     type: "object",
     properties: {
       students: {
         type: "array",
-        description: "Extract all student rows with attendance data, ignore header metadata rows",
+        description: "Extract ALL student rows from the attendance table. Ignore header/metadata rows like college name, batch info. Only extract actual student data rows.",
         items: {
           type: "object",
           properties: {
             roll_no: {
               type: "string",
-              description: "Roll number or student ID"
-            },
-            name: {
-              type: "string",
-              description: "Student full name"
+              description: "Student roll number or serial number (first column usually)"
             },
             prn: {
               type: "string",
-              description: "PRN or registration number if available"
+              description: "PRN / Registration number if present"
+            },
+            name: {
+              type: "string",
+              description: "Full student name (required)"
             },
             attendance_records: {
               type: "array",
-              description: "List of session attendance marks",
+              description: "For each date/session column, record the attendance. Convert 'P', 'Present', checkmark, tick to 'present'. Convert 'A', 'Absent', 'X', cross to 'absent'. Skip empty cells.",
               items: {
                 type: "object",
                 properties: {
-                  date: { type: "string" },
+                  date: { 
+                    type: "string",
+                    description: "Date or session identifier from column header"
+                  },
                   status: { 
                     type: "string",
-                    description: "Convert P/Present to 'present', A/Absent to 'absent', skip N/A"
+                    enum: ["present", "absent"],
+                    description: "present or absent"
                   }
                 }
               }
-            },
-            present_count: {
-              type: "number",
-              description: "Total present sessions"
-            },
-            total_sessions: {
-              type: "number",
-              description: "Total sessions conducted"
-            },
-            attendance_percentage: {
-              type: "number",
-              description: "Attendance percentage"
             }
           },
-          required: ["roll_no", "name"]
+          required: ["name"]
         }
       }
-    }
+    },
+    required: ["students"]
   };
 }
 
 // Normalize AI-extracted data
 function normalizeExtractedData(output) {
-  const students = output.students || [];
+  if (!output || !output.students) {
+    console.log('⚠️ No students in output');
+    return [];
+  }
   
-  return students.map(student => {
-    // Calculate if not provided
-    let presentCount = student.present_count || 0;
-    let totalSessions = student.total_sessions || 0;
+  const students = Array.isArray(output.students) ? output.students : [];
+  console.log('📊 Normalizing', students.length, 'students');
+  
+  const normalized = students.map((student, idx) => {
+    // Calculate attendance stats
+    let presentCount = 0;
+    let totalSessions = 0;
+    const records = student.attendance_records || [];
     
-    if (student.attendance_records && student.attendance_records.length > 0) {
-      presentCount = student.attendance_records.filter(r => 
-        r.status === 'present' || r.status === 'P' || r.status === '1'
-      ).length;
-      totalSessions = student.attendance_records.length;
+    if (records.length > 0) {
+      records.forEach(r => {
+        if (r.status === 'present' || r.status === 'P') {
+          presentCount++;
+        }
+        if (r.status === 'present' || r.status === 'absent') {
+          totalSessions++;
+        }
+      });
     }
     
     const attendancePercentage = totalSessions > 0
       ? parseFloat(((presentCount / totalSessions) * 100).toFixed(2))
-      : student.attendance_percentage || 0;
+      : 0;
 
     return {
-      roll_no: student.roll_no?.toString().trim() || '',
-      name: (student.name || '').toUpperCase().trim(),
-      prn: student.prn?.toString().trim() || '',
-      attendance_records: student.attendance_records || [],
+      roll_no: (student.roll_no || idx + 1).toString().trim(),
+      name: (student.name || '').trim().toUpperCase(),
+      prn: (student.prn || '').toString().trim(),
+      attendance_records: records,
       present_count: presentCount,
       total_sessions: totalSessions,
       attendance_percentage: attendancePercentage
     };
-  }).filter(s => s.roll_no && s.name && s.name.length > 2);
+  });
+  
+  // Filter valid students
+  const valid = normalized.filter(s => s.name && s.name.length > 2);
+  console.log('✅ Valid students after normalization:', valid.length);
+  
+  return valid;
 }

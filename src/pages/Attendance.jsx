@@ -352,31 +352,32 @@ Attendance Management System
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6 safe-area-inset">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
+        {/* Responsive Header */}
+        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate(createPageUrl("Dashboard"))}
-            className="hover:bg-gray-100"
+            className="hover:bg-gray-100 flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10 touch-manipulation"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">📋 Take Attendance</h1>
-            <p className="text-gray-600 mt-1">Select a session and choose your attendance method</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">📋 Take Attendance</h1>
+            <p className="text-gray-600 text-sm sm:text-base mt-0.5 sm:mt-1 line-clamp-1">Select a session and choose your attendance method</p>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-3 sm:mb-4 text-sm" role="alert">
             <strong className="font-bold">Error! </strong>
             <span className="block sm:inline">{error}</span>
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {step === 1 && (
             <SessionSelector 
               onSessionSelect={handleSessionSelect}

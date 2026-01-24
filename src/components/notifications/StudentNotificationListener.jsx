@@ -1,45 +1,71 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Bell, Megaphone, MessageSquare, FileText, BellRing } from 'lucide-react';
-import { sendPushNotification } from './PushNotificationManager';
+import { Bell, Megaphone, MessageSquare, FileText, BellRing, Calendar, TrendingUp } from 'lucide-react';
+import { sendPushNotification, showLocalNotification } from './PushNotificationManager';
 
 export default function StudentNotificationListener({ studentEmail }) {
-  
-  // Show browser notification helper
-  const showBrowserNotification = useCallback((title, body, options = {}) => {
-    if (Notification.permission === 'granted') {
-      const notification = new Notification(title, {
+  const swRegistrationRef = useRef(null);
+
+  // Register service worker on mount
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        swRegistrationRef.current = registration;
+      });
+    }
+  }, []);
+
+  // Show notification via service worker (works in background)
+  const showNotification = useCallback((title, body, options = {}) => {
+    // Always try service worker first (works when app is closed)
+    if (swRegistrationRef.current && Notification.permission === 'granted') {
+      swRegistrationRef.current.showNotification(title, {
         body,
         icon: '/logo.png',
         badge: '/logo.png',
         tag: `edutrack-${Date.now()}`,
+        vibrate: [200, 100, 200],
         requireInteraction: options.urgent || false,
-        ...options
+        data: options.data || {},
+        actions: options.urgent ? [
+          { action: 'open', title: 'View Now' },
+          { action: 'dismiss', title: 'Later' }
+        ] : undefined
       });
-      
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
+    } else if (Notification.permission === 'granted') {
+      // Fallback to regular notification
+      new Notification(title, {
+        body,
+        icon: '/logo.png',
+        badge: '/logo.png',
+        tag: `edutrack-${Date.now()}`,
+        requireInteraction: options.urgent
+      });
+    }
+
+    // Also show in-app toast if visible
+    if (document.visibilityState === 'visible') {
+      const toastFn = options.urgent ? toast.warning : toast.info;
+      toastFn(title, {
+        description: body,
+        icon: <BellRing className="w-5 h-5" />,
+        duration: options.urgent ? 10000 : 6000,
+      });
     }
   }, []);
 
-  // Register for push notifications
+  // Auto-register for push on component mount
   useEffect(() => {
     if (!studentEmail) return;
 
-    // Request notification permission proactively
+    // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          // Register push subscription
-          registerPushSubscription();
-        }
-      });
-    } else if (Notification.permission === 'granted') {
-      registerPushSubscription();
+      Notification.requestPermission();
     }
+
+    // Register push subscription
+    registerPushSubscription();
 
     async function registerPushSubscription() {
       try {
@@ -47,7 +73,7 @@ export default function StudentNotificationListener({ studentEmail }) {
           user_email: studentEmail 
         });
         
-        if (existing.length === 0) {
+        if (existing.length === 0 && Notification.permission === 'granted') {
           await base44.entities.PushSubscription.create({
             user_email: studentEmail,
             user_type: 'student',
@@ -58,71 +84,24 @@ export default function StudentNotificationListener({ studentEmail }) {
           });
         }
       } catch (error) {
-        console.error('Error registering push subscription:', error);
+        console.error('Error registering push:', error);
       }
     }
   }, [studentEmail]);
 
-  // Poll for pending notifications (works even in background)
-  useEffect(() => {
-    if (!studentEmail) return;
-
-    const checkPendingNotifications = async () => {
-      try {
-        const pending = await base44.entities.PendingPushNotification.filter({
-          user_email: studentEmail,
-          sent: false
-        });
-
-        for (const notif of pending) {
-          const payload = JSON.parse(notif.payload);
-          
-          // Show browser notification
-          showBrowserNotification(payload.title, payload.body, {
-            urgent: payload.data?.priority === 'Urgent'
-          });
-
-          // Show in-app toast if app is visible
-          if (document.visibilityState === 'visible') {
-            toast.info(payload.title, {
-              description: payload.body,
-              icon: <BellRing className="w-5 h-5" />,
-              duration: 8000,
-            });
-          }
-
-          // Mark as sent
-          await base44.entities.PendingPushNotification.update(notif.id, { sent: true });
-        }
-      } catch (error) {
-        // Silent fail
-      }
-    };
-
-    // Check immediately and then every 5 seconds
-    checkPendingNotifications();
-    const pollInterval = setInterval(checkPendingNotifications, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [studentEmail, showBrowserNotification]);
-
-  // Real-time subscriptions
+  // Real-time entity subscriptions
   useEffect(() => {
     if (!studentEmail) return;
 
     // Subscribe to StudentNotification entity
     const unsubscribeNotifications = base44.entities.StudentNotification.subscribe((event) => {
       if (event.type === 'create' && event.data.student_email === studentEmail) {
-        const title = event.data.title || 'New Notification';
-        const body = event.data.message;
-        
-        toast.success(title, {
-          description: body,
-          icon: <Bell className="w-5 h-5" />,
-          duration: 6000,
-        });
-
-        showBrowserNotification(`🔔 ${title}`, body);
+        const isUrgent = event.data.priority === 'Urgent' || event.data.priority === 'High';
+        showNotification(
+          `🔔 ${event.data.title || 'New Notification'}`,
+          event.data.message,
+          { urgent: isUrgent, data: { type: 'notification', priority: event.data.priority } }
+        );
       }
     });
 
@@ -130,24 +109,18 @@ export default function StudentNotificationListener({ studentEmail }) {
     const unsubscribeAnnouncements = base44.entities.Announcement.subscribe((event) => {
       if (event.type === 'create') {
         const announcement = event.data;
-        
         const isForStudent = announcement.recipient_type === 'All' || 
                             announcement.recipient_type === 'Students';
         
         if (isForStudent) {
-          const priority = announcement.priority === 'Urgent' ? '🚨' : 
-                          announcement.priority === 'High' ? '⚠️' : '📢';
+          const emoji = announcement.priority === 'Urgent' ? '🚨' : 
+                       announcement.priority === 'High' ? '⚠️' : '📢';
+          const isUrgent = announcement.priority === 'Urgent';
           
-          toast.info(`${priority} ${announcement.title}`, {
-            description: announcement.message,
-            icon: <Megaphone className="w-5 h-5" />,
-            duration: 8000,
-          });
-
-          showBrowserNotification(
-            `${priority} ${announcement.title}`,
+          showNotification(
+            `${emoji} ${announcement.title}`,
             announcement.message,
-            { urgent: announcement.priority === 'Urgent' }
+            { urgent: isUrgent, data: { type: 'announcement', priority: announcement.priority } }
           );
         }
       }
@@ -156,32 +129,44 @@ export default function StudentNotificationListener({ studentEmail }) {
     // Subscribe to Messages
     const unsubscribeMessages = base44.entities.Message.subscribe((event) => {
       if (event.type === 'create' && event.data.receiver_email === studentEmail) {
-        const title = `✉️ New Message from ${event.data.sender_name}`;
-        const body = event.data.subject;
-        
-        toast.info(title, {
-          description: body,
-          icon: <MessageSquare className="w-5 h-5" />,
-          duration: 6000,
-        });
-
-        showBrowserNotification(title, body);
+        showNotification(
+          `✉️ Message from ${event.data.sender_name}`,
+          event.data.subject,
+          { data: { type: 'message', url: '/messages' } }
+        );
       }
     });
 
-    // Subscribe to Assignment updates
+    // Subscribe to Assignment creation
     const unsubscribeAssignments = base44.entities.Assignment.subscribe((event) => {
       if (event.type === 'create') {
-        const title = `📝 New Assignment: ${event.data.title}`;
-        const body = `Subject: ${event.data.subject} | Due: ${event.data.deadline}`;
-        
-        toast.info(title, {
-          description: body,
-          icon: <FileText className="w-5 h-5" />,
-          duration: 8000,
-        });
+        showNotification(
+          `📝 New Assignment: ${event.data.title}`,
+          `Subject: ${event.data.subject} | Due: ${new Date(event.data.deadline).toLocaleDateString()}`,
+          { data: { type: 'assignment' } }
+        );
+      }
+    });
 
-        showBrowserNotification(title, body);
+    // Subscribe to Attendance Sessions (for real-time alerts)
+    const unsubscribeSessions = base44.entities.Session.subscribe((event) => {
+      if (event.type === 'create' && event.data.status === 'active') {
+        showNotification(
+          `📅 Attendance Session Started`,
+          `${event.data.session_name} - Mark your attendance now!`,
+          { urgent: true, data: { type: 'attendance', url: '/attendance' } }
+        );
+      }
+    });
+
+    // Subscribe to Performance updates
+    const unsubscribePerformance = base44.entities.StudentPerformance.subscribe((event) => {
+      if (event.type === 'create' && event.data.student_email === studentEmail) {
+        showNotification(
+          `📊 New Score Posted`,
+          `${event.data.subject}: ${event.data.marks_obtained}/${event.data.total_marks} (${event.data.assessment_type})`,
+          { data: { type: 'performance' } }
+        );
       }
     });
 
@@ -190,8 +175,10 @@ export default function StudentNotificationListener({ studentEmail }) {
       unsubscribeAnnouncements();
       unsubscribeMessages();
       unsubscribeAssignments();
+      unsubscribeSessions();
+      unsubscribePerformance();
     };
-  }, [studentEmail, showBrowserNotification]);
+  }, [studentEmail, showNotification]);
 
   return null;
 }

@@ -1,46 +1,80 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { AlertCircle, MessageSquare, Mail, BellRing, Users, Calendar } from 'lucide-react';
+import { AlertCircle, MessageSquare, Mail, BellRing, Users, Calendar, FileText, TrendingUp } from 'lucide-react';
 
 export default function AdminNotificationListener({ userEmail, isAdmin }) {
-  
-  // Show browser notification helper
-  const showBrowserNotification = useCallback((title, body, options = {}) => {
-    if (Notification.permission === 'granted') {
+  const swRegistrationRef = useRef(null);
+
+  // Register service worker on mount
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        swRegistrationRef.current = registration;
+      });
+    }
+  }, []);
+
+  // Show notification via service worker (works in background)
+  const showNotification = useCallback((title, body, options = {}) => {
+    // Always try service worker first (works when app is closed)
+    if (swRegistrationRef.current && Notification.permission === 'granted') {
+      swRegistrationRef.current.showNotification(title, {
+        body,
+        icon: '/logo.png',
+        badge: '/logo.png',
+        tag: `edutrack-admin-${Date.now()}`,
+        vibrate: [200, 100, 200],
+        requireInteraction: options.urgent || false,
+        data: { url: options.url, ...options.data },
+        actions: options.urgent ? [
+          { action: 'open', title: 'View Now' },
+          { action: 'dismiss', title: 'Later' }
+        ] : undefined
+      });
+    } else if (Notification.permission === 'granted') {
       const notification = new Notification(title, {
         body,
         icon: '/logo.png',
         badge: '/logo.png',
         tag: `edutrack-admin-${Date.now()}`,
-        requireInteraction: options.urgent || false,
-        ...options
+        requireInteraction: options.urgent
       });
       
       notification.onclick = () => {
         window.focus();
-        if (options.url) {
-          window.location.href = options.url;
-        }
+        if (options.url) window.location.href = options.url;
         notification.close();
       };
     }
+
+    // Also show in-app toast if visible
+    if (document.visibilityState === 'visible') {
+      const toastFn = options.type === 'error' ? toast.error : 
+                     options.urgent ? toast.warning : toast.info;
+      toastFn(title, {
+        description: body,
+        icon: <BellRing className="w-5 h-5" />,
+        duration: options.urgent ? 10000 : 6000,
+        action: options.url ? {
+          label: 'View',
+          onClick: () => window.location.href = options.url
+        } : undefined
+      });
+    }
   }, []);
 
-  // Register for push notifications
+  // Auto-register for push on component mount
   useEffect(() => {
     if (!userEmail) return;
 
-    // Request notification permission proactively
+    // Request notification permission
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          registerPushSubscription();
-        }
-      });
-    } else if (Notification.permission === 'granted') {
-      registerPushSubscription();
+      Notification.requestPermission();
     }
+
+    // Register push subscription
+    registerPushSubscription();
 
     async function registerPushSubscription() {
       try {
@@ -48,7 +82,7 @@ export default function AdminNotificationListener({ userEmail, isAdmin }) {
           user_email: userEmail 
         });
         
-        if (existing.length === 0) {
+        if (existing.length === 0 && Notification.permission === 'granted') {
           await base44.entities.PushSubscription.create({
             user_email: userEmail,
             user_type: isAdmin ? 'admin' : 'faculty',
@@ -59,79 +93,29 @@ export default function AdminNotificationListener({ userEmail, isAdmin }) {
           });
         }
       } catch (error) {
-        console.error('Error registering push subscription:', error);
+        console.error('Error registering push:', error);
       }
     }
   }, [userEmail, isAdmin]);
 
-  // Poll for pending notifications
+  // Real-time entity subscriptions
   useEffect(() => {
     if (!userEmail) return;
 
-    const checkPendingNotifications = async () => {
-      try {
-        const pending = await base44.entities.PendingPushNotification.filter({
-          user_email: userEmail,
-          sent: false
-        });
-
-        for (const notif of pending) {
-          const payload = JSON.parse(notif.payload);
-          
-          // Show browser notification
-          showBrowserNotification(payload.title, payload.body, {
-            urgent: payload.data?.priority === 'Urgent',
-            url: payload.data?.url
-          });
-
-          // Show in-app toast if app is visible
-          if (document.visibilityState === 'visible') {
-            toast.info(payload.title, {
-              description: payload.body,
-              icon: <BellRing className="w-5 h-5" />,
-              duration: 8000,
-            });
-          }
-
-          // Mark as sent
-          await base44.entities.PendingPushNotification.update(notif.id, { sent: true });
-        }
-      } catch (error) {
-        // Silent fail
-      }
-    };
-
-    checkPendingNotifications();
-    const pollInterval = setInterval(checkPendingNotifications, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [userEmail, showBrowserNotification]);
-
-  // Real-time subscriptions
-  useEffect(() => {
-    if (!userEmail) return;
-
-    // Subscribe to Complaints - for admin
+    // Subscribe to Complaints - for admin (HIGH PRIORITY)
     const unsubscribeComplaints = base44.entities.Complaint.subscribe((event) => {
       if (event.type === 'create' && isAdmin) {
         const complaint = event.data;
-        const title = `🚨 New Complaint from ${complaint.student_name}`;
-        const body = `Category: ${complaint.category} | ${complaint.issue?.substring(0, 80)}...`;
-        
-        toast.error(title, {
-          description: body,
-          icon: <AlertCircle className="w-5 h-5" />,
-          duration: 10000,
-          action: {
-            label: 'View',
-            onClick: () => window.location.href = '/FeedbackComplaintsAdmin',
-          },
-        });
-
-        showBrowserNotification(title, body, { 
-          urgent: true, 
-          url: '/FeedbackComplaintsAdmin' 
-        });
+        showNotification(
+          `🚨 NEW COMPLAINT: ${complaint.category}`,
+          `From: ${complaint.student_name}\n${complaint.issue?.substring(0, 100) || complaint.title}`,
+          { 
+            urgent: true, 
+            type: 'error',
+            url: '/FeedbackComplaintsAdmin',
+            data: { type: 'complaint', priority: complaint.priority }
+          }
+        );
       }
     });
 
@@ -139,70 +123,66 @@ export default function AdminNotificationListener({ userEmail, isAdmin }) {
     const unsubscribeFeedback = base44.entities.Feedback.subscribe((event) => {
       if (event.type === 'create' && isAdmin) {
         const feedback = event.data;
-        const title = `💬 New Feedback from ${feedback.student_name}`;
-        const body = `Rating: ${feedback.rating}/5 | ${feedback.feedback_text?.substring(0, 80)}...`;
-        
-        toast.info(title, {
-          description: body,
-          icon: <MessageSquare className="w-5 h-5" />,
-          duration: 8000,
-          action: {
-            label: 'View',
-            onClick: () => window.location.href = '/FeedbackComplaintsAdmin',
-          },
-        });
-
-        showBrowserNotification(title, body, { url: '/FeedbackComplaintsAdmin' });
+        showNotification(
+          `💬 New Feedback from ${feedback.student_name}`,
+          `Rating: ${'⭐'.repeat(feedback.rating || 0)} | ${feedback.feedback_text?.substring(0, 80)}`,
+          { url: '/FeedbackComplaintsAdmin', data: { type: 'feedback' } }
+        );
       }
     });
 
-    // Subscribe to Messages for this user
+    // Subscribe to Messages
     const unsubscribeMessages = base44.entities.Message.subscribe((event) => {
       if (event.type === 'create' && event.data.receiver_email === userEmail) {
-        const title = `✉️ New Message from ${event.data.sender_name}`;
-        const body = event.data.subject;
-        
-        toast.info(title, {
-          description: body,
-          icon: <Mail className="w-5 h-5" />,
-          duration: 6000,
-          action: {
-            label: 'View',
-            onClick: () => window.location.href = '/Messages',
-          },
-        });
-
-        showBrowserNotification(title, body, { url: '/Messages' });
+        showNotification(
+          `✉️ Message from ${event.data.sender_name}`,
+          event.data.subject,
+          { url: '/Messages', data: { type: 'message' } }
+        );
       }
     });
 
     // Subscribe to new student registrations (for admin)
     const unsubscribeStudents = base44.entities.Student.subscribe((event) => {
       if (event.type === 'create' && isAdmin) {
-        const title = `👨‍🎓 New Student Registered`;
-        const body = `${event.data.name} joined ${event.data.batch_id}`;
-        
-        toast.success(title, {
-          description: body,
-          icon: <Users className="w-5 h-5" />,
-          duration: 6000,
-        });
-
-        showBrowserNotification(title, body);
+        showNotification(
+          `👨‍🎓 New Student Registered`,
+          `${event.data.name} joined batch: ${event.data.batch_id}`,
+          { data: { type: 'student' } }
+        );
       }
     });
 
     // Subscribe to new sessions
     const unsubscribeSessions = base44.entities.Session.subscribe((event) => {
       if (event.type === 'create') {
-        const title = `📅 New Session Created`;
-        const body = `${event.data.session_name} by ${event.data.faculty_name}`;
-        
-        toast.info(title, {
-          description: body,
-          icon: <Calendar className="w-5 h-5" />,
-          duration: 6000,
-        });
+        showNotification(
+          `📅 Session Created`,
+          `${event.data.session_name} by ${event.data.faculty_name}`,
+          { data: { type: 'session' } }
+        );
+      }
+    });
+
+    // Subscribe to Assignment submissions (for faculty)
+    const unsubscribeSubmissions = base44.entities.AssignmentSubmission.subscribe((event) => {
+      if (event.type === 'create') {
+        showNotification(
+          `📄 New Assignment Submission`,
+          `${event.data.student_name} submitted an assignment`,
+          { url: '/AssignmentManagement', data: { type: 'submission' } }
+        );
+      }
+    });
+
+    // Subscribe to Proxy Detection alerts (for admin)
+    const unsubscribeProxy = base44.entities.ProxyDetectionLog.subscribe((event) => {
+      if (event.type === 'create' && isAdmin && event.data.risk_score >= 70) {
+        showNotification(
+          `⚠️ Proxy Alert Detected!`,
+          `${event.data.violation_type} - Risk Score: ${event.data.risk_score}`,
+          { urgent: true, type: 'error', url: '/ProxyDetection', data: { type: 'proxy' } }
+        );
       }
     });
 
@@ -212,8 +192,10 @@ export default function AdminNotificationListener({ userEmail, isAdmin }) {
       unsubscribeMessages();
       unsubscribeStudents();
       unsubscribeSessions();
+      unsubscribeSubmissions();
+      unsubscribeProxy();
     };
-  }, [userEmail, isAdmin, showBrowserNotification]);
+  }, [userEmail, isAdmin, showNotification]);
 
   return null;
 }

@@ -100,7 +100,14 @@ export default function Layout({ children, currentPageName }) {
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsPWAInstalled(true);
     }
-  }, []);
+
+    // Request notification permission proactively for PWA
+    if ('Notification' in window && Notification.permission === 'default') {
+      setTimeout(() => {
+        Notification.requestPermission();
+      }, 3000);
+    }
+    }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -287,8 +294,8 @@ export default function Layout({ children, currentPageName }) {
       <AdminNotificationListener userEmail={user?.email} isAdmin={user?.role === 'admin'} />
       <Toaster position="top-right" richColors />
 
-      {/* Push notification enable button */}
-      <div className="fixed bottom-4 right-4 z-50">
+      {/* Push notification enable button - floating */}
+      <div className="fixed bottom-20 right-4 z-50 lg:bottom-4">
         <PushNotificationManager 
           userEmail={user?.email} 
           userType={user?.role === 'admin' ? 'admin' : 'faculty'} 

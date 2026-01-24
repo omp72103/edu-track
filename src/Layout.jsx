@@ -435,7 +435,7 @@ export default function Layout({ children, currentPageName }) {
         />
       )}
 
-      {/* Custom Scrollbar Styles */}
+      {/* Custom Scrollbar Styles & Safe Area */}
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -449,6 +449,15 @@ export default function Layout({ children, currentPageName }) {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: linear-gradient(to bottom, #2563eb, #4f46e5);
+        }
+        .safe-area-inset {
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
+          padding-left: env(safe-area-inset-left);
+          padding-right: env(safe-area-inset-right);
+        }
+        .touch-manipulation {
+          touch-action: manipulation;
         }
       `}</style>
 

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import CreateBatchModal from "../components/batches/CreateBatchModal";
 import BulkEmailUploadModal from "../components/batches/BulkEmailUploadModal";
+import { refreshBatches } from "../components/utils/useBatches";
 
 const years = ["First Year", "Second Year", "Third Year", "Fourth Year"];
 const colleges = [
@@ -186,6 +187,7 @@ export default function BatchesPage() {
       try {
           await Batch.delete(batchId);
           loadBatches();
+          refreshBatches(); // Trigger global sync
       } catch (error) {
           console.error("Failed to delete batch", error);
           alert("Failed to delete batch. There might be associated records.");
@@ -510,7 +512,10 @@ export default function BatchesPage() {
       <CreateBatchModal
         isOpen={isCreateModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onBatchCreated={loadBatches}
+        onBatchCreated={() => {
+          loadBatches();
+          refreshBatches(); // Trigger global sync
+        }}
       />
 
       <BulkEmailUploadModal

@@ -31,6 +31,7 @@ const PERFORMANCE_TREND = [
 
 export default function StudentDetailModal({ isOpen, onClose, student }) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [attendanceData] = useState(() => generateAttendanceData());
 
   if (!student) return null;
 
@@ -75,7 +76,7 @@ export default function StudentDetailModal({ isOpen, onClose, student }) {
                 <CardContent className="p-6 text-center">
                   <Calendar className="w-10 h-10 text-blue-600 mx-auto mb-3" />
                   <p className="text-sm text-gray-600 mb-1">Attendance</p>
-                  <p className="text-3xl font-bold text-blue-700">{DEMO_ATTENDANCE.percentage}%</p>
+                  <p className="text-3xl font-bold text-blue-700">{attendanceData.percentage}%</p>
                   <p className="text-xs text-gray-500 mt-1">Excellent</p>
                 </CardContent>
               </Card>
@@ -132,21 +133,21 @@ export default function StudentDetailModal({ isOpen, onClose, student }) {
               <Card className="bg-blue-50 border-blue-200">
                 <CardContent className="p-6 text-center">
                   <BookOpen className="w-12 h-12 text-blue-600 mx-auto mb-2" />
-                  <p className="text-4xl font-bold text-gray-900">{DEMO_ATTENDANCE.totalSessions}</p>
+                  <p className="text-4xl font-bold text-gray-900">{attendanceData.totalSessions}</p>
                   <p className="text-sm text-gray-600">Total Sessions</p>
                 </CardContent>
               </Card>
               <Card className="bg-green-50 border-green-200">
                 <CardContent className="p-6 text-center">
                   <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                  <p className="text-4xl font-bold text-gray-900">{DEMO_ATTENDANCE.present}</p>
+                  <p className="text-4xl font-bold text-gray-900">{attendanceData.present}</p>
                   <p className="text-sm text-gray-600">Present</p>
                 </CardContent>
               </Card>
               <Card className="bg-red-50 border-red-200">
                 <CardContent className="p-6 text-center">
                   <X className="w-12 h-12 text-red-600 mx-auto mb-2" />
-                  <p className="text-4xl font-bold text-gray-900">{DEMO_ATTENDANCE.absent}</p>
+                  <p className="text-4xl font-bold text-gray-900">{attendanceData.absent}</p>
                   <p className="text-sm text-gray-600">Absent</p>
                 </CardContent>
               </Card>
@@ -159,9 +160,9 @@ export default function StudentDetailModal({ isOpen, onClose, student }) {
                   <div className="w-full bg-gray-200 rounded-full h-8">
                     <div 
                       className="bg-gradient-to-r from-green-500 to-emerald-600 h-8 rounded-full flex items-center justify-end pr-3"
-                      style={{ width: `${DEMO_ATTENDANCE.percentage}%` }}
+                      style={{ width: `${attendanceData.percentage}%` }}
                     >
-                      <span className="text-white font-bold text-sm">{DEMO_ATTENDANCE.percentage}%</span>
+                      <span className="text-white font-bold text-sm">{attendanceData.percentage}%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-center gap-2 mt-4">

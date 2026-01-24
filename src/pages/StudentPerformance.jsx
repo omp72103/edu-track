@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Plus, Edit, Trash2, Award, FileText, Mail } from "lucide-react";
+import { TrendingUp, Plus, Edit, Trash2, Award, FileText, Mail, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import ManageStudentEmailsModal from "../components/students/ManageStudentEmailsModal";
+import StudentDetailModal from "../components/student/StudentDetailModal";
 
 const examTypes = ["Internal Test 1", "Internal Test 2", "Internal Test 3", "Mid Semester", "End Semester", "Assignment", "Project", "Quiz"];
 
@@ -21,6 +22,7 @@ export default function StudentPerformancePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedStudentForDetail, setSelectedStudentForDetail] = useState(null);
   const [formData, setFormData] = useState({
     student_id: "",
     student_name: "",
@@ -335,34 +337,46 @@ export default function StudentPerformancePage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    <div className="mb-4">
+                      <Button 
+                        onClick={() => {
+                          const student = students.find(s => s.id === selectedStudent);
+                          setSelectedStudentForDetail(student);
+                        }}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Detailed Analytics
+                      </Button>
+                    </div>
                     {performances.map(perf => (
-                      <div key={perf.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                        <div className="flex-1 grid grid-cols-5 gap-4">
-                          <div>
-                            <p className="font-semibold">{perf.subject_name}</p>
-                            <p className="text-sm text-gray-500">{perf.exam_type}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600">Marks</p>
-                            <p className="font-semibold">{perf.marks_obtained}/{perf.total_marks}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-gray-600">Percentage</p>
-                            <p className="font-semibold">{perf.percentage}%</p>
-                          </div>
-                          <div className="text-center">
-                            <Badge className={getGradeColor(perf.grade)}>{perf.grade}</Badge>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600">Date</p>
-                            <p className="text-sm">{perf.exam_date || "N/A"}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(perf)}><Edit className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(perf.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
-                        </div>
-                      </div>
+                     <div key={perf.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                       <div className="flex-1 grid grid-cols-5 gap-4">
+                         <div>
+                           <p className="font-semibold">{perf.subject_name}</p>
+                           <p className="text-sm text-gray-500">{perf.exam_type}</p>
+                         </div>
+                         <div className="text-center">
+                           <p className="text-sm text-gray-600">Marks</p>
+                           <p className="font-semibold">{perf.marks_obtained}/{perf.total_marks}</p>
+                         </div>
+                         <div className="text-center">
+                           <p className="text-sm text-gray-600">Percentage</p>
+                           <p className="font-semibold">{perf.percentage}%</p>
+                         </div>
+                         <div className="text-center">
+                           <Badge className={getGradeColor(perf.grade)}>{perf.grade}</Badge>
+                         </div>
+                         <div>
+                           <p className="text-sm text-gray-600">Date</p>
+                           <p className="text-sm">{perf.exam_date || "N/A"}</p>
+                         </div>
+                       </div>
+                       <div className="flex gap-2">
+                         <Button size="sm" variant="ghost" onClick={() => handleEdit(perf)}><Edit className="w-4 h-4" /></Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleDelete(perf.id)}><Trash2 className="w-4 h-4 text-red-600" /></Button>
+                       </div>
+                     </div>
                     ))}
                   </div>
                 )}
@@ -377,6 +391,12 @@ export default function StudentPerformancePage() {
         onClose={() => setShowEmailModal(false)}
         students={students}
         onUpdate={loadData}
+      />
+
+      <StudentDetailModal
+        isOpen={!!selectedStudentForDetail}
+        onClose={() => setSelectedStudentForDetail(null)}
+        student={selectedStudentForDetail}
       />
 
       <style jsx>{`

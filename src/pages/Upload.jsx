@@ -22,17 +22,6 @@ const divisions = ["A", "B", "C"];
 
 // Custom batches are now fetched from database
 
-// Hardcoded colleges to ensure they're always available
-const COLLEGES = [
-  {"college_name": "KIT's College of Engineering, Kolhapur", "short_name": "KIT KOLHAPUR"},
-  {"college_name": "DKTE's Textile & Engineering Institute, Ichalkaranji", "short_name": "DKTE ICHALKARANJI"},
-  {"college_name": "Rajarambpapu Institute of Technology, Islampur", "short_name": "RIT ISLAMPUR"},
-  {"college_name": "SSPM's College of Engineering, Kankavli", "short_name": "SSPM KANKAVLI"},
-  {"college_name": "SVERI's College of Engineering, Pandharpur", "short_name": "SVERI PANDHARPUR"},
-  {"college_name": "Sinhgad College of Engineering, Pune", "short_name": "SINHGAD PUNE"},
-  {"college_name": "Tatyasaheb Kore Institute of Engineering and Technology", "short_name": "TKIET WARANANAGAR"}
-];
-
 export default function UploadPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
